@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.22 2003/01/16 09:50:12 rjray Exp $
+#   $Id: XML.pm,v 1.23 2003/01/20 08:08:41 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -59,7 +59,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.22 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.23 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -800,7 +800,7 @@ sub to_file
     if ($self->{inmem})
     {
         print $fh $self->{value};
-        $count =  length($self->{value});
+        $count = CORE::length($self->{value});
     }
     else
     {
@@ -820,7 +820,7 @@ sub to_file
             {
                 $buf = MIME::Base64::decode_base64($_);
                 print $fh $buf;
-                $count += length($buf);
+                $count += CORE::length($buf);
             }
         }
         else
