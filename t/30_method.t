@@ -68,11 +68,11 @@ $obj = RPC::XML::Method->new(File::Spec->catfile($dir, 'meth_good_1.xpl'));
 ok(ref $obj);
 
 # 10: Check the basics
-ok($obj->name() and scalar(@{$obj->signature}) and $obj->version() and
-   $obj->help());
+ok(ref($obj) and $obj->name() and scalar(@{$obj->signature}) and
+   $obj->version() and $obj->help());
 
 # 11: Is code() the type of ref we expect?
-ok(ref($obj->code) eq 'CODE');
+ok(ref($obj) and (ref($obj->code) eq 'CODE'));
 
 # 12: This looks more complex than it is. The code returns this specific key:
 ok($obj->code->({ method_name => $obj->name }) eq $obj->name);
