@@ -33,3 +33,29 @@ Revision history for Perl extension RPC::XML.
 	package. Added test suites for the RPC::XML data classes (t/10_data.t,
 	96 tests) and the RPC::XML::Parser container-class (t/20_parser.t,
 	7 tests).
+
+0.28	Sun Oct  7 21:27:39 PDT 2001
+
+	Found a subtle-but-nasty bug in the handling of RPC::XML::string
+	objects. Thanks to Dominic Mitchell <dom@semantico.com> for pointing
+	me in the right direction.
+
+	Started down the path of making the suite as a whole geared more
+	towards real use than illustrative example. The XML data-classes now
+	no longer use indention (or any superfluous whitespace) in their
+	stringification. This shortened the code quite a bit, and will also
+	mean shorter messages. This could not have been done cleanly without
+	the tests in t/10_data.t.
+
+	Extracted the method-manipulation code into a new class, called
+	RPC::XML::Method. This should make method-sharing easier, and pull
+	a lot of method-specific code out of RPC::XML::Server and
+	Apache::RPC::Server.
+
+	Clarified some issues in the new() constructor of the
+	Apache::RPC::Server class, and also changed the calling convention.
+	It no longer treats the first few arguments in any special way at all.
+	The arguments are all consistently taken as option/value pairs, just
+	as with RPC::XML::Server. The documentation relflects this. This may
+	break things built on the old style, but in the long run it should
+	prove much better.

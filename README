@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.27 (third release)
+Version: 0.28 (fourth release)
 
 WHAT IS IT
 
@@ -65,6 +65,15 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-Test suites for the data classes and the RPC::XML::Parser class have been
-added. Some small buglets were fixed, and more enhancements to the
-documentation were made.
+See the ChangeLog file for the full details. Much changed in this release,
+though the majority was on the behind-the-scenes level. A subtle bug in the
+RPC::XML::string data class was caught. The overall efficiency of the package
+is starting to be improved. The manipulation and handling of methods within
+the server classes has been moved to a new, separate class that has resulted
+in more clarity in the server code.
+
+The main change to be aware of in this release is a clarification on how
+objects in the Apache::RPC::Server class are created with the new() 
+constructor. This only applies to using the code within <Perl> sections
+in the Apache configuration. Read it carefully, as it will break any existing
+code.
