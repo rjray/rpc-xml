@@ -2,14 +2,58 @@
 <!--
     The schema for this namespace may be found at the following URL:
 
-    http://www.blackperl.com/XML/ChangeLog/changelog091.xsd
+    http://www.blackperl.com/XML/ChangeLog/changelog092.xsd
 
-    $Header: /work/cvs/perl/RPC-XML/ChangeLog.xml,v 1.2 2004/12/09 09:19:25 rjray Exp $
+    $Header: /work/cvs/perl/RPC-XML/ChangeLog.xml,v 1.3 2004/12/24 11:03:53 rjray Exp $
 -->
 <changelog xmlns="http://www.blackperl.com/XML/ChangeLog">
-  <overview>
+  <description>
     Revision history for Perl extension RPC::XML
-  </overview>
+  </description>
+  <release version="0.57" tag="v0_57" date="2004-12-24T03:02:48-08:00">
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" revision="1.27" />
+      <description>
+        Some minor changes to how values are read from the configuration, to
+        reduce "use of uninitialized value" warnings in regex operations.
+      </description>
+    </item>
+    <item>
+      <fileset>
+        <file path="lib/RPC/XML.pm" version="1.34" />
+        <file path="t/10_data.t" version="1.8" />
+      </fileset>
+      <description>
+        Based on a report from Brian Phillips, made adjustments in the
+        smart_encode helper-routine to deal with blessed references. Anything
+        that is derived from HASH or ARRAY is encoded as a struct or array,
+        respectively. Anything derived from SCALAR is dereferenced and encoded
+        as per usual. Carried this over to the class constructors, with special
+        attention to the RPC::XML::simple_type class. Added tests to the suite
+        for all of this, as well.
+      </description>
+    </item>
+    <item>
+      <fileset>
+        <file path="lib/Apache/RPC/status.base" revision="1.5" />
+        <file path="lib/Apache/RPC/status.code" revision="1.4" />
+        <file path="lib/Apache/RPC/status.help" revision="1.2" />
+        <file path="lib/RPC/XML/Procedure.pm" revision="1.12" />
+        <file path="lib/RPC/XML/Server.pm" revision="1.42" />
+        <file path="methods/status.base" revision="1.6" />
+        <file path="methods/status.code" revision="1.4" />
+        <file path="methods/status.help" revision="1.2" />
+        <file path="t/40_server.t" revision="1.8" />
+      </fileset>
+      <description>
+        The "system.status" method (both the general one and the one that is
+        specific to Apache) now recognizes an optional boolean parameter that
+        can keep the status call from counting against the "total_requests"
+        struct value. This is to allow external monitors (status, health, etc.)
+        to use that call without running up the value of that field needlessly.
+      </description>
+    </item>
+  </release>
   <release version="0.56" tag="v0_56" date="2004-12-09T01:07:00-08:00">
     <item>
       <file path="etc/make_method" revision="1.10" />

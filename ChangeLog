@@ -1,5 +1,36 @@
 Revision history for Perl extension RPC::XML.
 
+0.57	Fri Dec 24 03:02:48 PST 2004
+
+	lib/Apache/RPC/Server.pm:
+	Some minor changes to how values are read from the configuration, to
+	reduce "use of uninitialized value" warnings in regex operations.
+
+	lib/RPC/XML.pm:
+	t/10_data.t:
+	Based on a report from Brian Phillips, made adjustments in the
+	smart_encode helper-routine to deal with blessed references. Anything
+	that is derived from HASH or ARRAY is encoded as a struct or array,
+	respectively. Anything derived from SCALAR is dereferenced and encoded
+	as per usual. Carried this over to the class constructors, with special
+	attention to the RPC::XML::simple_type class. Added tests to the suite
+	for all of this, as well.
+
+	lib/Apache/RPC/status.base:
+	lib/Apache/RPC/status.code:
+	lib/Apache/RPC/status.help:
+	lib/RPC/XML/Procedure.pm:
+	lib/RPC/XML/Server.pm:
+	methods/status.base:
+	methods/status.code:
+	methods/status.help:
+	t/40_server.t:
+	The "system.status" method (both the general one and the one that is
+	specific to Apache) now recognizes an optional boolean parameter that
+	can keep the status call from counting against the "total_requests"
+	struct value. This is to allow external monitors (status, health, etc.)
+	to use that call without running up the value of that field needlessly.
+
 0.56	Thu Dec  9 01:06:24 PST 2004
 
 	etc/make_method:

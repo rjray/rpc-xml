@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.56
+Version: 0.57
 
 WHAT IS IT
 
@@ -65,45 +65,31 @@ The Artistic License: http://www.opensource.org/licenses/artistic-license.php
 
 CHANGES
 
-etc/make_method:
-Small change to the generated XML, to add an "encoding" setting to the
-XML preamble.
-                                                                                
-t/10_data.t:
-t/60_net_server.t:
-Very minor changes, to make the test work with older Perls and/or Test
-modules.
-                                                                                
-lib/RPC/XML.pm:
-Add "encoding" settings to all XML preambles, and make the scalar
-variable "$RPC::XML::ENCODING" an importable symbol, should users want
-to change the default encoding. Not currently documented, since this is
-technically a break from the XML-RPC spec.
-                                                                                
-Makefile.PL:
-t/50_client.t:
-Traced a bug that was causing test failures in 50_client.t to a bug in
-version 5.800 of the LWP package. Now, Makefile.PL explicitly requires
-5.801 or higher, and the test suite skips the two tests that are broken
-by it, in cases where the system is still at 5.800 or older.
-                                                                                
-lib/RPC/XML/Client.pm:
-Adding the encoding to the request and response blocks messed up some
-of the tests in the 10_data.t and 15_serialize.t suites. Fixed.
-                                                                                
-README:
-etc/make_method:
-etc/rpc-method.dtd:
 lib/Apache/RPC/Server.pm:
-lib/Apache/RPC/Status.pm:
+Some minor changes to how values are read from the configuration, to
+reduce "use of uninitialized value" warnings in regex operations.
+
 lib/RPC/XML.pm:
-lib/RPC/XML/Client.pm:
-lib/RPC/XML/Function.pm:
-lib/RPC/XML/Method.pm:
-lib/RPC/XML/Parser.pm:
+t/10_data.t:
+Based on a report from Brian Phillips, made adjustments in the
+smart_encode helper-routine to deal with blessed references. Anything
+that is derived from HASH or ARRAY is encoded as a struct or array,
+respectively. Anything derived from SCALAR is dereferenced and encoded
+as per usual. Carried this over to the class constructors, with special
+attention to the RPC::XML::simple_type class. Added tests to the suite
+for all of this, as well.
+
+lib/Apache/RPC/status.base:
+lib/Apache/RPC/status.code:
+lib/Apache/RPC/status.help:
 lib/RPC/XML/Procedure.pm:
 lib/RPC/XML/Server.pm:
-Changed all URL references to the Artistic License from the (no longer
-valid) language.perl.com version to the (current, working)
-www.opensource.org one.
-
+methods/status.base:
+methods/status.code:
+methods/status.help:
+t/40_server.t:
+The "system.status" method (both the general one and the one that is
+specific to Apache) now recognizes an optional boolean parameter that
+can keep the status call from counting against the "total_requests"
+struct value. This is to allow external monitors (status, health, etc.)
+to use that call without running up the value of that field needlessly.
