@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.26 2004/12/09 08:50:17 rjray Exp $
+#   $Id: Server.pm,v 1.27 2004/12/13 09:47:25 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.26 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.27 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 sub version { $Apache::RPC::Server::VERSION }
 
@@ -354,8 +354,8 @@ sub new
     }
 
     # Check for disabling of auto-loading or mtime-checking
-    $do_auto  = $R->dir_config("${prefix}RpcAutoMethods");
-    $do_mtime = $R->dir_config("${prefix}RpcAutoUpdates");
+    $do_auto  = $R->dir_config("${prefix}RpcAutoMethods") || 0;
+    $do_mtime = $R->dir_config("${prefix}RpcAutoUpdates") || 0;
     foreach ($do_auto, $do_mtime) { $_ = (/yes/i) ? 1 : 0 }
     $argz{auto_methods} = $do_auto  unless exists $argz{auto_methods};
     $argz{auto_updates} = $do_mtime unless exists $argz{auto_updates};
@@ -383,7 +383,9 @@ sub new
 
     # Check to see if we should suppress the default methods
     $no_def = $R->dir_config("${prefix}RpcDefMethods") || $argz{no_default};
-    $no_def = ($no_def =~ /no/i) ? 1 : 0;
+    # The default is "yes", so use || in the evaluation in case neither of the
+    # above were set
+    $no_def = (($no_def || '') =~ /no/i) ? 1 : 0;
     unless ($no_def)
     {
         $self->add_default_methods(-except => 'status.xpl');
