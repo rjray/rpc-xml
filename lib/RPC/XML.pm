@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.21 2003/01/13 08:22:17 rjray Exp $
+#   $Id: XML.pm,v 1.22 2003/01/16 09:50:12 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -36,9 +36,17 @@ BEGIN
     no strict 'refs';
 
     eval "use bytes";
-    *bytelength = $@ ?
-        sub { length(@_ ? $_[0] : $_) } :
-        sub { use bytes; length(@_ ? $_[0] : $_) };
+    # Re-worked this passage to continue supporting perl 5.005. It tried to
+    # compile the "use bytes" in the second block even if the conditional never
+    # travelled that path. So, explicit eval strings for everyone.
+    if ($@)
+    {
+        eval 'sub bytelength { length(@_ ? $_[0] : $_) }';
+    }
+    else
+    {
+        eval 'sub bytelength { use bytes; length(@_ ? $_[0] : $_) }';
+    }
 }
 
 require Exporter;
@@ -51,7 +59,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.21 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.22 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
