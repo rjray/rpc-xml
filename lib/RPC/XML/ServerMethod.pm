@@ -8,12 +8,21 @@
 #
 ###############################################################################
 #
-#   $Id: ServerMethod.pm,v 1.1 2001/08/16 10:19:19 rjray Exp $
+#   $Id: ServerMethod.pm,v 1.2 2001/08/18 01:07:15 rjray Exp $
 #
 #   Description:    This class abstracts out all the method-related operations
 #                   from the RPC::XML::Server class
 #
 #   Functions:      new
+#                   check
+#                   name       \
+#                   code        \
+#                   signature    \
+#                   add_sig       \ These are the accessor functions for the
+#                   del_sig       / data in the object, though it's visible.
+#                   help         /
+#                   version     /
+#                   hidden     /
 #                   load_XPL_file
 #
 #   Libraries:      XML::Parser (used only on demand in load_XPL_file)
@@ -30,11 +39,12 @@ package RPC::XML::ServerMethod;
 use 5.005;
 use strict;
 use vars qw($VERSION);
-use subs qw();
+use subs qw(new check name code signature add_sig del_sig help version hidden
+            load_XPL_file);
 
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 

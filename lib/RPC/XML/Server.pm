@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.15 2001/07/30 00:22:53 rjray Exp $
+#   $Id: Server.pm,v 1.16 2001/08/18 01:07:15 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -45,6 +45,8 @@
 #                   HTTP::Daemon
 #                   HTTP::Status
 #                   RPC::XML
+#                   RPC::XML::Parser
+#                   RPC::XML::ServerMethod
 #
 #   Global Consts:  $VERSION
 #                   $INSTALL_DIR
@@ -73,8 +75,9 @@ require URI;
 
 require RPC::XML;
 require RPC::XML::Parser;
+require RPC::XML::ServerMethod;
 
-$VERSION = do { my @r=(q$Revision: 1.15 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.16 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -1314,108 +1317,6 @@ sub call
     $response;
 }
 
-###############################################################################
-#
-#   Sub Name:       load_XPL_file
-#
-#   Description:    Load a XML-encoded method description (generally denoted
-#                   by a *.xpl suffix) and return the relevant information.
-#
-#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $self     in      ref       Object of this class
-#                   $file     in      scalar    File to load
-#
-#   Globals:        @XPL_PATH
-#
-#   Environment:    None.
-#
-#   Returns:        Success:    hashref of values
-#                   Failure:    error string
-#
-###############################################################################
-sub load_XPL_file
-{
-    my $self = shift;
-    my $file = shift;
-
-    require XML::Parser;
-
-    # We only barely use the value $self, but this makes the routine callable
-    # as a class method, which is easier for sub-classes than having them have
-    # to import the function, or hard-code the class.
-
-    my ($signature, $code, $codetext, $return, $accum, $P, @path, %attr);
-    local *F;
-
-    $self->debug("Entering load_XPL_file for %s", $file);
-    unless (File::Spec->file_name_is_absolute($file))
-    {
-        my $path;
-        push(@path, @{$self->xpl_path}) if (ref $self);
-        for (@path, @XPL_PATH)
-        {
-            $path = File::Spec->catfile($_, $file);
-            if (-e $path) { $file = $path; last; }
-        }
-    }
-
-    $return = {};
-    # So these don't end up undef, since they're optional elements
-    $return->{hidden} = 0; $return->{version} = ''; $return->{help} = '';
-    $return->{signature} = [];
-    open(F, "< $file");
-    return "Error opening $file for reading: $!" if ($?);
-    $P = XML::Parser
-        ->new(Handlers => {Char  => sub { $accum .= $_[1] },
-                           Start => sub { %attr = splice(@_, 2) },
-                           End   =>
-                           sub {
-                               my $elem = $_[1];
-
-                               $accum =~ s/^[\s\n]+//;
-                               $accum =~ s/[\s\n]+$//;
-                               if ($elem eq 'signature')
-                               {
-                                   push(@{$return->{signature}},
-                                        [ split(/ /, $accum) ]);
-                               }
-                               elsif ($elem eq 'code')
-                               {
-                                   $return->{$elem} = $accum
-                                       unless ($attr{language} and
-                                               $attr{language} ne 'perl');
-                               }
-                               else
-                               {
-                                   $return->{$elem} = $accum;
-                               }
-
-                               %attr = ();
-                               $accum = '';
-                           }});
-    return "Error creating XML::Parser object" unless $P;
-    $self->debug("Parser obj created: %s", "$P");
-    # Trap any errors
-    eval { $P->parse(*F) };
-    return "Error parsing $file: $@" if $@;
-    $self->debug("Parse finished");
-
-    # Try to normalize $codetext before passing it to eval
-    ($codetext = $return->{code}) =~
-        s/sub[\s\n]+[\w:]+[\s\n]+\{/\$code = sub \{/;
-    eval "$codetext";
-    return "Error creating anonymous sub: $@" if $@;
-
-    $return->{code} = $code;
-    # The XML::Parser approach above gave us an empty "methoddef" key
-    delete $return->{methoddef};
-    # Add the file's mtime for when we check for stat-based reloading
-    $return->{mtime} = (stat $file)[9];
-    $return->{file} = $file;
-
-    $self->debug("Exiting load_XPL_file");
-    $return;
-}
 
 ###############################################################################
 #
