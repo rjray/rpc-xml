@@ -8,21 +8,21 @@
 #
 ###############################################################################
 #
-#   $Id: ServerMethod.pm,v 1.2 2001/08/18 01:07:15 rjray Exp $
+#   $Id: Method.pm,v 1.1 2001/10/04 06:24:40 rjray Exp $
 #
 #   Description:    This class abstracts out all the method-related operations
 #                   from the RPC::XML::Server class
 #
 #   Functions:      new
 #                   check
-#                   name       \
-#                   code        \
-#                   signature    \
-#                   add_sig       \ These are the accessor functions for the
-#                   del_sig       / data in the object, though it's visible.
-#                   help         /
-#                   version     /
-#                   hidden     /
+#                   name        \
+#                   code         \
+#                   signature     \ These are the accessor functions for the
+#                   help          / data in the object, though it's visible.
+#                   version      /
+#                   hidden      /
+#                   add_signature
+#                   delete_signature
 #                   load_XPL_file
 #
 #   Libraries:      XML::Parser (used only on demand in load_XPL_file)
@@ -34,7 +34,7 @@
 #
 ###############################################################################
 
-package RPC::XML::ServerMethod;
+package RPC::XML::Method;
 
 use 5.005;
 use strict;
@@ -44,7 +44,7 @@ use subs qw(new check name code signature add_sig del_sig help version hidden
 
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -59,10 +59,6 @@ $VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r }
 #                   $class    in      scalar    Class to bless into
 #                   @argz     in      variable  Disposition is variable; see
 #                                                 below
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        Success:    object ref
 #                   Failure:    error string
@@ -96,6 +92,7 @@ sub new
         #    key 'signature' is allowed to repeat.
         my ($key, $val);
         $data = {};
+        $data->{signature} = [];
         while (@argz)
         {
             ($key, $val) = splice(@argz, 0, 2);
@@ -104,7 +101,6 @@ sub new
                 # Since there may be more than one signature, we allow it to
                 # repeat. Of course, that's also why we can't just take @argz
                 # directly as a hash. *shrug*
-                $data->{signature} = [] unless $data->{$signature};
                 push(@{$data->{signature}},
                      [ ref($val) ? @$val : split(/ /, $val) ]);
             }
@@ -133,10 +129,6 @@ sub new
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object to test
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 #   Returns:        Success:    1, valid/complete
 #                   Failure:    0, invalid/incomplete
 #
@@ -149,6 +141,77 @@ sub check
             (ref($self->{signature}) && scalar(@{$self->{signature}})));
 }
 
+#
+# These are basic accessor/setting functions for the various attributes
+#
+sub name      { $_[1] and $_[0]->{name}    = $_[1]; $_[0]->{name};    }
+sub help      { $_[1] and $_[0]->{help}    = $_[1]; $_[0]->{help};    }
+sub version   { $_[1] and $_[0]->{version} = $_[1]; $_[0]->{version}; }
+sub hidden    { $_[1] and $_[0]->{hidden}  = $_[1]; $_[0]->{hidden};  }
+sub code
+{
+    ref $_[1] eq 'CODE' and $_[0]->{code} = $_[1];
+    $_[0]->{code};
+}
+sub signature
+{
+    ref $_[1] eq 'ARRAY' and $_[0]->{signature} = $_[1];
+    # Return a copy of the array, not the original
+    [ @{$_[0]->{signature}} ];
+}
+
+###############################################################################
+#
+#   Sub Name:       add_signature
+#                   delete_signature
+#
+#   Description:    This pair of functions may be used to add and remove
+#                   signatures from a method-object.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   @args     in      list      One or more signatures
+#
+#   Returns:        Success:    $self
+#                   Failure:    error string
+#
+###############################################################################
+sub add_signature
+{
+    my $self = shift;
+    my @args = @_;
+
+    my (%sigs, $one_sig, $tmp);
+
+    %sigs = map { $_ => 1 } @{$self->{signature}};
+    for $one_sig (@args)
+    {
+        $tmp = (ref $one_sig) ? join(' ', @$one_sig) : $one_sig;
+        $sigs{$tmp} = 1;
+    }
+    $self->{signature} = [ keys %sigs ];
+
+    $self;
+}
+
+sub delete_signature
+{
+    my $self = shift;
+    my @args = @_;
+
+    my (%sigs, $one_sig, $tmp);
+
+    %sigs = map { $_ => 1 } @{$self->{signature}};
+    for $one_sig (@args)
+    {
+        $tmp = (ref $one_sig) ? join(' ', @$one_sig) : $one_sig;
+        delete $sigs{$tmp};
+    }
+    $self->{signature} = [ keys %sigs ];
+
+    $self;
+}
+
 ###############################################################################
 #
 #   Sub Name:       load_XPL_file
@@ -159,12 +222,6 @@ sub check
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object of this class
 #                   $file     in      scalar    File to load
-#                   @path     in      list      Search path, used only if the
-#                                                 filename itself is not abs.
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        Success:    hashref of values
 #                   Failure:    error string
@@ -174,22 +231,11 @@ sub load_XPL_file
 {
     my $self = shift;
     my $file = shift;
-    my @path = @_;
 
     require XML::Parser;
 
     my ($signature, $code, $codetext, $return, $accum, $P, %attr);
     local *F;
-
-    unless (File::Spec->file_name_is_absolute($file))
-    {
-        my $path;
-        for (@path)
-        {
-            $path = File::Spec->catfile($_, $file);
-            if (-e $path) { $file = $path; last; }
-        }
-    }
 
     $return = {};
     # So these don't end up undef, since they're optional elements
