@@ -5,22 +5,25 @@
 use strict;
 use subs qw(start_server find_port);
 use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
-            $list $meth @keys %seen);
+            $list $meth @keys %seen $dir);
 
+use File::Spec;
 use Test;
 
-use IO::Socket;
 use LWP::UserAgent;
 use HTTP::Request;
 
-use RPC::XML::Server;
-use RPC::XML::Parser;
+require RPC::XML::Server;
+require RPC::XML::Parser;
 
 BEGIN { plan tests => 40 }
 
 @API_METHODS = qw(system.identity system.introspection system.listMethods
                   system.methodHelp system.methodSignature system.multicall
                   system.status);
+
+(undef, $dir, undef) = File::Spec->splitpath($0);
+require File::Spec->catfile($dir, 'util.pl');
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -400,41 +403,3 @@ ok($res->{total_requests} == 21);
 # Don't leave any children laying around
 kill 'INT', $child;
 exit;
-
-sub start_server
-{
-    my $S = shift;
-
-    my $pid;
-
-    if (! defined($pid = fork()))
-    {
-        die "fork() error: $!, stopped";
-    }
-    elsif ($pid)
-    {
-        return $pid;
-    }
-    else
-    {
-        $S->server_loop();
-        exit; # When the parent stops this server, we want to stop this child
-    }
-}
-
-sub find_port
-{
-    my $start_at = $_[0] || 9000;
-
-    my ($port, $sock);
-
-    for ($port = $start_at; $port < ($start_at + 1000); $port++)
-    {
-        $sock = IO::Socket->new(Domain   => AF_INET,
-                                PeerAddr => 'localhost',
-                                PeerPort => $port);
-        return $port unless ref $sock;
-    }
-
-    -1;
-}
