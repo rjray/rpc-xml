@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.24 2002/01/28 00:26:47 rjray Exp $
+#   $Id: Server.pm,v 1.25 2002/03/23 06:31:00 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -81,7 +81,7 @@ require RPC::XML;
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.24 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.25 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -602,12 +602,13 @@ a hash reference, please note). For B<HTTP::Daemon>, only one is recognized:
 =item B<signal>
 
 If passed, should be the traditional name for the signal that should be bound
-to the exit function. The user is responsible for not passing the name of a
-non-existent signal, or one that cannot be caught. If the value of this
-argument is 0 (a C<false> value) or the string C<B<NONE>>, then the signal
-handler will I<not> be installed, and the loop may only be broken out of by
-killing the running process (unless other arrangements are made within the
-application).
+to the exit function. If desired, a reference to an array of signal names may
+be passed, in which case all signals will be given the same handler. The user
+is responsible for not passing the name of a non-existent signal, or one that
+cannot be caught. If the value of this argument is 0 (a C<false> value) or the
+string C<B<NONE>>, then the signal handler will I<not> be installed, and the
+loop may only be broken out of by killing the running process (unless other
+arrangements are made within the application).
 
 =back
 
@@ -867,7 +868,8 @@ written more efficiently.
 
 The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
 See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
-specification.
+specification. A helpful patch was sent in by Tino Wuensche to fix problems
+in the signal-setting and signal-catching code in server_loop().
 
 =head1 LICENSE
 
@@ -1012,20 +1014,24 @@ sub server_loop
             $timeout);
 
         # Localize and set the signal handler as an exit route
-        if (exists $args{signal})
+        my @exit_signals;
+
+        if (exists $args{signal} and $args{signal} ne 'NONE')
         {
-            local $SIG{$args{signal}} = sub { $exit_now++; }
-                unless ($args{signal} eq 'NONE');
+            @exit_signals =
+                (ref $args{signal}) ? @{$args{signal}} : $args{signal};
         }
         else
         {
-            local $SIG{INT} = sub { $exit_now++; };
+            push @exit_signals, 'INT';
         }
+
+        local @SIG{@exit_signals} = ( sub { $exit_now++ } ) x @exit_signals;
 
         $self->started('set');
         $exit_now = 0;
         $timeout = $self->{__daemon}->timeout(1);
-        while (1)
+        while (! $exit_now)
         {
             $conn = $self->{__daemon}->accept;
 
@@ -1037,7 +1043,8 @@ sub server_loop
             undef $conn; # Free up any lingering resources
         }
 
-        $self->{__daemon}->timeout($timeout);
+        $self->{__daemon}->timeout($timeout)
+                if defined $timeout;
     }
     else
     {
