@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.10 2001/11/01 10:26:11 rjray Exp $
+#   $Id: XML.pm,v 1.11 2002/01/24 06:34:51 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -134,6 +134,7 @@ use vars qw(@ISA);
 @ISA = ();
 
 sub type { my $class = ref($_[0]) || $_[0]; $class =~ s/.*://; $class }
+sub is_fault { 0 }
 
 ###############################################################################
 #
@@ -560,6 +561,9 @@ sub as_string
 sub code   { $_[0]->{faultCode}->value   }
 sub string { $_[0]->{faultString}->value }
 
+# This is the only one to override this method, for obvious reasons
+sub is_fault { 1 }
+
 ###############################################################################
 #
 #   Package:        RPC::XML::request
@@ -742,8 +746,8 @@ sub new
 }
 
 # Accessor/status methods
-sub value      { shift->{value} }
-sub is_fault   { ($_[0]->{value}->isa('RPC::XML::fault')) ? 1 : 0 }
+sub value      { $_[0]->{value} }
+sub is_fault   { $_[0]->{value}->is_fault }
 
 ###############################################################################
 #
@@ -863,17 +867,19 @@ classes and I<message> classes.
 =head2 Data Classes
 
 The following data classes are provided by this library. Each of these provide
-at least C<new>, C<value> and C<as_string> methods. Note that these classes
-are designed to create throw-away objects. There is currently no mechanism for
-changing the value stored within one of these object after the constructor
-returns. It is assumed that a new object would be created, instead.
+at least C<new>, C<value>, C<as_string> and C<is_fault> methods. Note that
+these classes are designed to create throw-away objects. There is currently no
+mechanism for changing the value stored within one of these object after the
+constructor returns. It is assumed that a new object would be created,
+instead.
 
 The C<new> methods are constructors, C<value> returns the value stored within
 the object (processed recursively for arrays and structs), and C<as_string>
-stringifies the object as a chunk of XML with relative indention for
-clarity. The C<as_string> method takes as its first argument a numeric
-indention level which is applied as a base indention for output. Other
-arguments are specified with the classes.
+stringifies the object as a chunk of XML. The C<is_fault> method always
+returns a false value (0), except when the object itself is of type
+B<RPC::XML::fault>. In that case, the return value is true (1).  indention
+level which is applied as a base indention for output. Other arguments are
+specified with the classes.
 
 =over 4
 
@@ -981,11 +987,10 @@ return value), and requests may have as many arguments as appropriate. In both
 cases, the arguments are passed to the exported C<smart_encode> routine
 described earlier.
 
-=item as_string([INDENT])
+=item as_string
 
-Returns the message object expressed as an XML document. The optional indent
-parameter causes the body to be indented that many steps (each step is two
-spaces).
+Returns the message object expressed as an XML document. The document will be
+lacking in linebreaks and indention, as it is not targeted for human reading.
 
 =back
 
