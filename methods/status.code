@@ -6,10 +6,9 @@
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $srv      in      ref       Server object instance
-#
-#   Globals:        None.
-#
-#   Environment:    None.
+#                   $no_inc   in      boolean   A true/false value that tells
+#                                                 whether to count this call
+#                                                 in the total_requests field.
 #
 #   Returns:        hashref
 #
@@ -19,6 +18,7 @@ sub status
     use strict;
 
     my $srv = shift;
+    my $no_inc = shift || 0;
 
     my $status = {};
     my $time = time;
@@ -27,17 +27,20 @@ sub status
     require URI;
 
     $status->{name} = ref($srv);
-    $status->{version} = new RPC::XML::string $srv->version;
+    $status->{version} = RPC::XML::string->new($srv->version);
     $status->{host} = $srv->host || $srv->{host} || '';
     $status->{port} = $srv->port || $srv->{port} || '';
-    $status->{path} = new RPC::XML::string $srv->path;
+    $status->{path} = RPC::XML::string->new($srv->path);
     $status->{date} = RPC::XML::datetime_iso8601
         ->new(RPC::XML::time2iso8601($time));
     $status->{started} = RPC::XML::datetime_iso8601
         ->new(RPC::XML::time2iso8601($srv->started));
     $status->{date_int} = $time;
     $status->{started_int} = $srv->started;
-    $status->{total_requests} = $srv->requests() + 1;
+    $status->{total_requests} = $srv->requests();
+    # In special cases where the call to system.status is not going to incr
+    # the total, don't add the extra here, either...
+    $status->{total_requests}++ unless $no_inc;
     $status->{methods_known} = scalar($srv->list_methods);
 
     $status;

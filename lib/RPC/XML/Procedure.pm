@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.11 2004/12/09 08:50:18 rjray Exp $
+#   $Id: Procedure.pm,v 1.12 2004/12/14 10:01:24 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -777,8 +777,8 @@ sub reload
 
     if (ref $tmp)
     {
-	# Update the information on this actual object
-	$self->{$_} = $tmp->{$_} for (keys %$tmp);
+        # Update the information on this actual object
+        $self->{$_} = $tmp->{$_} for (keys %$tmp);
         # Re-calculate the signature table, in case that changed as well
         return $self->make_sig_table;
     }
@@ -913,7 +913,7 @@ sub call
 {
     my ($self, $srv, @data) = @_;
 
-    my (@paramtypes, @params, $signature, $resptype, $response, $name);
+    my (@paramtypes, @params, $signature, $resptype, $response, $name, $noinc);
 
     $name = $self->name;
     # Create the param list.
@@ -933,18 +933,19 @@ sub call
     # Set these in case the server object is part of the param list
     local $srv->{signature} = [ $resptype, @paramtypes ];
     local $srv->{method_name} = $name;
+    # If the method being called is "system.status", check to see if we should
+    # increment the server call-count.
+    $noinc = (($name eq 'system.status') && @data &&
+              ($paramtypes[0] eq 'boolean') && $params[0]) ? 1 : 0;
     # For RPC::XML::Method (and derivatives), pass the server object
-    if ($self->isa('RPC::XML::Method'))
-    {
-        unshift(@params, $srv);
-    }
+    unshift(@params, $srv) if ($self->isa('RPC::XML::Method'));
 
     # Now take a deep breath and call the method with the arguments
     eval { $response = $self->{code}->(@params); };
     # Report a Perl-level error/failure if it occurs
     return RPC::XML::fault->new(302, "Method $name returned error: $@") if $@;
 
-    $self->{called}++;
+    $self->{called}++ unless $noinc;
     # Create a suitable return value
     if ((! ref($response)) && UNIVERSAL::can("RPC::XML::$resptype", 'new'))
     {

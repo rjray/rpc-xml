@@ -41,3 +41,11 @@ a STRUCT with the following members:
 
 This is a slightly different system.struct implementation instrumented for
 use in an Apache/mod_perl environment.
+                                                                                
+If this method is called with a single boolean value, that value determines
+whether the current call should be counted against the value of the
+"total_requests" field. This is also handled at the server level. Setting
+this boolean value to a "true" value causes the server (and the resulting
+data structure returned) to not count this call. This feature allows external
+tools (monitors, etc.) to check the status regularly without falsely running
+up the value of "total_requests".

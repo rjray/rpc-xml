@@ -19,6 +19,7 @@ sub status
     use strict;
 
     my $srv = shift;
+    my $no_inc = shift || 0;
 
     my $status = {};
     my $time = time;
@@ -41,7 +42,10 @@ sub status
     $status->{date_int} = $time;
     $status->{started_int} = $srv->started;
     $status->{child_started_int} = $srv->child_started;
-    $status->{total_requests} = $srv->requests + 1;
+    $status->{total_requests} = $srv->requests;
+    # In special cases where the call to system.status is not going to incr
+    # the total, don't add the extra here, either...
+    $status->{total_requests}++ unless $no_inc;
     $status->{methods_known} = scalar($srv->list_methods);
 
     $status;

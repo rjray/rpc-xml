@@ -16,7 +16,7 @@ use HTTP::Request;
 require RPC::XML::Server;
 require RPC::XML::Parser;
 
-BEGIN { plan tests => 40 }
+BEGIN { plan tests => 41 }
 
 @API_METHODS = qw(system.identity system.introspection system.listMethods
                   system.methodHelp system.methodSignature system.multicall
@@ -43,7 +43,7 @@ ok($srv->product_tokens =~ m|/|);
 ok(! $srv->url);
 ok(! $srv->requests);
 ok($srv->response->isa('HTTP::Response'));
-# We're done with this one, let it go
+# Done with this one, let it go
 undef $srv;
 
 # This one will have a HTTP::Daemon server, but still no default methods
@@ -179,7 +179,7 @@ else
 # annoying 'ok(0)' streams like above).
 exit unless (ref $srv);
 
-# Set the ALRM handler to something more serious, since we've passed that
+# Set the ALRM handler to something more serious, since we have passed that
 # hurdle already.
 $SIG{ALRM} = sub { die "Server failed to respond within 120 seconds\n"; };
 
@@ -231,6 +231,19 @@ $res = $res->value->value;
            total_requests methods_known);
 ok((ref($res) eq 'HASH') && (grep(defined $res->{$_}, @keys) == @keys) &&
    ($res->{total_requests} == 5));
+
+# Test again, with a 'true' value passed to the method, which should prevent
+# the 'total_requests' key from incrementing.
+$req->content(RPC::XML::request->new('system.status',
+                                     RPC::XML::boolean->new(1))->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$res = $res->value->value;
+@keys = qw(host port name version path date date_int started started_int
+           total_requests methods_known);
+ok((ref($res) eq 'HASH') && ($res->{total_requests} == 5));
 
 #
 # system.methodHelp
@@ -310,7 +323,7 @@ for $res (@$list)
 {
     if ($seen{$res->{name}}++)
     {
-        # If we somehow get the same name twice, that's a point off
+        # If we somehow get the same name twice, that is a point off
         $bucket++;
         next;
     }
@@ -326,7 +339,7 @@ for $res (@$list)
     }
     else
     {
-        # That's a point
+        # That is also a point
         $bucket++;
     }
 }

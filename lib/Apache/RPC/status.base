@@ -1,6 +1,7 @@
 Name:		system.status
-Version:	1.1
+Version:	1.2
 Hidden:		no
 Signature:	struct
+Signature:	struct boolean
 Helpfile:	status.help
 Codefile:	status.code

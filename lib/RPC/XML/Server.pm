@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.41 2004/12/09 08:50:18 rjray Exp $
+#   $Id: Server.pm,v 1.42 2004/12/14 10:01:24 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -86,7 +86,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.41 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.42 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -494,7 +494,7 @@ of the B<RPC::XML::Parser> object that the server object caches for its use.
 See the B<RPC::XML::Parser> manual page for a list of recognized parameters
 to the constructor.
 
-=item message_file_thresh
+=item B<message_file_thresh>
 
 If this key is passed, the value associated with it is assumed to be a
 numerical limit to the size of in-memory messages. Any out-bound request that
@@ -506,7 +506,7 @@ if compression of a request would drop it below this threshhold, it will be
 spooled anyway. The file itself is unlinked after the file-handle is created,
 so once it is freed the disk space is immediately freed.
 
-=item message_temp_dir
+=item B<message_temp_dir>
 
 If a message is to be spooled to a temporary file, this key can define a
 specific directory in which to open those files. If this is not given, then
@@ -1344,7 +1344,7 @@ sub process_request
     my $conn = shift;
 
     my ($req, $reqxml, $resp, $respxml, $do_compress, $parser, $com_engine,
-	$length, $read, $buf, $resp_fh, $tmpfile);
+        $length, $read, $buf, $resp_fh, $tmpfile);
 
     my $me = ref($self) . '::process_request';
     unless ($conn and ref($conn))
@@ -1647,7 +1647,9 @@ sub dispatch
     if (ref($meth = $self->get_method($name)))
     {
         $response = $meth->call($self, @data);
-        $self->{__requests}++;
+        $self->{__requests}++
+            unless (($name eq 'system.status') && @data &&
+                    ($data[0]->type eq 'boolean') && ($data[0]->value));
     }
     else
     {
