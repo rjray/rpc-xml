@@ -8,7 +8,7 @@ use subs qw(start_server find_port);
 
 use Test;
 
-BEGIN { plan tests => 16 }
+BEGIN { plan tests => 17 }
 
 require RPC::XML::Server;
 require RPC::XML::Client;
@@ -89,6 +89,8 @@ ok($flag);
 ok((ref($res) eq 'RPC::XML::fault') && ($res->string =~ /Unknown method/));
 
 # Last tests-- is the url() method working?
+ok($cli->uri =~ m|http://localhost:$port/?|);
+# does calling it as an accesor change it at all?
 ok($cli->uri =~ m|http://localhost:$port/?|);
 
 $cli->uri('http://www.oreilly.com/RPC');

@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.10 2002/08/31 06:42:26 rjray Exp $
+#   $Id: Client.pm,v 1.11 2002/12/05 04:16:15 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -204,7 +204,8 @@ sub send_request
 
     $reqclone = $self->{__request}->clone;
     $content = $req->as_string;
-    if ($self->compress_requests and ($compress = $self->compress) and
+    $compress = $self->compress;
+    if ($self->compress_requests and $compress and
         length($content) > $self->compress_thresh)
     {
         $content = Compress::Zlib::compress($content);
@@ -231,7 +232,7 @@ sub send_request
     }
     else
     {
-        if ($response->content_encoding =~ /deflate/)
+        if (($response->content_encoding || '') =~ /deflate/)
         {
             $message =  "$me: Compressed content encoding not supported";
             return (ref($self->{__error_cb}) eq 'CODE') ?
@@ -275,7 +276,8 @@ sub send_request
 ###############################################################################
 sub uri
 {
-    $_[0]->{__request}->uri($_[1]);
+    my $self = shift;
+    $self->{__request}->uri(@_);
 }
 
 ###############################################################################
