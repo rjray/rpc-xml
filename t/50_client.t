@@ -114,7 +114,8 @@ $srv->add_method({ name => 'cmpImg',
                    } });
 $child = start_server($srv);
 
-my ($fh1, $fh2);
+use Symbol;
+my ($fh1, $fh2) = (gensym, gensym);
 
 if (open($fh1, '<' . File::Spec->catfile($dir, 'svsm_text.gif')) and
     open($fh2, '<' . File::Spec->catfile($dir, 'svsm_text.gif')))

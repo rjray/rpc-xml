@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.9 2003/01/24 11:01:40 rjray Exp $
+#   $Id: Parser.pm,v 1.10 2003/02/18 08:59:02 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -87,7 +87,7 @@ require File::Spec;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -211,7 +211,8 @@ sub tag_start
         if ($elem eq 'base64')
         {
             return unless ($robj->{base64_to_fh});
-            my ($fh, $file) = (undef, File::Spec->tmpdir);
+            require Symbol;
+            my ($fh, $file) = (Symbol::gensym(), File::Spec->tmpdir);
 
             $file = $robj->{base64_temp_dir} if ($robj->{base64_temp_dir});
             $file  = File::Spec->catfile($file, 'b64' . $self->current_byte);

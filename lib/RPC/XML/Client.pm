@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.18 2003/02/10 09:32:09 rjray Exp $
+#   $Id: Client.pm,v 1.19 2003/02/18 08:59:02 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.18 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.19 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -233,9 +233,11 @@ sub send_request
         $self->message_file_thresh < $req->length)
     {
         require File::Spec;
+        require Symbol;
         # Start by creating a temp-file
         $tmpfile = $self->message_temp_dir || File::Spec->tmpdir;
         $tmpfile = File::Spec->catfile($tmpfile, __PACKAGE__ . $$ . time);
+        $req_fh = Symbol::gensym();
         return "$me: Error opening $tmpfile: $!"
             unless (open($req_fh, "+> $tmpfile"));
         unlink $tmpfile;
@@ -249,7 +251,7 @@ sub send_request
         # into the primary handle.
         if ($do_compress)
         {
-            my $fh2;
+            my $fh2 = Symbol::gensym();
             $tmpfile .= '-2';
             return "$me: Error opening $tmpfile: $!"
                 unless (open($fh2, "+> $tmpfile"));
