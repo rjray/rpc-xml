@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.22 2003/02/06 11:26:49 rjray Exp $
+#   $Id: Server.pm,v 1.23 2003/05/19 07:42:12 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.22 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.23 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 sub version { $Apache::RPC::Server::VERSION }
 
@@ -455,7 +455,7 @@ sub get_server
     my $self     = shift;
     my $r        = shift;
 
-    my ($prefix, $servid);
+    my ($prefix, $servid, $nocomp);
 
     if (ref $r)
     {
@@ -464,12 +464,15 @@ sub get_server
         # If it isn't, create it from the information we have available.
         $prefix = $r->dir_config('RPCOptPrefix') || '';
         $servid = $r->dir_config("${prefix}RpcServer") || '<default>';
+        $nocomp = $r->dir_config('NoCompression') || '';
+
 
         return $Apache::RPC::Server::SERVER_TABLE{$servid} ||
-            $self->new(apache    => $r,
-                       server_id => $servid,
-                       prefix    => $prefix,
-                       path      => $r->location);
+            $self->new(apache      => $r,
+                       server_id   => $servid,
+                       prefix      => $prefix,
+                       no_compress => $nocomp,
+                       path        => $r->location);
     }
     else
     {
