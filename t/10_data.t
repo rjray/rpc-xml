@@ -8,7 +8,7 @@ use vars qw($val $obj $class %val_tbl @values);
 use Test;
 use RPC::XML ':all';
 
-BEGIN { plan tests => 98 }
+BEGIN { plan tests => 109 }
 
 # First, the most basic data-types
 
@@ -28,6 +28,7 @@ for (sort keys %val_tbl)
     ok($obj->value, $val);
     ok($obj->as_string, "<$_>$val</$_>");
     ok($obj->type, $_);
+    ok(length($obj->as_string), $obj->length);
 }
 
 # Another little test for RPC::XML::string, to check encoding
@@ -58,6 +59,7 @@ ok($RPC::XML::ERROR =~ /::new: Value must be one of/);
 # only test that one here
 $obj = new RPC::XML::datetime_iso8601 time2iso8601(time);
 ok($obj->type, 'dateTime.iso8601');
+ok(length($obj->as_string), $obj->length);
 
 # Test the base64 type
 require MIME::Base64;
@@ -65,6 +67,8 @@ $val = MIME::Base64::encode_base64(q/one reasonable-length string/);
 $obj = new RPC::XML::base64(q/one reasonable-length string/);
 ok(ref $obj);
 ok($obj->as_string, "<base64>$val</base64>");
+# test length()
+ok(length($obj->as_string), $obj->length);
 $obj = new RPC::XML::base64 $val, 'pre-encoded';
 ok(ref $obj);
 ok($obj->value, q/one reasonable-length string/);
@@ -93,6 +97,7 @@ ok(@values == 10);
 @values = @{ $obj->value(1) };
 ok(ref($values[0]) && ($values[0]->type eq 'int'));
 ok($obj->as_string =~ m|<array>.*(<int>\d+</int>.*){10}.*</array>|sm);
+ok(length($obj->as_string), $obj->length);
 
 # Structs
 $obj = new RPC::XML::struct (key1 => 1, key2 => 2);
@@ -113,6 +118,7 @@ ok($obj->as_string =~ m|<struct>.*(<member>.*
                                    <name>.*</name>.*
                                    <value>.*</value>.*
                                    </member>.*){2}.*</struct>|smx);
+ok(length($obj->as_string), $obj->length);
 
 # Faults are a subclass of structs
 $obj = new RPC::XML::fault (faultCode => 1, faultString => 'test');
@@ -136,6 +142,7 @@ ok($obj->as_string =~ m|<fault>.*
                             </struct>.*
                           </value>.*
                         </fault>|smx);
+ok(length($obj->as_string), $obj->length);
 
 # Requests
 $obj = new RPC::XML::request 'test.method';
@@ -158,6 +165,7 @@ ok($obj->as_string =~ m|<\?xml.*
                             (<param>.*</param>.*){10}.*
                           </params>.*
                         </methodCall>|smx);
+ok(length($obj->as_string), $obj->length);
 
 # Responses
 $obj = new RPC::XML::response 'ok';
@@ -171,6 +179,8 @@ ok($obj->as_string =~ m|<\?xml.*
                             <param>.*</param>.*
                           </params>.*
                         </methodResponse>|smx);
+ok(length($obj->as_string), $obj->length);
+
 $obj = new RPC::XML::response ();
 ok(! ref($obj));
 ok($RPC::XML::ERROR =~ /:new: One of a datatype, value or a fault/);

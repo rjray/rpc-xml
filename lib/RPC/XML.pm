@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.20 2003/01/13 07:24:20 rjray Exp $
+#   $Id: XML.pm,v 1.21 2003/01/13 08:22:17 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -51,7 +51,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.20 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.21 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -202,6 +202,15 @@ sub serialize
     print $fh $self->as_string;
 }
 
+# The switch to serialization instead of in-memory strings means having to
+# calculate total size in bytes for Content-Length headers:
+sub length
+{
+    my $self = shift;
+
+    length($self->as_string);
+}
+
 ###############################################################################
 #
 #   Package:        RPC::XML::int
@@ -272,6 +281,14 @@ sub as_string
     $value            =~ s/>/&gt;/g;
 
     "<$class>$value</$class>";
+}
+
+# Overloaded from simple_type, so that we can apply bytelength to the body
+sub length
+{
+    my $self = shift;
+
+    RPC::XML::bytelength($self->as_string);
 }
 
 ###############################################################################
@@ -404,11 +421,23 @@ sub serialize
     print $fh '<array><data>';
     for (@$self)
     {
-	print $fh '<value>';
+        print $fh '<value>';
         $_->serialize($fh);
-	print $fh '</value>';
+        print $fh '</value>';
     }
     print $fh '</data></array>';
+}
+
+# Length calculation starts to get messy here, due to recursion
+sub length
+{
+    my $self = shift;
+
+    # Start with the constant components in the text
+    my $len = 28; # That the <array><data></data></array> part
+    for (@$self) { $len += (15 + $_->length) } # 15 is for <value></value>
+
+    $len;
 }
 
 ###############################################################################
@@ -492,6 +521,22 @@ sub serialize
         print $fh '</value></member>';
     }
     print $fh '</struct>';
+}
+
+# Length calculation is a real pain here. But not as bad as base64 promises
+sub length
+{
+    my $self = shift;
+
+    my $len = 17; # <struct></struct>
+    for (keys %$self)
+    {
+        $len += 45; # For all the constant XML presence
+        $len += length($_);
+        $len += $self->{$_}->length;
+    }
+
+    $len;
 }
 
 ###############################################################################
@@ -585,6 +630,7 @@ sub value
         my ($accum, $pos, $res);
         $accum = '';
 
+        $self->{fh_pos} = tell($self->{value_fh});
         seek($self->{value_fh}, 0, 0);
         if ($as_base64 == $self->{encoded})
         {
@@ -650,6 +696,7 @@ sub serialize
         # If it's a filehandle, at least we take comfort in knowing that we
         # always want Base-64 at this level.
         my $buf = '';
+        $self->{fh_pos} = tell($self->{value_fh});
         seek($self->{value_fh}, 0, 0);
         print $fh '<base64>';
         if ($self->{encoded})
@@ -672,6 +719,48 @@ sub serialize
         print $fh '</base64>';
         seek($self->{value_fh}, $self->{fh_pos}, 0);
     }
+}
+
+# This promises to be a big enough pain that I seriously considered opening
+# an anon-temp file (one that's unlinked for security, and survives only as
+# long as the FH is open) and passing that to serialize just to -s on the FH.
+# But I'll do this the "right" way instead...
+sub length
+{
+    my $self = shift;
+
+    # Start with the constant bits
+    my $len = 17; # <base64></base64>
+
+    if ($self->{inmem})
+    {
+        # If it's in-memory, it's cleartext. Size the encoded version
+        $len += length(MIME::Base64::encode_base64($self->{value}));
+    }
+    else
+    {
+        if ($self->{encoded})
+        {
+            # We're lucky, it's already encoded in the file, and -s will do
+            $len += -s $self->{value_fh};
+        }
+        else
+        {
+            # Oh bugger. We have to encode it.
+            my $buf = '';
+            my $cnt = 0;
+
+            $self->{fh_pos} = tell($self->{value_fh});
+            seek($self->{value_fh}, 0, 0);
+            while ($cnt = read($self->{value_fh}, $buf, 60*57))
+            {
+                $len += length(MIME::Base64::encode_base64($buf));
+            }
+            seek($self->{value_fh}, $self->{fh_pos}, 0);
+        }
+    }
+
+    $len;
 }
 
 # This allows writing the decoded data to an arbitrary file. It's useful when
@@ -711,6 +800,7 @@ sub to_file
 
         # Now determine if the data can be copied over directly, or if we have
         # to decode it along the way.
+        $self->{fh_pos} = tell($self->{value_fh});
         seek($self->{value_fh}, 0, 0);
         if ($self->{encoded})
         {
@@ -809,6 +899,17 @@ sub as_string
     my $self = shift;
 
     '<fault><value>' . $self->SUPER::as_string . '</value></fault>';
+}
+
+# Because of the slight diff above, length() has to be different from struct
+sub length
+{
+    my $self = shift;
+
+    my $len = 30; # Constant XML content
+    $len += $self->SUPER::length;
+
+    $len;
 }
 
 # Convenience methods:
@@ -947,6 +1048,24 @@ sub serialize
         print $fh '</value></param>';
     }
     print $fh '</params></methodCall>';
+}
+
+# Compared to base64, length-calculation here is pretty easy, much like struct
+sub length
+{
+    my $self = shift;
+
+    my $len = 88; # All the constant XML present
+    $len += length("\n"); # For OS-dependant cases
+    $len += length($self->{name});
+
+    for (@{$self->{args}})
+    {
+        $len += 30; # Constant XML
+        $len += $_->length;
+    }
+
+    $len;
 }
 
 ###############################################################################
@@ -1088,6 +1207,21 @@ sub serialize
     print $fh '</methodResponse>';
 }
 
+# Compared to base64, length-calculation here is pretty easy, much like struct
+sub length
+{
+    my $self = shift;
+
+    my $len = 54; # All the constant XML present
+    $len += length("\n"); # OS-dependent issues
+
+    # This boilerplate XML is only present when it is NOT a fault
+    $len += 47 unless ($self->{value}->isa('RPC::XML::fault'));
+    $len += $self->{value}->length;
+
+    $len;
+}
+
 1;
 
 __END__
@@ -1216,6 +1350,11 @@ Returns the value as a XML-RPC fragment, with the proper tags, etc.
 Send the stringified rendition of the data to the given file handle. This
 allows messages with arbitrarily-large Base-64 data within them to be sent
 without having to hold the entire message within process memory.
+
+=item length
+
+Returns the length, in bytes, of the object when serialized into XML. This is
+used by the client and server classes to calculate message length.
 
 =item type
 
@@ -1371,6 +1510,11 @@ lacking in linebreaks and indention, as it is not targeted for human reading.
 Serialize the message to the given file-handle. This avoids creating the entire
 XML message within memory, which may be relevant if there is especially-large
 Base-64 data within the message.
+
+=item length
+
+Returns the total size of the message in bytes, used by the client and server
+classes to set the Content-Length header.
 
 =back
 

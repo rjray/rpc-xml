@@ -22,7 +22,7 @@ BEGIN
     eval "use Digest::MD5";
     $md5_able = $@ ? 0 : 1;
 
-    plan tests => 22;
+    plan tests => 23;
 }
 
 END
@@ -125,6 +125,7 @@ if ($fh = IO::File->new("< $file"))
         $enc_value .= encode_base64($value);
     }
     ok($obj->as_string(), "<base64>$enc_value</base64>");
+    ok(length($obj->as_string), $obj->length);
     $fh->seek(0, 0);
 
     if ($md5_able)

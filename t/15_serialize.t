@@ -20,7 +20,7 @@ BEGIN
     eval "use Digest::MD5";
     $md5_able = $@ ? 0 : 1;
 
-    plan tests => 6;
+    plan tests => 8;
 }
 
 END
@@ -39,6 +39,9 @@ $faux_req = RPC::XML::request->new('test',
 				   [ qw(a b c) ],
 				   { one => 2 },
 				   RPC_BASE64 $fh);
+
+# This is a good place to test the length() method, while we're at it
+ok(length($faux_req->as_string), $faux_req->length);
 
 die "Could not open $tmpfile for read/write: $!"
     unless $ofh = IO::File->new("+> $tmpfile");
@@ -64,6 +67,10 @@ die "Could not open $tmpfile for read/write: $!"
 $ofh->autoflush(1);
 
 $faux_res = RPC::XML::response->new(RPC::XML::fault->new(1, 'test'));
+
+# This is a good place to test the length() method, while we're at it
+ok(length($faux_res->as_string), $faux_res->length);
+
 $faux_res->serialize($ofh);
 ok(1); # Again, this means that all the triggered calls managed to not die
 
