@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.6 2001/06/13 05:40:00 rjray Exp $
+# $Id: Makefile.PL,v 1.7 2001/06/13 06:22:01 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -12,8 +12,10 @@ use ExtUtils::MakeMaker;
 use File::Spec;
 use File::Find;
 
+$CLEAN = 'pod2html-* *.html ';
+
 @scripts = (File::Spec->catfile(qw(etc make_method)));
-$CLEAN   = File::Spec->catfile(qw(methods *.xpl));
+$CLEAN  .= File::Spec->catfile(qw(methods *.xpl));
 
 @PM_FILES = ();
 
