@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Method.pm,v 1.4 2001/10/08 00:49:31 rjray Exp $
+#   $Id: Method.pm,v 1.5 2001/10/08 03:39:06 rjray Exp $
 #
 #   Description:    This class abstracts out all the method-related operations
 #                   from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -142,8 +142,15 @@ sub signature
 {
     if (ref $_[1] eq 'ARRAY')
     {
+        my $old = $_[0]->{signature};
         $_[0]->{signature} = $_[1];
-        $_[0]->make_sig_table;
+        unless (ref($_[0]->make_sig_table))
+        {
+            # If it failed to re-init the table, restore the old list (and old
+            # table). We don't have to check this return, since it had worked
+            $_[0]->{signature} = $old;
+            $_[0]->make_sig_table;
+        }
     }
     # Return a copy of the array, not the original
     [ @{$_[0]->{signature}} ];
@@ -286,7 +293,9 @@ the list is a string of space-separated types (the first of which is the
 return type the method produces in that calling context). If this is being
 used to set the signature, then an array reference must be passed that
 contains one or more strings of this nature. Nested list references are not
-allowed at this level.
+allowed at this level. If the new signatures would cause a conflict (a case in
+which the same set of input types are specified for different output types),
+the old set is silently restored.
 
 =item help([NEW])
 
@@ -314,12 +323,18 @@ not accept a method that is not valid.
 =item add_signature(LIST)
 
 Add one or more signatures (which may be a list reference or a string) to the
-internal tables for this method. Duplicate signatures are ignored.
+internal tables for this method. Duplicate signatures are ignored. If the new
+signature would cause a conflict (a case in which the same set of input types
+are specified for different output types), the old set is restored and an
+error message is returned.
 
 =item delete_signature(LIST)
 
 Deletes the signature or signatures (list reference or string) from the
-internal tables. Quietly ignores any signature that does not exist.
+internal tables. Quietly ignores any signature that does not exist. If the new
+signature would cause a conflict (a case in which the same set of input types
+are specified for different output types), the old set is restored and an
+error message is returned.
 
 =item match_signature(SIGNATURE)
 
@@ -564,8 +579,10 @@ sub add_signature
     my $self = shift;
     my @args = @_;
 
-    my (%sigs, $one_sig, $tmp);
+    my (%sigs, $one_sig, $tmp, $old);
 
+    # Preserve the original in case adding the new one causes a problem
+    $old = $self->{signature};
     %sigs = map { $_ => 1 } @{$self->{signature}};
     for $one_sig (@args)
     {
@@ -573,7 +590,15 @@ sub add_signature
         $sigs{$tmp} = 1;
     }
     $self->{signature} = [ keys %sigs ];
-    $self->make_sig_table;
+    unless (ref($tmp = $self->make_sig_table))
+    {
+        # Because this failed, we have to restore the old table and return
+        # an error
+        $self->{signature} = $old;
+        $self->make_sig_table;
+        return ref($self) . '::add_signature: Error re-hashing table: ' .
+            $tmp;
+    }
 
     $self;
 }
@@ -583,8 +608,10 @@ sub delete_signature
     my $self = shift;
     my @args = @_;
 
-    my (%sigs, $one_sig, $tmp);
+    my (%sigs, $one_sig, $tmp, $old);
 
+    # Preserve the original in case adding the new one causes a problem
+    $old = $self->{signature};
     %sigs = map { $_ => 1 } @{$self->{signature}};
     for $one_sig (@args)
     {
@@ -592,7 +619,15 @@ sub delete_signature
         delete $sigs{$tmp};
     }
     $self->{signature} = [ keys %sigs ];
-    $self->make_sig_table;
+    unless (ref($tmp = $self->make_sig_table))
+    {
+        # Because this failed, we have to restore the old table and return
+        # an error
+        $self->{signature} = $old;
+        $self->make_sig_table;
+        return ref($self) . '::delete_signature: Error re-hashing table: ' .
+            $tmp;
+    }
 
     $self;
 }
