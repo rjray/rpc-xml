@@ -1,8 +1,102 @@
-<?xml version="1.0"?>
-<changelog xmlns="http://www.blackperl.com/XML/ChangeLog/changelog09.xsd">
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!--
+    The schema for this namespace may be found at the following URL:
+
+    http://www.blackperl.com/XML/ChangeLog/changelog091.xsd
+
+    $Header: /work/cvs/perl/RPC-XML/ChangeLog.xml,v 1.2 2004/12/09 09:19:25 rjray Exp $
+-->
+<changelog xmlns="http://www.blackperl.com/XML/ChangeLog">
   <overview>
     Revision history for Perl extension RPC::XML
   </overview>
+  <release version="0.56" tag="v0_56" date="2004-12-09T01:07:00-08:00">
+    <item>
+      <file path="etc/make_method" revision="1.10" />
+      <description>
+        Small change to the generated XML, to add an "encoding" setting to the
+        XML preamble.
+      </description>
+    </item>
+    <item>
+      <fileset>
+        <file path="t/10_data.t" revision="1.7" />
+        <file path="t/60_net_server.t" revision="1.4" />
+      </fileset>
+      <description>
+        Very minor changes, to make the test work with older Perls and/or Test
+        modules.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" revision="1.31" />
+      <description>
+        Add "encoding" settings to all XML preambles, and make the scalar
+        variable "$RPC::XML::ENCODING" an importable symbol, should users want
+        to change the default encoding. Not currently documented, since this is
+        technically a break from the XML-RPC spec.
+      </description>
+    </item>
+    <item>
+      <fileset>
+        <file path="Makefile.PL" revision="1.35" />
+        <file path="t/50_client.t" revision="1.8" />
+      </fileset>
+      <description>
+        Traced a bug that was causing test failures in 50_client.t to a bug in
+        version 5.800 of the LWP package. Now, Makefile.PL explicitly requires
+        5.801 or higher, and the test suite skips the two tests that are broken
+        by it, in cases where the system is still at 5.800 or older.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Client.pm" revision="1.21" />
+      <description>
+        Tightened some numeric comparisons (for deciding to compress and/or
+        spool to a file), and corrected a typo in an error message.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" revision="1.32" />
+      <description>
+        Adding the encoding to the request and response blocks messed up some
+        of the tests in the 10_data.t and 15_serialize.t suites. Fixed.
+      </description>
+    </item>
+    <item>
+      <fileset>
+        <file path="README" revision="1.24" />
+        <file path="etc/make_method" revision="1.11" />
+        <file path="etc/rpc-method.dtd" revision="1.7" />
+        <file path="lib/Apache/RPC/Server.pm" revision="1.26" />
+        <file path="lib/Apache/RPC/Status.pm" revision="1.5" />
+        <file path="lib/RPC/XML.pm" revision="1.33" />
+        <file path="lib/RPC/XML/Client.pm" revision="1.22" />
+        <file path="lib/RPC/XML/Function.pm" revision="1.3" />
+        <file path="lib/RPC/XML/Method.pm" revision="1.8" />
+        <file path="lib/RPC/XML/Parser.pm" revision="1.12" />
+        <file path="lib/RPC/XML/Procedure.pm" revision="1.11" />
+        <file path="lib/RPC/XML/Server.pm" revision="1.41" />
+      </fileset>
+      <description>
+        Changed all URL references to the Artistic License from the (no longer
+        valid) language.perl.com version to the (current, working)
+        www.opensource.org one.
+      </description>
+    </item>
+    <item>
+      <fileset>
+        <file path="ChangeLog" revision="1.26" />
+        <file path="ChangeLog.xml" revision="1.2" />
+        <file path="Makefile.PL" revision="1.36" />
+        <file path="README" revision="1.25" />
+      </fileset>
+      <description>
+        Admin files prepped for 0.56 release (also, the ChangeLog.xml file was
+        modified to reflect tuning of the schema).
+      </description>
+    </item>
+  </release>
   <release version="0.55" tag="v0_55" date="2004-11-30T01:16:57-08:00">
     <item>
       <file path="lib/RPC/XML/Server.pm" revision="1.39" />
@@ -42,6 +136,15 @@
         as well as a small addition to the examples in the docs.
       </description>
     </item>
+    <item>
+      <fileset>
+        <file path="ChangeLog.xml" revision="1.1" action="ADD" />
+        <file path="MANIFEST" revision="1.16" />
+      </fileset>
+      <description>
+        Added this file (ChangeLog.xml) to the distribution.
+      </description>
+    </item>
   </release>
   <release version="0.54" tag="v0_54" date="2004-04-14T04:43:56-07:00">
     <item>
@@ -52,10 +155,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML/Procedure.pm" revision="1.9" />
         <file path="lib/RPC/XML.pm" revision="1.30" />
-      </filelist>
+      </fileset>
       <description>
         Applied a patch from Tim Peoples that does three things: the 301
         error code in RPC::XML::Procedure::call now includes signature info
@@ -66,10 +169,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML.pm" revision="1.28" />
         <file path="t/10_data.t" revision="1.6" />
-      </filelist>
+      </fileset>
       <description>
         Small change to the XML character-escaping in RPC::XML::string's
         as_string method, so that a lookup-table is used. The same table
@@ -141,12 +244,12 @@
       <description>Eliminate a warning under 5.00503.</description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML.pm" revision="1.25" />
         <file path="lib/RPC/XML/Client.pm" revision="1.19" />
         <file path="lib/RPC/XML/Parser.pm" revision="1.10" />
         <file path="t/50_client.t" revision="1.7" />
-      </filelist>
+      </fileset>
       <description>
         Changes to the opening of files for base64 data. The existing method
         didn't work under 5.00503.
@@ -209,21 +312,21 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="t/11_base64_fh.t" revision="1.5" />
         <file path="t/50_client.t" revision="1.6" />
-      </filelist>
+      </fileset>
       <description>
         Fixed calls to skip() in the test suites so that they work with
         older versions of the Test module.
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="t/11_base64_fh.t" revision="1.6" />
         <file path="t/10_data.t" revision="1.5" />
         <file path="lib/RPC/XML.pm" revision="1.24" />
-      </filelist>
+      </fileset>
       <description>
         Calls to the encode_base64 routine from MIME::Base64 now pass a zero-
         length second argument, to suppress newlines between Base64 lines
@@ -252,10 +355,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML.pm" />
         <file path="t/11_base64_fh.t" />
-      </filelist>
+      </fileset>
       <description>
         Extended the RPC::XML::base64 class to allow for and handle being
         given a filehandle object instead of straight data. The object is
@@ -266,10 +369,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/xML.pm" />
         <file path="t/15_serialize.t" />
-      </filelist>
+      </fileset>
       <description>
         Added a serialize() method to all the data classes in preparation for
         changing the client and server modules to stream XML over the line
@@ -278,10 +381,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML/Parser.pm" />
         <file path="t/20_parser.t" />
-      </filelist>
+      </fileset>
       <description>
         Modified RPC::XML::Parser to accept arguments to new() that instruct
         it to spool Base64 data to a filehandle, using the new capabilities
@@ -304,11 +407,11 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/Apache/RPC/Server.pm" />
         <file path="lib/RPC/XML/Client.pm" />
         <file path="lib/RPC/XML/Server.pm" />
-      </filelist>
+      </fileset>
       <description>
         All the internal use of object attributes in RPC::XML::Client now use
         accessors instead of the hash keys directly, to make it easier to
@@ -318,11 +421,11 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML/Client.pm" />
         <file path="lib/RPC/XML/Parser.pm" />
         <file path="lib/RPC/XML/Server.pm" />
-      </filelist>
+      </fileset>
       <description>
         The parsing of incoming data in the client and both server classes is
         now done to a streaming XML parser, eliminating the need for the
@@ -394,11 +497,11 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML/Client.pm" />
         <file path="lib/RPC/XML/Procedure.pm" />
         <file path="lib/RPC/XML/Server.pm" />
-      </filelist>
+      </fileset>
       <description>
         Fixed a typo in the docs for RPC::XML::Client, and some documentation
         goofs in RPC::XML::Server (regarding the timeout method/option). A
@@ -426,11 +529,11 @@
   </release>
   <release version="0.43" date="2002-08-18T22:19:30-07:00">
     <item>
-      <filelist>
+      <fileset>
         <file path="methods/methodSignature.code" />
         <file path="t/40_server.t" />
         <file path="t/60_net_server.t" />
-      </filelist>
+      </fileset>
       <description>
         Changed methods/methodSignature.code, t/40_server.t and
         t/60_net_server.t so that the provided system.methodSignature follows
@@ -463,10 +566,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML.pm" />
         <file path="lib/RPC/XML/Server.pm" />
-      </filelist>
+      </fileset>
       <description>
         Fixed a docs-nit in RPC::XML::Server, and did some major clean-up in
         the docs for RPC::XML. In particular, added documentation for one
@@ -517,11 +620,11 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML/Client.pm" />
         <file path="lib/RPC/XML/Server.pm" />
         <file path="lib/Apache/RPC/Server.pm" />
-      </filelist>
+      </fileset>
       <description>
         Compress::Zlib-based compression is now supported in RPC::XML::Server,
         RPC::XML::Client and Apache::RPC::Server. It should be compatible with
@@ -573,11 +676,11 @@
       </description>
     </item>
     <item>
-      <filelist>
-        <file path="lib/RPC/XML/Function.pm" placement="added" />
+      <fileset>
+        <file path="lib/RPC/XML/Function.pm" action="ADD" />
         <file path="etc/make_method" />
         <file path="etc/rpc-method.dtd" />
-      </filelist>
+      </fileset>
       <description>
         Created RPC::XML::Function class, which is a type of server-side
         encapsulator that doesn't bother with signature tests of any kind.
@@ -598,10 +701,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML/Procedure.pm" />
         <file path="lib/RPC/XML/Server.pm" />
-      </filelist>
+      </fileset>
       <description>
         Abstracted some of the invocation code out of the server class and
         into the RPC::XML::Procedure class, where it really belonged. This
@@ -650,11 +753,11 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="methods/methodHelp.code" />
         <file path="methods/status.code" />
         <file path="lib/Apache/RPC/status.code" />
-      </filelist>
+      </fileset>
       <description>
         Found bugs in both versions of the system.status server method (both
         the basic and the Apache flavor). Both were neglecting to set the
@@ -663,10 +766,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML/Method.pm" />
-        <file path="lib/RPC/XML/Procedure.pm" placement="added" />
-      </filelist>
+        <file path="lib/RPC/XML/Procedure.pm" action="ADD" />
+      </fileset>
       <description>
         RPC::XML::Method is now a skeleton file, slated to be removed by or
         before 1.0. It has been renamed to RPC::XML::Procedure, and the
@@ -677,12 +780,12 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="etc/rpc-method.dtd" />
         <file path="etc/make_method" />
         <file path="ex/linux.proc.cpuinfo.code" />
         <file path="ex/linux.proc.meminfo.code" />
-      </filelist>
+      </fileset>
       <description>
         Support for RPC::XML::Procedure (and general procedure vs. method)
         added to the DTD and the make_method tool. All the routines in the
@@ -691,10 +794,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML/Procedure.pm" />
         <file path="lib/RPC/XML/Server.pm" />
-      </filelist>
+      </fileset>
       <description>
         When code blocks for XPL files are eval'd, they are given a "package"
         statement to force subsequent calls to be in the RPC::XML::Procedure
@@ -710,16 +813,16 @@
       </description>
     </item>
     <item>
-      <file path="t/50_client.t" placement="added" />
+      <file path="t/50_client.t" action="ADD" />
       <description>
         Created the test suite for RPC::XML::Client.
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML.pm" />
         <file path="lib/RPC/XML/Client.pm" />
-      </filelist>
+      </fileset>
       <description>
         RPC::XML::Client no longer returns a full RPC::XML::response object
         from any of its routines. Rather, simple_request still does what it
@@ -730,10 +833,10 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="lib/RPC/XML/Client.pm" />
         <file path="t/50_client.t" />
-      </filelist>
+      </fileset>
       <description>
         Added callback support for errors and faults to the RPC::XML::Client
         class. This allows programmers to tie specific actions to cases where
@@ -741,7 +844,7 @@
       </description>
     </item>
     <item>
-      <file path="t/60_net_server.t" placement="added" />
+      <file path="t/60_net_server.t" action="ADD" />
       <description>
         Created a separate test suite for RPC::XML::Server when used in
         conjunction with the Net::Server package (it skips if the latter is
@@ -801,7 +904,7 @@
       </description>
     </item>
     <item>
-      <file path="lib/Apache/RPC/Status.pm" placement="added" />
+      <file path="lib/Apache/RPC/Status.pm" action="ADD" />
       <description>
         This release marks the debut of Apache::RPC::Status, a monitor similar
         in nature and design to Apache::Status, for running RPC servers under
@@ -849,12 +952,12 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="methods/introspection.code" />
         <file path="methods/listMethods.code" />
         <file path="methods/methodHelp.code" />
         <file path="methods/methodSignature.code" />
-      </filelist>
+      </fileset>
       <description>
         Four of the provided methods in the introspection API
         (system.introspection, system.listMethods, system.methodHelp and
@@ -863,10 +966,10 @@
       </description>
     </item>
     <item>
-      <filelist>
-        <file path="t/30_method.t" placement="added" />
-        <file path="t/40_server.t" placement="added" />
-      </filelist>
+      <fileset>
+        <file path="t/30_method.t" action="ADD" />
+        <file path="t/40_server.t" action="ADD" />
+      </fileset>
       <description>
         Started the test suites for RPC::XML::Method and RPC::XML::Server.
         The tests that are delivered as part of this build are not fully
@@ -895,11 +998,11 @@
       </description>
     </item>
     <item>
-      <filelist>
-        <file path="lib/RPC/XML/Method.pm" placement="added" />
+      <fileset>
+        <file path="lib/RPC/XML/Method.pm" action="ADD" />
         <file path="lib/RPC/XML/Server.pm" />
         <file path="lib/Apache/RPC/Server.pm" />
-      </filelist>
+      </fileset>
       <description>
         Extracted the method-manipulation code into a new class, called
         RPC::XML::Method. This should make method-sharing easier, and pull
@@ -947,11 +1050,11 @@
       </description>
     </item>
     <item>
-      <filelist>
+      <fileset>
         <file path="t/00_load.t" />
         <file path="t/10_data.t" />
         <file path="t/20_parser.t" />
-      </filelist>
+      </fileset>
       <description>
         Cleaned up the load-tests (t/00_load.t) to use the Test harnessing
         package. Added test suites for the RPC::XML data classes (t/10_data.t,
