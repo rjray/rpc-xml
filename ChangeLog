@@ -1,5 +1,32 @@
 Revision history for Perl extension RPC::XML.
 
+0.42	Thu Aug  1 00:51:12 PDT 2002
+
+	Changed the test in Apache::RPC::Server of the Content-type header so
+	that it accepts a header that contains "text/xml", as opposed to only
+	accepting a header that exactly equalled that string. Allows for
+	things like SOAP::Lite's XMLRPC::Lite which include a charset in the
+	header.
+
+	time2iso8601() in the RPC::XML module now allows defaulting of the
+	$time argument to time() (which means no timezone specification).
+
+	Found a bug in RPC::XML::Parser where base64 data being parsed in a
+	request/response message wasn't being properly passed to the c'tor
+	for RPC::XML::base64. Reported by Chris Brierley.
+
+	Added a line in Apache::RPC::Server to set the Content-Type header
+	on HEAD responses. Apache won't take this from the usual header()
+	method, it has to be explicitly set with content_type().
+
+	Two of the tests in t/40_server.t could cause fatal errors since a
+	return value wasn't tested for ref-ness before having a method called
+	on it. Fixed.
+
+	Compress::Zlib-based compression is now supported in RPC::XML::Server,
+	RPC::XML::Client and Apache::RPC::Server. It should be compatible with
+	the XMLRPC::Lite package's compression.
+
 0.41	Wed May 22 02:50:47 PDT 2002
 
 	Wrapped the call to XML::Parser::parse (lib/RPC/XML/Parser.pm) in an
