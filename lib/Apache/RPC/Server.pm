@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.6 2001/06/15 17:16:58 rjray Exp $
+#   $Id: Server.pm,v 1.7 2001/06/26 05:27:49 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -44,7 +44,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -406,7 +406,9 @@ default server, or it has the following elements (in order):
         (All remaining arguments are passed unchanged to C<SUPER::new()>)
 
 The server identification string and prefix concepts are explained in more
-detail in the next section.
+detail in the next section. See L<RPC::XML::Server> for a full list of what
+additional arguments may be passed to B<new> for eventual proxy to the parent
+class constructor.
 
 =item child_started([BOOLEAN])
 
@@ -494,19 +496,14 @@ error is reported. Enabling this is a security risk, and should only be
 permitted by a server administrator with fully informed acknowledgement and
 consent.
 
-=item RpcNoAutoUpdate [YES|NO]
+=item RpcAutoUpdates [YES|NO]
 
-(Not yet implemented) If specified and set to "yes", enables the checking of
-the modification time of the file from which a method was originally
-loaded. If the file has changed, the method is re-loaded before execution is
-handed off. As with the auto-loading of methods, this represents a security
-risk, and should only be permitted by a server administrator with fully
-informed acknowledgement and consent.
-
-=item RpcDebugLevel [NUMBER]
-
-Enable debugging by providing a numerical value that will
-be used as the debug setting by the parent class, B<RPC::XML::Server>.
+If specified and set to "yes", enables the checking of the modification time
+of the file from which a method was originally loaded. If the file has
+changed, the method is re-loaded before execution is handed off. As with the
+auto-loading of methods, this represents a potential security risk, and should
+only be permitted by a server administrator with fully informed
+acknowledgement and consent.
 
 =back
 
@@ -543,8 +540,75 @@ configuration as well as those that are part of the system (installation-level
 directories). If it is still not found, then an error is reported back to the
 requestor. By using this technique, it is possible to add methods to a running
 server without restarting it. It is a potential security hole, however, and it
-is for that reason that the previously-documented C<RpcNoNewMethods> setting is
+is for that reason that the previously-documented C<RpcAutoMethods> setting is
 provided.
+
+=head2 Usage Within <Perl> Sections
+
+To truly unlock the power of having the RPC server attached to a B<mod_perl>
+environment, the application and configuration of the server should be done
+within Perl-configuration blocks on the Apache server itself.
+
+In doing this, two immediate benefits are gained:
+
+=over 4
+
+=item (1)
+
+The rpc-server object gets created in the master Apache process, rather than
+within each child as a side-effect of the first request.  Especially in cases
+where there are going to be more than one server in use within the Apache
+environment, this boosts performance by allowing newly-created children to
+already have the server object and method table readily available.
+
+=item (2)
+
+It becomes possible to exert more detailed control over the creation and
+configuration of each server object. Combining the B<get_method> and
+B<add_method> operations permits "sharing" (of a sort) of methods between
+server objects. Recall from the B<RPC::XML::Server> documentation that, when a
+method is invoked, the first argument is the server object that is marshalling
+it.
+
+=back
+
+The following example illustrates these concepts in a fairly simple
+environment:
+
+    # In httpd.conf:
+    <Perl>
+
+    # First, create and configure some Apache::RPC::Server objects
+    my %obj_table;
+    my $defobj = new Apache::RPC::Server (path         => '/RPC',
+                                          auto_methods => 1,
+                                          auto_updates => 1);
+    $obj_table{'/RPC'} = $defobj;
+    $obj_table('/rpc-secured'} =
+        new Apache::RPC::Server (no_default => 1,
+                                 path => '/rpc-secured');
+
+    # Imagine that add_method and/or add_methods_in_dir has been used to
+    # add to the methods tables for those objects. Maybe more objects
+    # have been allocated, as well:
+    for my $loc (keys %obj_table)
+    {
+        $Location{$loc} = {
+                           SetHandler  => 'perl-script',
+                           PerlHandler => $obj_table{$loc}
+                          };
+    }
+    $Location{'/rpc-secure'}->{AuthUserFile} = '/etc/some_file';
+    $Location{'/rpc-secure'}->{AuthType}     = 'Basic';
+    $Location{'/rpc-secure'}->{AuthName}     = 'SecuredRPC';
+    $Location{'/rpc-secure'}->{require}      = 'valid-user';
+
+    </Perl>
+
+Note that the assignment of the C<PerlHandler> value was the object reference
+itself. Since this class implements itself as a I<method handler>, this
+causes the C<handler()> method for each of the locations to be handed the
+B<Apache::RPC::Server> object directly.
 
 =head1 DIAGNOSTICS
 
@@ -580,3 +644,5 @@ L<RPC::XML::Server>, L<RPC::XML>
 =head1 AUTHOR
 
 Randy J. Ray <rjray@blackperl.com>
+
+=cut
