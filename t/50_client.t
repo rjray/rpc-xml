@@ -8,7 +8,9 @@ use subs qw(start_server find_port);
 
 use Test;
 
-BEGIN { plan tests => 17 }
+BEGIN { plan tests => 18 }
+
+require File::Spec;
 
 require RPC::XML::Server;
 require RPC::XML::Client;
@@ -90,11 +92,48 @@ ok((ref($res) eq 'RPC::XML::fault') && ($res->string =~ /Unknown method/));
 
 # Last tests-- is the url() method working?
 ok($cli->uri =~ m|http://localhost:$port/?|);
-# does calling it as an accesor change it at all?
+# does calling it as an accesor change itp at all?
 ok($cli->uri =~ m|http://localhost:$port/?|);
 
 $cli->uri('http://www.oreilly.com/RPC');
 ok($cli->uri eq 'http://www.oreilly.com/RPC');
+
+# Kill the server long enough to add a new method
+kill 'INT', $child;
+sleep 1; # Give system enough time to reclaim resources
+
+use Digest::MD5;
+
+$srv->add_method({ name => 'cmpImg',
+                   signature => [ 'boolean base64 base64' ],
+                   code => sub {
+                       my ($self, $img1, $img2) = @_;
+
+                       return (Digest::MD5::md5_hex($img1) eq
+                               Digest::MD5::md5_hex($img2));
+                   } });
+$child = start_server($srv);
+
+my ($fh1, $fh2);
+
+if (open($fh1, '<' . File::Spec->catfile($dir, 'svsm_text.gif')) and
+    open($fh2, '<' . File::Spec->catfile($dir, 'svsm_text.gif')))
+{
+    # Setting the size threshhold to the size of the GIF will guarantee a
+    # file spool, since we're sending the GIF twice.
+    $cli->message_file_thresh(-s $fh1);
+    $cli->message_temp_dir($dir);
+
+    $cli->uri("http://localhost:$port/");
+    $res = $cli->send_request(cmpImg =>
+                              RPC::XML::base64->new($fh1),
+                              RPC::XML::base64->new($fh2));
+    ok((ref($res) eq 'RPC::XML::boolean') && $res->value);
+}
+else
+{
+    skip("Error opening svsm_text.gif: $!");
+}
 
 # Kill the server before exiting
 kill 'INT', $child;
