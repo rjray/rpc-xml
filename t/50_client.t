@@ -140,8 +140,8 @@ if (open($fh1, '<' . File::Spec->catfile($dir, 'svsm_text.gif')) and
 }
 else
 {
-    skip("Error opening svsm_text.gif: $!");
-    skip("Error opening svsm_text.gif: $!");
+    skip("Error opening svsm_text.gif: $!", 0);
+    skip("Error opening svsm_text.gif: $!", 0);
 }
 
 # Kill the server before exiting

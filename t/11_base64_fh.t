@@ -53,7 +53,7 @@ if (ref($fh = IO::File->new_tmpfile))
 }
 else
 {
-    skip('Skipped: opening IO::File::new_tmpfile failed') for (1 .. 6);
+    skip('Skipped: opening IO::File::new_tmpfile failed', 0) for (1 .. 6);
 }
 
 # Same tests, but init the FH with the encoded data rather than the cleartext
@@ -77,7 +77,7 @@ if (ref($fh = IO::File->new_tmpfile))
 }
 else
 {
-    skip('Skipped: opening IO::File::new_tmpfile failed') for (1 .. 6);
+    skip('Skipped: opening IO::File::new_tmpfile failed', 0) for (1 .. 6);
 }
 
 # Test ordinary filehandles as well
@@ -110,7 +110,7 @@ if (open(F, "< $tmpfile"))
 }
 else
 {
-    skip("Skipped: Opening $tmpfile failed: $!") for (1 .. 6);
+    skip("Skipped: Opening $tmpfile failed: $!", 0) for (1 .. 6);
 }
 
 # Test with a larger file
@@ -139,14 +139,14 @@ if ($fh = IO::File->new("< $file"))
     }
     else
     {
-        skip("Skipped: Digest::MD5 unavailable");
+        skip("Skipped: Digest::MD5 unavailable", 0);
     }
 
     $fh->close;
 }
 else
 {
-    skip("Skipped: Opening file $file failed: $!") for (1 .. 2);
+    skip("Skipped: Opening file $file failed: $!", 0) for (1 .. 2);
 }
 
 # Test the to_file method
@@ -175,7 +175,7 @@ if ($md5_able and $fh = IO::File->new("< $file"))
 }
 else
 {
-    skip("Skipped: Digest::MD5 not availabe or open of $file failed")
+    skip("Skipped: Digest::MD5 not availabe or open of $file failed", 0)
         for (1 .. 2);
 }
 
