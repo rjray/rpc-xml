@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.15 2002/08/18 11:51:52 rjray Exp $
+#   $Id: XML.pm,v 1.16 2002/08/29 06:50:25 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -34,13 +34,13 @@ require Exporter;
 
 @ISA = qw(Exporter);
 @EXPORT_OK = qw(time2iso8601 smart_encode
-                RPC_BOOLEAN RPC_INT RPC_DOUBLE RPC_NIL RPC_DATETIME_ISO8601
-                RPC_DATETIME_INT RPC_BASE64 RPC_REFERENCE RPC_STRING);
-%EXPORT_TAGS = (types => [ qw(RPC_BOOLEAN RPC_INT RPC_DOUBLE RPC_STRING
+                RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_DATETIME_ISO8601
+                RPC_BASE64 RPC_STRING);
+%EXPORT_TAGS = (types => [ qw(RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_STRING
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.15 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.16 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
