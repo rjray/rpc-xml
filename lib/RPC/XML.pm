@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.4 2001/07/08 09:45:27 rjray Exp $
+#   $Id: XML.pm,v 1.5 2001/07/08 10:03:39 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -581,9 +581,9 @@ sub as_string
     my $self = shift;
     my $indent = shift || 0;
 
-    my $padding = $indent x '  ';
+    my $padding = '  ' x $indent;
 
-    "$padding<base64>" . MIME::Base64::encode_base64($$self) . "</base64>\n";
+    "$padding<base64>" . MIME::Base64::encode_base64($$self) . "</base64>";
 }
 
 ###############################################################################
