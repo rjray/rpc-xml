@@ -1,4 +1,5 @@
 ChangeLog                      # Ch-ch-ch-changes
+ChangeLog.xml                  # See my swank new XML format!
 MANIFEST                       # This file
 Makefile.PL                    # MakeMaker skeleton
 README                         # Overview
