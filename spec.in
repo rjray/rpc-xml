@@ -1,5 +1,5 @@
 Summary: Implementation of XML-RPC for Perl
-Name: ${NAME}
+Name: perl-${DISTNAME}
 Version: ${VERSION}
 Release: ${RELEASE}
 Epoch: 1
@@ -10,7 +10,7 @@ Source: ${DISTNAME}-${VERSION}.tar.gz
 Url: http://www.blackperl.com/${NAME}
 BuildRequires: perl >= 0:5.00503
 Requires: perl >= 0:5.00503
-Provides: ${NAME} = ${VERSION}
+Provides: perl-${DISTNAME} = ${VERSION}
 BuildRoot: %{_tmppath}/%{name}-root
 BuildArch: noarch
 
