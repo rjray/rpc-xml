@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Status.pm,v 1.2 2002/01/03 02:47:15 rjray Exp $
+#   $Id: Status.pm,v 1.3 2002/01/03 09:33:58 rjray Exp $
 #
 #   Description:    This module is intended to provide a browser-friendly
 #                   status page on the RPC server(s) being managed by the
@@ -32,7 +32,7 @@ package Apache::RPC::Status;
 
 use 5.005;
 use strict;
-use vars qw($SERVER_VER $STARTED $PERL_VER $DEFAULT $SERVER_CLASS
+use vars qw(%IS_INSTALLED $SERVER_VER $STARTED $PERL_VER $DEFAULT $SERVER_CLASS
             %proto $newQ);
 use subs qw(header footer main_screen srv_summary server_detail meth_summary
             method_detail);
@@ -45,12 +45,12 @@ use CGI;
 require Apache::RPC::Server;
 require RPC::XML::Method;
 
-$SERVER_VER = SERVER_VERSION;
+#$SERVER_VER = SERVER_VERSION;
 $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf "v%vd", $^V : $];
 
-$Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 #
 # %proto is the prototype set of screens/handlers that this class knows about.
@@ -62,46 +62,25 @@ $Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf 
            method => { title => 'Method Detail Screen',
                        call => \&method_detail } );
 
+# This is an artifact, but things don't seem to work without it
+$newQ = sub { CGI->new; };
+
 #
 # This next bit graciously "borrowed" from Apache::Status
 #
-my %is_installed = ();
+my %IS_INSTALLED = ();
 {
     local $SIG{__DIE__};
-    %is_installed = map {
+    %IS_INSTALLED = map {
         $_, (eval("require $_") || 0);
-    } qw(Data::Dumper Devel::Symdump B Apache::Request Apache::Peek CGI
+    } qw(Data::Dumper Devel::Symdump B Apache::Request Apache::Peek
          Apache::Symbol);
 }
 
-if ($is_installed{"Apache::Request"})
-{
-    $newQ = sub { Apache::Request->new(@_) };
-}
-elsif ($is_installed{CGI})
-{
-    $newQ = sub { CGI->new; };
-}
-else
-{
-    die "No support library for making request objects! Stopped";
-}
-
-# I was going to cheat here and bless a ref to %proto, but that would get
-# messy if new() were to change
-$DEFAULT = __PACKAGE__->new();
-
-Apache::Status->menu_item(
-                          XMLRPC => 'Apache::RPC::Status Monitor',
-                          sub {
-                              my ($r, $q) = @_; #request and CGI objects
-                              my $hook = $q->param('screen') || 'main';
-
-                              $DEFAULT->{$hook}{call}->($DEFAULT, $r, $q, 1);
-                          }
-                         ) if Apache->module("Apache::Status");
-
 1;
+
+# Simple token-response method
+sub version { $Apache::RPC::Status::VERSION }
 
 sub new
 {
@@ -115,10 +94,33 @@ sub new
 }
 
 #
-# ??? Why did I make this a method handler? I remember doing it on purpose
+# This retrieves the default object for use within handler() below. Basically,
+# handler() needs a blessed reference to operate on so that it can call the
+# header() and footer() routines as methods to allow for subclassing.
 #
-# 2001/07/20: Oh yeah, it's so people can sub-class this to extend it.
+sub default_object
+{
+    return $DEFAULT if (ref $DEFAULT);
+
+    $DEFAULT = shift->new(@_);
+}
+
+###############################################################################
 #
+#   Sub Name:       handler
+#
+#   Description:    This is the basic entry point for the majority of uses
+#                   for this module. It handles requests at the usual content
+#                   phase of the request cycle.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      scalar    Either a class name (if static)
+#                                                 or a reference
+#                   $r        in      Apache    The request object
+#
+#   Returns:        Apache code (either OK or DECLINED)
+#
+###############################################################################
 sub handler ($$)
 {
     my $self = shift;
@@ -126,7 +128,7 @@ sub handler ($$)
 
     my ($qs, $pick, %args);
 
-    $self = $DEFAULT unless ref($self);
+    $self = $self->default_object() unless ref($self);
     $qs = $newQ->($r);
     $pick = $qs->param('screen') || 'main';
     # One last check
@@ -152,7 +154,7 @@ sub handler ($$)
 #
 #   Globals:        $SERVER_CLASS
 #
-#   Returns:        1
+#   Returns:        Apache code (currently always OK)
 #
 ###############################################################################
 sub init_handler ($$)
@@ -166,8 +168,41 @@ sub init_handler ($$)
     OK;
 }
 
-# Simple token-response method
-sub version { $Apache::RPC::Status::VERSION }
+###############################################################################
+#
+#   Sub Name:       apache_status_attach
+#
+#   Description:    Attach to the Apache::Status mechanism, if possible. The
+#                   object that calls this method will be used to dispatch
+#                   any future requests. That means that there is a dangling
+#                   reference to it in the closure that is created here, and
+#                   which likely lives somewhere within Apache::Status. Just
+#                   in case you some day wonder why your object appears to
+#                   linger...
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object reference
+#
+#   Returns:        void
+#
+###############################################################################
+sub apache_status_attach
+{
+    my $self = shift;
+
+    my $class = ref($self) || $self;
+
+    Apache::Status->
+          menu_item(XMLRPC => "$class Monitor",
+                    sub {
+                        my ($r, $q) = @_; #request and CGI objects
+                        my $hook = $q->param('screen') || 'main';
+
+                        $self->{$hook}{call}->($self, $r, $q, 1);
+                    }) if Apache->module('Apache::Status');
+
+    return;
+}
 
 ###############################################################################
 #
@@ -191,6 +226,8 @@ sub version { $Apache::RPC::Status::VERSION }
 sub header
 {
     my ($self, $r, $title) = @_;
+
+    $SERVER_VER = SERVER_VERSION unless ($SERVER_VER);
 
     $title = " - $title" if $title;
     $title = (ref($self) || $self) . $title;
@@ -246,6 +283,40 @@ EOF
 
 ###############################################################################
 #
+#   Sub Name:       make_url
+#
+#   Description:    Simple url-generation routine that preserves params from
+#                   the CGI (or Apache) object, and pays attention to whether
+#                   the URL should be patterned for use under Apache::Status
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $class    in      scalar    Class, ignored
+#                   $query    in      ref       Query or Apache object ref
+#                   $flag     in      scalar    If passed and true, create a
+#                                                 URI for Apache::Status
+#
+#   Returns:        string
+#
+###############################################################################
+sub make_url
+{
+    my ($class, $query, $flag) = @_;
+
+    $query = $newQ->($query) unless (ref($query) eq 'CGI');
+
+    my @params = map {
+        ($_ eq 'keywords') ? () : "$_=" . $query->param($_)
+    } ($query->param());
+    my $text = $query->url(-path => 1) . '?';
+
+    unshift(@params, 'RPCXML') if ($flag);
+    $text .= join('&', @params);
+
+    $text;
+}
+
+###############################################################################
+#
 #   Sub Name:       main_screen
 #
 #   Description:    Produce the HTML body for the main status screen.
@@ -254,17 +325,22 @@ EOF
 #                   $self     in      ref       Object of this class
 #                   $R        in      ref       Apache object reference
 #                   $Q        in      CGI       Query object
+#                   $flag     in      scalar    If passed and true, this means
+#                                                 that the call is coming from
+#                                                 within Apache::Status
 #
 #   Globals:        $SERVER_CLASS
 #
 ###############################################################################
 sub main_screen
 {
-    my ($self, $R, $Q) = @_;
+    my ($self, $R, $Q, $flag) = @_;
 
     my (@servers, $server, $uri, @lines);
 
-    $uri = $Q->url;
+    # Set (or override) the param value for 'screen' before calling make_url
+    $Q->param(-name => 'screen', -value => 'server');
+    $uri = $self->make_url($Q, $flag);
     @servers = sort $SERVER_CLASS->list_servers();
 
     push(@lines, $Q->p($Q->b('Apache XML-RPC Status Monitor')));
@@ -278,8 +354,9 @@ sub main_screen
 
                        $Q->TR({ -valign => 'top' },
                               $Q->td({ -width => '35%' },
-                                     $Q->a({ -href =>
-                                             "$uri?screen=server&server=$_" },
+                                     # I'm adding server=n here to avoid extra
+                                     # calls to make_url()
+                                     $Q->a({ -href => "$uri&server=$_" },
                                            $server)),
                               $Q->td(srv_summary($Q,
                                                  $SERVER_CLASS->
@@ -332,17 +409,24 @@ sub srv_summary
 #                   $self     in      ref       Object of this class
 #                   $R        in      ref       Apache object reference
 #                   $Q        in      CGI       Query object
+#                   $flag     in      scalar    If passed and true, means that
+#                                                 we are called from with the
+#                                                 Apache::Status module
 #
 #   Globals:        $SERVER_CLASS
 #
 ###############################################################################
 sub server_detail
 {
-    my ($self, $R, $Q) = @_;
+    my ($self, $R, $Q, $flag) = @_;
 
-    my ($srv, $server, @lines, @methods, $meth1, $meth2);
+    my ($srv, $server, @lines, @methods, $meth1, $meth2, $base_url);
 
     $server = $Q->param('server');
+    # Override this before calling make_url:
+    $Q->param(-name => 'screen', -value => 'method');
+    # Now create the base URL string for meth_summary to use
+    $base_url = $self->make_url($Q, $flag);
     if (! $server)
     {
         return [ "Error: No server name specified when screen invoked" ];
@@ -385,12 +469,14 @@ sub server_detail
         {
             ($meth1, $meth2) = splice(@methods, 0, 2);
             push(@lines, '<tr valign="top"><td width="50%">');
-            push(@lines, meth_summary($Q, $server, $srv->get_method($meth1)));
+            push(@lines, meth_summary($Q, $server, $srv->get_method($meth1),
+                                      $base_url));
             push(@lines, '</td><td width="50%">');
             if ($meth2)
             {
                 push(@lines, meth_summary($Q, $server,
-                                          $srv->get_method($meth2)));
+                                          $srv->get_method($meth2),
+                                          $base_url));
             }
             else
             {
@@ -417,20 +503,21 @@ sub server_detail
 #                                                 method is from
 #                   $meth     in      ref       RPC::XML::Method (or deriv.)
 #                                                 reference
+#                   $base_url in      scalar    Base URL to use when making
+#                                                 links
 #
 #   Returns:        text
 #
 ###############################################################################
 sub meth_summary
 {
-    my ($Q, $server, $meth) = @_;
+    my ($Q, $server, $meth, $base_url) = @_;
 
     $Q->table({ -width => '100%' },
               $Q->TR({ -valign => 'top' },
                      $Q->td({ -width => '33%' }, $Q->b('Name:')),
                      $Q->td($Q->tt($Q->a({ -href =>
-                                           $Q->url . '?screen=method&server=' .
-                                           "$server&method=" . $meth->name },
+                                           "$base_url&method=" . $meth->name },
                                          $meth->name)))),
               $Q->TR({ -valign => 'top' },
                      $Q->td($Q->b('Version:')),
@@ -454,13 +541,17 @@ sub meth_summary
 #                   $self     in      ref       Object of this class
 #                   $R        in      ref       Apache object reference
 #                   $Q        in      CGI       Query object
+#                   $flag     in      scalar    If passed and true, means that
+#                                                 we are called from with the
+#                                                 Apache::Status module
 #
 #   Globals:        $SERVER_CLASS
 #
 ###############################################################################
 sub method_detail
 {
-    my ($self, $R, $Q) = @_;
+    my ($self, $R, $Q, $flag) = @_;
+    # $flag has no relevance in this routine
 
     my ($server, $srv, $method, $meth, $tmp, @lines);
 
@@ -491,7 +582,7 @@ sub method_detail
                         $Q->td($Q->b('Version:')), $Q->td($Q->tt($tmp))))
         if ($tmp = $meth->version);
     push(@lines, $Q->TR({ -valign => 'top' },
-                        $Q->td($Q->b('Hidden from API:')),
+                        $Q->td({ -width => '30%' }, $Q->b('Hidden from API:')),
                         $Q->td($Q->tt($meth->hidden() ? 'Yes' : 'No'))));
     push(@lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('Calls:')),
@@ -728,17 +819,72 @@ Some extension may be done without necessarily subclassing this package. The
 class object are implemented simply as hash references. When a request is
 received, the B<screen> parameter (see above) is extracted, and used to look
 up in the hash table. If there is a value for that key, the value is assumed
-to be a hash reference with at least three keys (described below). If it does
+to be a hash reference with at least two keys (described below). If it does
 not exist, the handler routine declines to handle the request. Thus, some
 degree of extension may be done without the need for developing a new class,
 if the configuration and manipulation are done within E<lt>PerlE<gt>
 configuration blocks.
 
+Adding a new screen means writing a routine to handle the requests, and then
+adding a hook into that routine to the object that is the handler for the
+Apache location that serves RPC status requests. The routines that are written
+to handle a request should expect four arguments (in order):
+
+=over 4
+
+=item The object reference for the location handler
+
+=item The Apache request object reference
+
+=item A query object reference (see below)
+
+=item A flag that is only passed when called from Apache::Status
+
+=back
+
+The routines are given both the original request object and a query object
+reference for sake of ease. The query object is already available prior to the
+dispatch, so there is no reason to have each hook routine write the same few
+lines to derive a query object from an Apache request. At the same time, the
+hooks themselves may need the Apache object to call methods on. The query
+object is an instance of B<CGI>. The flag parameter is passed by the linkage
+from this status package to B<Apache::Status>. The primary use for it is to
+pass to routines such as B<make_url> that are sensitive to the
+B<Apache::Status> context.
+
+The return value from these routines must be a reference to a list of lines of
+text. It is passed to the B<print> method of the B<Apache> class. This is
+necessary for compatibility with the B<Apache::Status> environment.
+
+To add a new hook, merely assign it to the object directly. The key is the
+value of the C<screen> parameter defined above, and the value is a hash
+reference with two keys:
+
+=over 4
+
+=item title
+
+A string that is incorporated into the HTML title for the page.
+
+=item call
+
+A reference to a subroutine or closure that implements the hook, and conforms
+to the conventions described above.
+
+=back
+
+A sample addition:
+
+    $stat_obj->{dbi} = {
+                           title => 'RPC-side DBI Pool',
+                           call  => \&show_dbi_pool
+                       };
+
 =head1 INTEGRATION WITH Apache::Status
 
 This package is designed to integrate with the B<Apache::Status> package that
-is a part of mod_perl. However, to have B<Apache::RPC::Status> do so
-automatically would interfere in cases where this package was subclassed.
+is a part of mod_perl. However, this is not currently functional. When this
+has been debugged, the details will be presented here.
 
 =head1 CAVEATS
 
