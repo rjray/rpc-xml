@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: make_method,v 1.7 2002/01/13 10:40:46 rjray Exp $
+#   $Id: make_method,v 1.8 2002/01/19 08:25:11 rjray Exp $
 #
 #   Description:    Simple tool to turn a Perl routine and the support data
 #                   into the simple XML representation that RPC::XML::Server
@@ -29,14 +29,14 @@
 use 5.005;
 use strict;
 use vars qw($cmd $USAGE $VERSION $revision %opts $ifh $ofh $path
-            $helptxt $codetxt @siglist $name $version $hidden $lang);
+            $helptxt $codetxt @siglist $name $type $version $hidden $lang);
 use subs qw(read_external write_file);
 
 use Getopt::Long;
 use IO::File;
 use File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 ($cmd = $0) =~ s|.*/||;
 $USAGE = "$cmd [ --options ]
 
@@ -45,6 +45,7 @@ Where:
 --help        Generate this message.
 
 --name        Specifies the external (published) name of the method.
+--type        Specify whether this defines a PROCEDURE or a METHOD (case-free)
 --version     Gives the version that should be attached to the method.
 --hidden      Takes no value; if passed, flags the method as hidden.
 --signature   Specifies one method signature. May be specified more than once.
@@ -67,7 +68,8 @@ Where:
 GetOptions(\%opts,
            qw(help
               base=s
-              name=s version=s hidden signature=s@ helptext=s helpfile=s code=s
+              name=s type=s version=s hidden signature=s@ helptext=s
+              helpfile=s code=s
               output=s))
     or die "$USAGE\n\nStopped";
 
@@ -87,6 +89,7 @@ if ($opts{base})
 
     (undef, $path, $name) = File::Spec->splitpath($opts{base});
     $path = '.' unless $path;
+    $type = 'm'; # Default the type to 'm'ethod.
     $codetxt = {};
 
     $ifh = new IO::File "< $opts{base}.base";
@@ -99,6 +102,10 @@ if ($opts{base})
         if (/^name:\s+([\w\.]+)$/i)
         {
             $name = $1;
+        }
+        elsif (/^type:\s+(\S+)$/i)
+        {
+            $type = substr(lc $1, 0, 1);
         }
         elsif (/^version:\s+(\S+)$/i)
         {
@@ -142,7 +149,8 @@ else
         die 'No name was specified for the published routine, stopped';
     }
 
-    $hidden = $opts{hidden}   || 0;
+    $type =    $opts{type}    || 'm';
+    $hidden =  $opts{hidden}  || 0;
     $version = $opts{version} || '';
 
     if ($opts{signature})
@@ -188,7 +196,8 @@ else
     }
 }
 
-write_file($ofh, $name, $version, $hidden, $codetxt, $helptxt, \@siglist);
+write_file($ofh,
+           $name, $type, $version, $hidden, $codetxt, $helptxt, \@siglist);
 
 exit;
 
@@ -230,6 +239,7 @@ sub read_external
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $fh       in      IO        Filehandle to write to
 #                   $name     in      scalar    Name (external) of method
+#                   $type     in      scalar    Identifies outer tag to use
 #                   $version  in      scalar    Version string (if any)
 #                   $hidden   in      scalar    Boolean whether to hide it
 #                   $code     in      sc ref    Actual Perl code
@@ -247,9 +257,10 @@ sub read_external
 ###############################################################################
 sub write_file
 {
-    my ($fh, $name, $version, $hidden, $code, $help, $sigs) = @_;
+    my ($fh, $name, $type, $version, $hidden, $code, $help, $sigs) = @_;
 
     my $date = scalar localtime;
+    my $tag  = ($type eq 'm') ? 'methoddef' : 'proceduredef';
 
     # Armor against XML confusion
     foreach ($name, $$help)
@@ -267,13 +278,13 @@ sub write_file
 
     print $ofh <<"EO_HDR";
 <?xml version="1.0"?>
-<!DOCTYPE methoddef SYSTEM "rpc-method.dtd">
+<!DOCTYPE $tag SYSTEM "rpc-method.dtd">
 <!--
     Generated automatically by $cmd v$VERSION, $date
 
     Any changes made here will be lost.
 -->
-<methoddef>
+<$tag>
 EO_HDR
 
     print $ofh "<name>$name</name>\n";
@@ -286,7 +297,7 @@ EO_HDR
         print $ofh qq{<code language="perl">\n$ {$code->{$_}}</code>\n};
     }
 
-    print $ofh "</methoddef>\n";
+    print $ofh "</$tag>\n";
 
     return;
 }
@@ -335,6 +346,13 @@ Prints a short summary of the options.
 
 Specifies the published name of the method being encoded. This is the name by
 which it will be visible to clients of the server.
+
+=item --type=STRING
+
+Specify the type for the resulting file. "Type" here refers to whether the
+container tag used in the resulting XML will specify a B<procedure> or a
+B<method>. The default is B<method>. The string is treated case-independant,
+and only the first character (C<m> or C<p>) is actually regarded.
 
 =item --version=STRING
 
@@ -450,6 +468,8 @@ anything.
 
 The Document Type Declaration for the format can be summarized by:
 
+    <!ELEMENT  proceduredef (name, version?, hidden?, signature+,
+                             help?, code)>
     <!ELEMENT  methoddef  (name, version?, hidden?, signature+,
                            help?, code)>
     <!ELEMENT  name       (#PCDATA)>
@@ -463,13 +483,14 @@ The Document Type Declaration for the format can be summarized by:
 The file C<rpc-method.dtd> that comes with the distribution has some
 commentary in addition to the actual specification.
 
-A file is (for now) limited to one definition. This is started by the opening
-tag, C<E<lt>methoddefE<gt>>. This is followed by exactly one C<E<lt>nameE<gt>>
-container specifying the method name, an optional version stamp, an optional
-hide-from-introspection flag, one or more C<E<lt>signatureE<gt>> containers
-specifying signatures, an optional C<E<lt>helpE<gt>> container with the help
-text, then the C<E<lt>codeE<gt>> container with the actual program code. All
-text should use entity encoding for the symbols:
+A file is (for now) limited to one definition. This is started by the one of
+the opening tags C<E<lt>methoddefE<gt>> or C<E<lt>proceduredefE<gt>>. This is
+followed by exactly one C<E<lt>nameE<gt>> container specifying the method
+name, an optional version stamp, an optional hide-from-introspection flag, one
+or more C<E<lt>signatureE<gt>> containers specifying signatures, an optional
+C<E<lt>helpE<gt>> container with the help text, then the C<E<lt>codeE<gt>>
+container with the actual program code. All text should use entity encoding
+for the symbols:
 
     & C<&amp;> (ampersand)
     E<lt> C<&lt;>  (less-than)
