@@ -1,5 +1,19 @@
 Revision history for Perl extension RPC::XML.
 
+0.53	Tue Feb 25 01:12:11 PST 2003
+
+	Eliminated a warning under 5.00503 from t/40_server.t.
+
+	Changes to the opening of files for base64 data to accomodate Perl
+	5.00503. The old way (passing an undef scalar as the first argument
+	to open()) doesn't work in that version.
+
+	Added a one-byte offset to the filehandle-length tests in the
+	t/15_serialize.t suite to account for Win-ish systems.
+
+	Forgot to tag an newly-opened filehandle with binmode() at one point
+	in the base64 support within RPC::XML.
+
 0.52	Mon Feb 10 01:37:05 PST 2003
 
 	Really got the warning in RPC::XML::Server.pm this time. Really. Also
