@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.5 2002/08/01 04:53:09 rjray Exp $
+#   $Id: Parser.pm,v 1.6 2002/10/30 05:03:14 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -86,7 +86,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -156,6 +156,8 @@ sub parse
                                    Start => sub { tag_start $self, @_ },
                                    End   => sub { tag_end $self, @_ },
                                    Char  => sub { char_data $self, @_ },
+                                   ExternEnt =>
+                                   sub { extern_ent $self, @_ }
                                   });
 
     eval { $parser->parse($stream) };
@@ -272,7 +274,7 @@ sub tag_end
         }
 
         $class = "RPC::XML::$class";
-	# The string at the end is only seen by the RPC::XML::base64 class
+        # The string at the end is only seen by the RPC::XML::base64 class
         $obj = $class->new($robj->{cdata}, 'base64 already encoded');
         return error($robj, $self, 'Error instantiating data object: ' .
                             $RPC::XML::ERROR)
@@ -483,6 +485,17 @@ sub char_data
     my $data = shift;
 
     $robj->{cdata} .= $data;
+}
+
+# At some future point, this may be expanded to provide more entities than
+# just the four basic XML ones.
+sub extern_ent
+{
+    my $robj = shift;
+    local $" = ', ';
+    warn ref($robj) . '::extern_ent: Attempt to reference external entity ' .
+        "(@_)\n";
+    return '';
 }
 
 __END__
