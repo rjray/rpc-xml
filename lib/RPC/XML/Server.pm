@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.17 2001/10/06 10:19:27 rjray Exp $
+#   $Id: Server.pm,v 1.18 2001/10/08 00:48:04 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -44,7 +44,7 @@
 #                   HTTP::Status
 #                   RPC::XML
 #                   RPC::XML::Parser
-#                   RPC::XML::ServerMethod
+#                   RPC::XML::Method
 #
 #   Global Consts:  $VERSION
 #                   $INSTALL_DIR
@@ -75,7 +75,7 @@ require RPC::XML;
 require RPC::XML::Parser;
 require RPC::XML::Method;
 
-$VERSION = do { my @r=(q$Revision: 1.17 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.18 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -148,7 +148,7 @@ sub new
     $self->{__path}            = $args{path} || '';
     $self->{__started}         = 0;
     $self->{__method_table}    = {};
-    $self->{__signature_table} = {};
+    $self->{__method_class}    = $args{method_class} || 'RPC::XML::Method';
     $self->{__requests}        = 0;
     $self->{__auto_methods}    = $args{auto_methods} || 0;
     $self->{__auto_updates}    = $args{auto_updates} || 0;
@@ -238,6 +238,7 @@ sub add_method
     my $meth = shift;
 
     my ($name, $val);
+    my $class = $self->{__method_class};
 
     my $me = ref($self) . '::add_method';
 
@@ -255,12 +256,12 @@ sub add_method
     }
     elsif (ref($meth) eq 'HASH')
     {
-        $meth = RPC::XML::Method->new($meth);
+        $meth = $class->new($meth);
     }
-    elsif (! UNIVERSAL::isa($meth, 'RPC::XML::Method'))
+    elsif (! UNIVERSAL::isa($meth, $class))
     {
-        return "$me: Method argument must be a RPC::XML::Method object, a " .
-            'hash reference or a file name';
+        return "$me: Method argument must be a $class object, a hash " .
+            'reference or a file name';
     }
 
     # Do some sanity-checks
@@ -380,10 +381,14 @@ off. As with the auto-loading of methods, this represents a security risk, and
 should only be permitted by a server administrator with fully informed
 acknowledgement and consent.
 
-=item B<debug>
+=item B<method_class>
 
-The value passed with this option is treated as a boolean toggle to decide
-whether debugging statements should be sent to the logging facility.
+By default, the server class uses the B<RPC::XML::Method> class to manage the
+manipulation and tracking of the methods the server objects make available. If
+the developer chooses to sub-class this method implementation (or even provide
+a completely new one), the name of the class must be passed in via this
+parameter. It will be used in all the internal creation/manipulation routines
+within the server class.
 
 =back
 
@@ -483,13 +488,16 @@ has such an externally-visible method).
 =back
 
 If a file is passed, then it is expected to be in the XML-based format,
-described later (see L<"Specifying Server-Side Remote Methods">). If the
+described in the B<RPC::XML::Method> manual (see L<RPC::XML::Method>). If the
 name passed is not an absolute pathname, then the file will be searched for
 in any directories specified when the object was instantiated, then in the
 directory into which this module was installed, and finally in the current
 working directory. If the operation fails, the return value will be a
 non-reference, an error message. Otherwise, the return value is the object
 reference.
+
+For more on the creation and manipulation of methods as objects, see
+L<RPC::XML::Method>.
 
 =item xpl_path([LISTREF])
 
@@ -609,97 +617,10 @@ subclass of it) require that methods be explicitly published in one of the
 several ways provided. Methods may be added directly within code by using
 C<add_method> as described above, with full data provided for the code
 reference, signature list, etc. The C<add_method> technique can also be used
-with a file that conforms to a specific XML-based format. Entire directories
-of files may be added using C<add_methods_in_dir>, which merely reads the
-given directory for files that appear to be method definitions.
-
-This section focuses on the way in which methods are expressed in these files,
-referred to here as "XPL files" due to the C<*.xpl> filename extension
-(which stands for "XML Procedure Layout"). This mini-dialect, based on XML,
-is meant to provide a simple means of specifying method definitions separate
-from the code that comprises the application itself. Thus, methods may
-theoretically be added, removed, debugged or even changed entirely without
-requiring that the server application itself be rebuilt (or, possibly, without
-it even being restarted).
-
-=head3 The XPL file structure
-
-The B<XPL Procedure Layout> dialect is a very simple application of XML to the
-problem of expressing the method in such a way that it could be useful to
-other packages than this one, or useful in other contexts than this one.
-
-The lightweight DTD for the layout can be summarized as:
-
-        <!ELEMENT  methoddef  (name, version?, hidden?, signature+,
-                               help?, code)>
-        <!ELEMENT  name       (#PCDATA)>
-        <!ELEMENT  version    (#PCDATA)>
-        <!ELEMENT  hidden     EMPTY>
-        <!ELEMENT  signature  (#PCDATA)>
-        <!ELEMENT  help       (#PCDATA)>
-        <!ELEMENT  code       (#PCDATA)>
-        <!ATTLIST  code       language (#PCDATA)>
-
-The containing tag is always C<E<lt>methoddefE<gt>>. The tags that specify
-name, signatures and the code itself must always be present. Some optional
-information may also be supplied. The "help" text, or what an introspection
-API would expect to use to document the method, is also marked as optional.
-Having some degree of documentation for all the methods a server provides is
-a good rule of thumb, however.
-
-The default methods that this package provides are turned into XPL files by
-the B<make_method> tool, described later. The final forms of these may serve
-as direct examples of what the file should look like.
-
-=head3 Information used only for book-keeping
-
-Some of the information in the XPL file is only for book-keeping: the version
-stamp of a method is never involved in the invocation. The server also keeps
-track of the last-modified time of the file the method is read from, as well
-as the full directory path to that file. The C<E<lt>hidden /E<gt>> tag is used
-to identify those methods that should not be exposed to the outside world
-through any sort of introspection/documentation API. They are still available
-and callable, but the client must possess the interface information in order
-to do so.
-
-=head3 The information crucial to the method
-
-The name, signatures and code must be present for obvious reasons. The
-C<E<lt>nameE<gt>> tag tells the server what external name this procedure is
-known by. The C<E<lt>signatureE<gt>> tag, which may appear more than once,
-provides the definition of the interface to the function in terms of what
-types and quantity of arguments it will accept, and for a given set of
-arguments what the type of the returned value is. Lastly is the
-C<E<lt>codeE<gt>> tag, without which there is no procedure to remotely call.
-
-=head3 Why the <code> tag allows multiple languages
-
-Note that the C<E<lt>codeE<gt>> tag is the only one with an attribute, in this
-case "language". This is designed to allow for one XPL file to provide a given
-method in multiple languages. Why, one might ask, would there be a need for
-this?
-
-It is the hope behind this package that collections of RPC suites may one
-day be made available as separate entities from this specific software
-package. Given this hope, it is not unreasonable to suggest that such a
-suite of code might be implemented in more than one language (each of Perl,
-Python, Ruby and Tcl, for example). Languages which all support the means by
-which to take new code and add it to a running process on demand (usually
-through an "C<eval>" keyword or something similar). If the file F<A.xpl> is
-provided with implementations in all four of those languages, the name, help
-text, signature and even hidden status would likely be identical. So, why
-not share the non-language-specific elements in the spirit of re-use?
-
-=head3 The "make_method" utility
-
-The utility script C<make_method> is provided as a part of this package. It
-allows for the automatic creation of XPL files from either command-line
-information or from template files. It has a wide variety of features and
-options, and is out of the scope of this particular manual page. The package
-F<Makefile.PL> features an example of engineering the automatic generation of
-XPL files and their delivery as a part of the normal Perl module build
-process. Using this tool is highly recommended over managing XPL files
-directly.
+with a file that conforms to a specific XML-based format (detailed in the
+manual page for the B<RPC::XML::Method> class, see L<RPC::XML::Method>). Entire
+directories of files may be added using C<add_methods_in_dir>, which merely
+reads the given directory for files that appear to be method definitions.
 
 =head2 How Methods Are Called
 
@@ -727,6 +648,11 @@ of the datatypes specifies the expected return type. The remainder (if any)
 refer to the arguments themselves.
 
 =back
+
+Note that by passing the server object reference first, the methods themselves
+are essentially expected to behave as actual methods of the server class, as
+opposed to ordinary functions. Of course, they can also discard the initial
+argument completely.
 
 The methods should not make (excessive) use of global variables. Likewise,
 methods should not change their package space within the definition. Bad
@@ -847,15 +773,15 @@ __END__
 #
 #   Sub Name:       method_from_file
 #
-#   Description:    Create a RPC::XML::Method object from the passed-in file
-#                   name, using the object's search path if the name is not
-#                   already absolute.
+#   Description:    Create a RPC::XML::Method (or derivative) object from the
+#                   passed-in file name, using the object's search path if the
+#                   name is not already absolute.
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object of this class
 #                   $file     in      scalar    Name of file to load
 #
-#   Returns:        Success:    RPC::XML::Method reference
+#   Returns:        Success:    Method-object reference
 #                   Failure:    error message
 #
 ###############################################################################
@@ -864,6 +790,8 @@ sub method_from_file
     my $self = shift;
     my $file = shift;
 
+    my $class = $self->{__method_class};
+
     unless (File::Spec->file_name_is_absolute($file))
     {
         my ($path, @path);
@@ -871,11 +799,15 @@ sub method_from_file
         for (@path, @XPL_PATH)
         {
             $path = File::Spec->catfile($_, $file);
-            if (-e $path) { $file = $path; last; }
+            if (-e $path) { $file = File::Spec->canonpath($path); last; }
         }
     }
+    # Just in case it still didn't appear in the path, we really want an
+    # absolute path:
+    $file = File::Spec->rel2abs($file)
+        unless (File::Spec->file_name_is_absolute($file));
 
-    RPC::XML::Method->new($file);
+    $class->new($file);
 }
 
 ###############################################################################
@@ -895,7 +827,7 @@ sub method_from_file
 #
 #   Environment:    None.
 #
-#   Returns:        Success:    RPC::XML::Method reference
+#   Returns:        Success:    Method-class reference
 #                   Failure:    undef
 #
 ###############################################################################
