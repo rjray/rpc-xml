@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.54
+Version: 0.55
 
 WHAT IS IT
 
@@ -65,46 +65,25 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-Extended the $CLEAN list in Makefile.PL to also delete all *.ppd
-files. Also bumped the package version number to 0.54.
-                                                                        
-Applied a patch from Tim Peoples that does three things: the 301
-error code in RPC::XML::Procedure::call now includes signature info
-when a signature mismatch occurs. RPC::XML::smart_encode turns undef
-values into zero-length RPC::XML::string objects. Lastly, the
-RPC::XML::string::as_string method turns undef into null values as
-well.
-                                                                        
-Small change to the XML character-escaping in RPC::XML::string's
-as_string method, so that a lookup-table is used. The same table
-is now used to escape keys in structs, as well. Added tests to cover
-this. This was suggested by Johnathan Kupferer.
-                                                                        
-Made a small change for the sake of syntax pedantry to t/20_parse.t.
-                                                                        
-Fix to the error-handling for a failed LWP::UserAgent->request call
-in RPC::XML::Client::send_request (thanks to Jasper Cramwinckel).
-Also got a small glitch covered in one of the calls to the inflate()
-method in Compress::Zlib. Thanks to John Tobing for that one.
-                                                                        
-Dropped a regex-compare in favor of a string-compare for the special
-case of the XML tag being dateTime.iso8601. In some locales, the 'lc'
-caused problems. This is near RPC::XML::Parser line 288.
-                                                                        
-Applied a patch to Apache::RPC::Server (supplied by Tim Peoples) to
-support "NoCompression" as a PerlSetVar directive, the function of
-which is to disable compression support upon demand.
-                                                                        
-Fixed two minor typos in the Apache::RPC::Server docs, the names for
-two of the PerlSetVar directives.
-                                                                        
-Added to the docs the fact that struct keys are now escaped. Also put
-some coverage in the docs on the two ways of initializing a struct
-object.
-                                                                        
-Applied a patch from Chris Darroch to allow better handling of
-arguments in RPC::XML::Server::server_loop. While the HTTP::Daemon
-portion was fine with collapsing the arg list into a hash, the
-Net::Server portion actually has documented behavior when it sees the
-same argument more than once, and collapsing to a hash caused these
-extra arguments to be lost.
+lib/RPC/XML/Server.pm:
+Fix from Thomax G. to the loop-invariance near line 1403, for a bug
+that mostly appears with openACS-based clients.
+                                                                               
+t/60_net_server.t:
+Clarify in the message emitted why the tests are skipped when
+Net::Server is not available.
+                                                                                
+lib/RPC/XML/Server.pm:
+Fix based on input from several sources: The Content-Encoding header
+was not being set correctly for responses when compression was applied
+to the response message.
+                                                                              
+lib/RPC/XML/Procedure.pm:
+Applied a fix from the Debian maintainer of this package for their
+distribution, David Parrish: auto-reloading of methods was not actually
+stuffing the new data into the calling object.
+
+lib/Apache/RPC/Server.pm:
+Applied a patch from a user to fix a problem with reading PerlSetVar
+values withing a <Location> block (worked fine in <Perl> blocks),
+as well as a small addition to the examples in the docs.

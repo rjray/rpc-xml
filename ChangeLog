@@ -1,5 +1,30 @@
 Revision history for Perl extension RPC::XML.
 
+0.55	Tue Nov 30 01:16:57 PST 2004
+
+	lib/RPC/XML/Server.pm:
+	Fix from Thomax G. to the loop-invariance near line 1403, for a bug
+	that mostly appears with openACS-based clients.
+
+	t/60_net_server.t:
+	Clarify in the message emitted why the tests are skipped when
+	Net::Server is not available.
+	
+	lib/RPC/XML/Server.pm:
+	Fix based on input from several sources: The Content-Encoding header
+	was not being set correctly for responses when compression was applied
+	to the response message.
+
+	lib/RPC/XML/Procedure.pm:
+	Applied a fix from the Debian maintainer of this package for their
+	distribution, David Parrish: auto-reloading of methods was not actually
+	stuffing the new data into the calling object.
+
+	lib/Apache/RPC/Server.pm:
+	Applied a patch from a user to fix a problem with reading PerlSetVar
+	values withing a <Location> block (worked fine in <Perl> blocks),
+	as well as a small addition to the examples in the docs.
+
 0.54	Wed Apr 14 04:43:56 PDT 2004
 
 	Extended the $CLEAN list in Makefile.PL to also delete all *.ppd

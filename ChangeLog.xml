@@ -1,0 +1,990 @@
+<?xml version="1.0"?>
+<changelog xmlns="http://www.blackperl.com/XML/ChangeLog/changelog09.xsd">
+  <overview>
+    Revision history for Perl extension RPC::XML
+  </overview>
+  <release version="0.55" tag="v0_55" date="2004-11-30T01:16:57-08:00">
+    <item>
+      <file path="lib/RPC/XML/Server.pm" revision="1.39" />
+      <description>
+        Fix from Thomax G. to the loop-invariance near line 1403, for a bug
+        that mostly appears with openACS-based clients.
+      </description>
+    </item>
+    <item>
+      <file path="t/60_net_server.t" revision="1.3" />
+      <description>
+        Clarify in the message emitted why the tests are skipped when
+        Net::Server is not available.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" revision="1.40" />
+      <description>
+        Fix based on input from several sources: The Content-Encoding header
+        was not being set correctly for responses when compression was applied
+        to the response message.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Procedure.pm" revision="1.10" />
+      <description>
+        Applied a fix from the Debian maintainer of this package for their
+        distribution, David Parrish: auto-reloading of methods was not actually
+        stuffing the new data into the calling object.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" revision="1.25" />
+      <description>
+        Applied a patch from a user to fix a problem with reading PerlSetVar
+        values withing a &lt;Location> block (worked fine in &lt;Perl> blocks),
+        as well as a small addition to the examples in the docs.
+      </description>
+    </item>
+  </release>
+  <release version="0.54" tag="v0_54" date="2004-04-14T04:43:56-07:00">
+    <item>
+      <file path="Makefile.PL" revision="1.33" />
+      <description>
+        Extended $CLEAN to also remove *.ppd files, and bumped the package
+        version to 0.54.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Procedure.pm" revision="1.9" />
+        <file path="lib/RPC/XML.pm" revision="1.30" />
+      </filelist>
+      <description>
+        Applied a patch from Tim Peoples that does three things: the 301
+        error code in RPC::XML::Procedure::call now includes signature info
+        when a signature mismatch occurs. RPC::XML::smart_encode turns undef
+        values into zero-length RPC::XML::string objects. Lastly, the
+        RPC::XML::string::as_string method turns undef into null values as
+        well.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML.pm" revision="1.28" />
+        <file path="t/10_data.t" revision="1.6" />
+      </filelist>
+      <description>
+        Small change to the XML character-escaping in RPC::XML::string's
+        as_string method, so that a lookup-table is used. The same table
+        is now used to escape keys in structs, as well. Added tests to cover
+        this. This was suggested by Johnathan Kupferer.
+      </description>
+    </item>
+    <item>
+      <file path="t/20_parser.t" revision="1.3" />
+      <description>
+        Made a small change for the sake of syntax pedantry.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Client.pm" revision="1.20" />
+      <description>
+        Fix to the error-handling for a failed LWP::UserAgent->request call
+        send_request (thanks to Jasper Cramwinckel). Also got a small glitch
+        covered in one of the calls to the inflate() method in Compress::Zlib.
+        Thanks to John Tobing for that one.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Parser.pm" revision="1.11" />
+      <description>
+        Dropped a regex-compare in favor of a string-compare for the special
+        case of the XML tag being dateTime.iso8601. In some locales, the 'lc'
+        caused problems. This is near line 288.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" revision="1.23" />
+      <description>
+        Applied a patch to Apache::RPC::Server (supplied by Tim Peoples) to
+        support "NoCompression" as a PerlSetVar directive, the function of
+        which is to disable compression support upon demand.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" revision="1.24" />
+      <description>
+        Fixed two minor typo errors in the docs, the names of two of the
+        PerlSetVar directives.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" revision="1.29" />
+      <description>
+        Added to the docs the fact that struct keys are now escaped. Also put
+        some coverage in the docs on the two ways of initializing a struct
+        object.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" revision="1.38" />
+      <description>
+        Applied a patch from Chris Darroch to allow better handling of
+        arguments in RPC::XML::Server::server_loop. While the HTTP::Daemon
+        portion was fine with collapsing the arg list into a hash, the
+        Net::Server portion actually has documented behavior when it sees the
+        same argument more than once, and collapsing to a hash caused these
+        extra arguments to be lost.
+      </description>
+    </item>
+  </release>
+  <release version="0.53" tag="v0_53" date="2003-02-25T01:12:11-08:00">
+    <item>
+      <file path="t/40_server.t" revision="1.7" />
+      <description>Eliminate a warning under 5.00503.</description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML.pm" revision="1.25" />
+        <file path="lib/RPC/XML/Client.pm" revision="1.19" />
+        <file path="lib/RPC/XML/Parser.pm" revision="1.10" />
+        <file path="t/50_client.t" revision="1.7" />
+      </filelist>
+      <description>
+        Changes to the opening of files for base64 data. The existing method
+        didn't work under 5.00503.
+      </description>
+    </item>
+    <item>
+      <file path="t/15_serialize.t" revision="1.3" />
+      <description>
+        Added consideration to the filehandle-length tests for Win-ish offsets.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" revision="1.26" />
+      <description>
+        Added a forgotten binmode() call to an just-opened filehandle in the
+        base64-to-file support.
+      </description>
+    </item>
+  </release>
+  <release version="0.52" tag="v0_52" date="2003-02-10T01:37:05-08:00">
+    <item>
+      <file path="lib/RPC/XML/Server.pm" revision="1.37" />
+      <description>
+        Really got the warning in RPC::XML::Server.pm this time. Really. Also
+        got some potential errors that seem to be overlooked under auto-loading
+        but appear when auto-loading is disabled.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Client.pm" revision="1.18" />
+      <description>
+        Fixed a potentially-confusing problem in the example code within the
+        RPC::XML::Client man page, just under "SYNOPSIS".
+      </description>
+    </item>
+    <item>
+      <file path="spec.in" revision="1.4" />
+      <description>
+        More work to the spec.in RPM specfile template. The Provides/Requires
+        list should be a lot cleaner now, and it also builds packages under
+        rpm 4.1, now.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" revision="1.22" />
+      <description>
+        Fixed a lurking bug in the Apache::RPC::Server class that was not
+        setting the headers properly on responses. Probably lived this long
+        because no one else but me was using it, and my client is lax enough
+        to ignore it.
+      </description>
+    </item>
+  </release>
+  <release version="0.51" date="2003-01-30T00:49:07-08:00">
+    <item>
+      <file path="t/11_base64_fh.t" revision="1.4" />
+      <description>
+        Removed an extraneous print line in t/11_base64_fh that caused a
+        warning on some systems.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="t/11_base64_fh.t" revision="1.5" />
+        <file path="t/50_client.t" revision="1.6" />
+      </filelist>
+      <description>
+        Fixed calls to skip() in the test suites so that they work with
+        older versions of the Test module.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="t/11_base64_fh.t" revision="1.6" />
+        <file path="t/10_data.t" revision="1.5" />
+        <file path="lib/RPC/XML.pm" revision="1.24" />
+      </filelist>
+      <description>
+        Calls to the encode_base64 routine from MIME::Base64 now pass a zero-
+        length second argument, to suppress newlines between Base64 lines
+        when stringifying the RPC::XML::base64 objects. This is to accomodate
+        a broken Java XML-RPC package.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" revision="1.36" />
+      <description>
+        Force a default value for the compress_re attribute in RPC::XML::Server
+        when none is otherwise present. All my tests have had Compress::Zlib
+        available, but when it isn't the compress_re attribute was triggering
+        warnings when used in a regex.
+      </description>
+    </item>
+  </release>
+  <release version="0.50" date="2003-01-27T03:24:45-08:00">
+    <item>
+      <file path="lib/RPC/XML/Procedure.pm" />
+      <description>
+        Changed the usage of =head3 directives in the manual page for
+        RPC::XML::Procedure to a =over/=back block instead. The =head3
+        directive requires a newer set of pod utilities, and would mean the
+        package had trouble building on 5.005 installations.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML.pm" />
+        <file path="t/11_base64_fh.t" />
+      </filelist>
+      <description>
+        Extended the RPC::XML::base64 class to allow for and handle being
+        given a filehandle object instead of straight data. The object is
+        kept as an open filehandle, and the buffer position is always noted
+        and reset when operated on, so that other parts of the process using
+        the handle don't get surprised. Added tests in t/11_base64_fh.t to
+        exercise this.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/xML.pm" />
+        <file path="t/15_serialize.t" />
+      </filelist>
+      <description>
+        Added a serialize() method to all the data classes in preparation for
+        changing the client and server modules to stream XML over the line
+        rather than print it using in-memory strings. Added test suite
+        t/15_serialize.t to exercise this.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="t/20_parser.t" />
+      </filelist>
+      <description>
+        Modified RPC::XML::Parser to accept arguments to new() that instruct
+        it to spool Base64 data to a filehandle, using the new capabilities
+        of the base64 class described previously. Added tests to t/20_parser.t
+        and support for the parameters to the constructors of the client and
+        base server classes. Documented all around.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Re-engineered the test for the "bytes" pragma in RPC::XML, so that
+        it now works with Perl 5.005.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Client.pm" />
+      <description>
+        Fixed the credentials() method in RPC::XML::Client.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </filelist>
+      <description>
+        All the internal use of object attributes in RPC::XML::Client now use
+        accessors instead of the hash keys directly, to make it easier to
+        sub-class the package. The same was done in RPC::XML::Server and to
+        some degree in Apache::RPC::Server. The server classes are more likely
+        to have problems, though.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </filelist>
+      <description>
+        The parsing of incoming data in the client and both server classes is
+        now done to a streaming XML parser, eliminating the need for the
+        full message to ever be in memory at once. Likewise, the client and
+        server classes have new attributes and accessor methods to allow
+        them to spool outgoing messages to files if the messages threaten to
+        be too large to keep in memory (this is best used when dealing with a
+        lot of Base64 data that is being dealt with directly on disk as well).
+      </description>
+    </item>
+  </release>
+  <release version="0.46" date="2002-12-29T23:39:05-08:00">
+    <item>
+      <file path="lib/RPC/XML/Client.pm" />
+      <description>
+        Applied a patch from Andrew Langmead to fix a bug in the uri() method
+        of RPC::XML::Client. Prior, retrieving the value could accidentally
+        reset it. Applied another fix from him to prevent a possible warning.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Applied another patch to better handle testing of the availability of
+        compression in the client.
+      </description>
+    </item>
+    <item>
+      <file path="Makefile.PL" />
+      <description>
+        Moving around some of the RPM spec-file generation caused problems
+        with some people trying to build the package if spec.in was missing.
+        Fixed this in Makefile.PL.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Procedure.pm" />
+      <description>
+        Fix to RPC::XML::Procedure per tip from Stig Porsgaard, to fix the
+        reading of 'signature' arguments to new() when providing all the
+        proc data directly. Reported by others as well, but Stig nailed it
+        down to a specific line.
+      </description>
+    </item>
+  </release>
+  <release version="0.45" date="2002-10-29T21:06:00-08:00">
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Fixed a problem in the test-usage of the bytes pragma in RPC::XML,
+        reported by Marc Jauvin.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Parser.pm" />
+      <description>
+        Closed a potential security hole in the parsing of external entities,
+        pointed out by Gregory Steuck.
+      </description>
+    </item>
+  </release>
+  <release version="0.44" date="2002-04-30T23:44:08-07:00">
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Cleaned up the exports list in RPC::XML.pm, which still had remnants
+        from when this package was intended to extend XML-RPC. There were no
+        routines to match the symbols, but the potential for error was there.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </filelist>
+      <description>
+        Fixed a typo in the docs for RPC::XML::Client, and some documentation
+        goofs in RPC::XML::Server (regarding the timeout method/option). A
+        few doc fixes in RPC::XML::Procedure, for good measure.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Implemented two fixes sent in by Marc Liyanage: a fix for setting the
+        Content-Length headers on messages that takes the length in bytes
+        rather than characters; the second is a fix around the compression
+        support that makes certain an undef isn't evaluated against the
+        regex.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        The above added an exported function to RPC::XML, so that got
+        documented. In the process, it occurred to me to document the helper
+        functions like RPC_BOOLEAN, RPC_DOUBLE, etc.
+      </description>
+    </item>
+  </release>
+  <release version="0.43" date="2002-08-18T22:19:30-07:00">
+    <item>
+      <filelist>
+        <file path="methods/methodSignature.code" />
+        <file path="t/40_server.t" />
+        <file path="t/60_net_server.t" />
+      </filelist>
+      <description>
+        Changed methods/methodSignature.code, t/40_server.t and
+        t/60_net_server.t so that the provided system.methodSignature follows
+        the accepted API (returns a list of lists, rather than list of
+        strings). Pointed out by Bjoern Stierand.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Added a missing helper (RPC_I4) to RPC::XML.pm.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Fixed a bad bug with the newly-added compression support in
+        Apache::RPC::Server::handler. Because $self was defined earlier,
+        strict failed to point out that my object in that scope was called
+        $srv, rather than $self. And $self->compress didn't work, amazingly
+        enough. Found and reported by Scott Fagg.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Client.pm" />
+      <description>
+        Added a credentials() method to the RPC::XML::Client class to set
+        Basic Authentication credentials on the underlying LWP::UserAgent
+        object. Per suggestion and sample implementation from Stuart Clark.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </filelist>
+      <description>
+        Fixed a docs-nit in RPC::XML::Server, and did some major clean-up in
+        the docs for RPC::XML. In particular, added documentation for one
+        of the data class methods that had been overlooked ("type").
+      </description>
+    </item>
+  </release>
+  <release version="0.42" date="2002-08-01T00:51:12-07:00">
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Changed the test in Apache::RPC::Server of the Content-type header so
+        that it accepts a header that contains "text/xml", as opposed to only
+        accepting a header that exactly equalled that string. Allows for
+        things like SOAP::Lite's XMLRPC::Lite which include a charset in the
+        header.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        time2iso8601() in the RPC::XML module now allows defaulting of the
+        $time argument to time() (which means no timezone specification).
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Parser.pm" />
+      <description>
+        Found a bug in RPC::XML::Parser where base64 data being parsed in a
+        request/response message wasn't being properly passed to the c'tor
+        for RPC::XML::base64. Reported by Chris Brierley.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Added a line in Apache::RPC::Server to set the Content-Type header
+        on HEAD responses. Apache won't take this from the usual header()
+        method, it has to be explicitly set with content_type().
+      </description>
+    </item>
+    <item>
+      <file path="t/40_server.t" />
+      <description>
+        Two of the tests in t/40_server.t could cause fatal errors since a
+        return value wasn't tested for ref-ness before having a method called
+        on it. Fixed.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="lib/Apache/RPC/Server.pm" />
+      </filelist>
+      <description>
+        Compress::Zlib-based compression is now supported in RPC::XML::Server,
+        RPC::XML::Client and Apache::RPC::Server. It should be compatible with
+        the XMLRPC::Lite package's compression.
+      </description>
+    </item>
+  </release>
+  <release version="0.41" date="2002-05-22T02:50:47-07:00">
+    <item>
+      <file path="lib/RPC/XML/Parser.pm" />
+      <description>
+        Wrapped the call to XML::Parser::parse (lib/RPC/XML/Parser.pm) in an
+        eval {} so that parse failures don't kill a server or client. Reported
+        by Kevin Greene.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        An intended clone-operation in RPC::XML::response::new (lib/RPC/XML.pm)
+        was never actually written, which allowed for a corner case that could
+        result in new() return undef when it shouldn't. Related to the bug
+        reported by Sergey Scherbinin.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Procedure.pm" />
+      <description>
+        The RPC::XML::Procedure::call method (lib/RPC/XML/Procedure.pm) had one
+        error-check loop that was returning a full RPC::XML::response object,
+        instead of just a RPC::XML::fault. Reported by Sergey Scherbinin.
+      </description>
+    </item>
+  </release>
+  <release version="0.40" date="2002-05-04T00:42:18-07:00">
+    <item>
+      <file path="*" />
+      <description>
+        Fixed some grammar problems in error messages, and some formatting.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Fixed a bug in the new() method of Apache::RPC::Server where it was
+        expecting the value of the "apache" key to be an object of the
+        Apache::Server class, but it was actually getting an object of the
+        Apache class.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Function.pm" placement="added" />
+        <file path="etc/make_method" />
+        <file path="etc/rpc-method.dtd" />
+      </filelist>
+      <description>
+        Created RPC::XML::Function class, which is a type of server-side
+        encapsulator that doesn't bother with signature tests of any kind.
+        The DTD and make_method tool support the new type.
+      </description>
+    </item>
+    <item>
+      <file path="etc/make_method" />
+      <description>
+        Changed the encoding of the Perl code in etc/make_method as follows:
+        If the code does not already contain either of the two sequences,
+        ']]&gt;' or '__DATA__', then the code is wrapped in a
+        &lt;![CDATA[ ]]&gt; section, with #!/usr/bin/perl (actually,
+        $Config{startperl}) at the head and __DATA__ at the end. Besides
+        leaving the Perl code readable, the *.xpl files can now be
+        syntax-checked with "perl -cx". Thanks to the mod_perl guys for this
+        idea, cribbed from their manual page.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </filelist>
+      <description>
+        Abstracted some of the invocation code out of the server class and
+        into the RPC::XML::Procedure class, where it really belonged. This
+        aided in further eliminating redundancy in the server class in the
+        same general area. I may yet want to tune this area, but I'm a good
+        deal happier with the reduction in complexity and repetition.
+      </description>
+    </item>
+  </release>
+  <release version="0.37" date="2002-03-22T22:16:08-08:00">
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Applied a patch to RPC::XML::Server from Tino Wuensche
+        (&lt;tino_wuensche@yahoo.com>) that fixed some of the signal-handling
+        and exit-case-handling in server_loop().
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Procedure.pm" />
+      <description>
+        Fixed a bug in RPC::XML::Procedure found by a user (a former
+        co-worker from my Denver days, coincidentally enough) that would
+        trigger when auto_methods was set to 1 on a server object, but the
+        request had no matching file anywhere in the search path.
+      </description>
+    </item>
+  </release>
+  <release version="0.36" date="2002-01-29T12:11:30-08:00">
+    <item>
+      <file path="MANIFEST" />
+      <description>
+        The file util.pl in the t directory was accidentally omitted from the
+        0.35 release. This release is meant only to correct that oversight.
+      </description>
+    </item>
+  </release>
+  <release version="0.35" date="2002-01-27T16:29:19-08:00">
+    <item>
+      <file path="etc/make_method" />
+      <description>
+        Fixed a small bug in make_method that would have caused a failure if
+        anyone used the command-line switches to specify data, rather than a
+        base-file (specifically, the handling of the --code argument). Also
+        clarified a few places in the man page.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="methods/methodHelp.code" />
+        <file path="methods/status.code" />
+        <file path="lib/Apache/RPC/status.code" />
+      </filelist>
+      <description>
+        Found bugs in both versions of the system.status server method (both
+        the basic and the Apache flavor). Both were neglecting to set the
+        "methods_known" value. Also found a bug in system.methodHelp. Amazing
+        what writing the regression tests can uncover.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Method.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" placement="added" />
+      </filelist>
+      <description>
+        RPC::XML::Method is now a skeleton file, slated to be removed by or
+        before 1.0. It has been renamed to RPC::XML::Procedure, and the
+        RPC::XML::Method class is declared as an empty subclass of the
+        RPC::XML::Procedure class. Procedures differ from methods in that they
+        do not get the server object instance as a first parameter in the list
+        that gets passed in.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="etc/rpc-method.dtd" />
+        <file path="etc/make_method" />
+        <file path="ex/linux.proc.cpuinfo.code" />
+        <file path="ex/linux.proc.meminfo.code" />
+      </filelist>
+      <description>
+        Support for RPC::XML::Procedure (and general procedure vs. method)
+        added to the DTD and the make_method tool. All the routines in the
+        ex/ directory are declared as procedures, to further illustrate the
+        concept.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </filelist>
+      <description>
+        When code blocks for XPL files are eval'd, they are given a "package"
+        statement to force subsequent calls to be in the RPC::XML::Procedure
+        namespace, rather than defaulting to main (a potentially dangerous
+        assumption). The docs on routine-calling in RPC::XML::Server have been
+        updated to discuss this.
+      </description>
+    </item>
+    <item>
+      <file path="t/40_server.t" />
+      <description>
+        Many more tests added to the suite for RPC::XML::Server.
+      </description>
+    </item>
+    <item>
+      <file path="t/50_client.t" placement="added" />
+      <description>
+        Created the test suite for RPC::XML::Client.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+      </filelist>
+      <description>
+        RPC::XML::Client no longer returns a full RPC::XML::response object
+        from any of its routines. Rather, simple_request still does what it
+        always has, and send_request now returns a data-type value. All the
+        data-type classes have a method called "is_fault" that returns false
+        for all except (of course) RPC::XML::fault. This lets callers of
+        send_request test the return value to see if it is a fault.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="t/50_client.t" />
+      </filelist>
+      <description>
+        Added callback support for errors and faults to the RPC::XML::Client
+        class. This allows programmers to tie specific actions to cases where
+        a call returns a RPC::XML::fault object, or an outright error.
+      </description>
+    </item>
+    <item>
+      <file path="t/60_net_server.t" placement="added" />
+      <description>
+        Created a separate test suite for RPC::XML::Server when used in
+        conjunction with the Net::Server package (it skips if the latter is
+        not installed on the system).
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Almost all of the method-manipulation routines in RPC::XML::Server (all
+        but add_default_methods()) now have counterparts called by the same
+        name after s/method/proc/. This is purely for syntactical sugar and
+        symmetry. Except in the case of add_proc(), where it actually ensures
+        that a hash-reference calling convention is geared correctly to add a
+        RPC::XML::Procedure object rather than RPC::XML::Method.
+      </description>
+    </item>
+  </release>
+  <release version="0.30" date="2002-01-03T01:57:29-08:00">
+    <description>first beta release</description>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Apache::RPC::Server::list_servers no longer sorts the list before
+        returning it. No reason to assume it matters, or to levy that tax
+        against those who don't care.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        RPC::XML::Server::url now constructs saner strings for HTTPS and for
+        HTTP on port 80.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        The new() method in RPC::XML::Server wasn't quite handling the "host"
+        and "port" arguments that Apache::RPC::Server sent it correctly.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Added a patch to the RPC::XML::Server class from Christopher Blizzard
+        (blizzard@redhat.com) to allow control over the timeout interval that
+        HTTP::Daemon uses in answering new connections.
+      </description>
+    </item>
+    <item>
+      <file path="Makefile.PL" />
+      <description>
+        Replaced a GNU Make-centric dependancy rule for the XPL files with
+        a more portable .SUFFIXES-based one. This is unfortunate, as the %
+        syntax of GNU make is much cleaner. But GNU Make isn't universal. Yet.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Status.pm" placement="added" />
+      <description>
+        This release marks the debut of Apache::RPC::Status, a monitor similar
+        in nature and design to Apache::Status, for running RPC servers under
+        Apache/mod_perl. See the manual page for details.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Documentation for Apache::RPC::Server was updated based on trials and
+        travails in trying to actually set up a configuration inside &lt;Perl>
+        blocks. This isn't very clear in the mod_perl documentation, but at
+        least the docs for this module reflect exactly what I have configured
+        on my development box, so I know it works.
+      </description>
+    </item>
+  </release>
+  <release version="0.29" date="2001-12-02T22:41:39-08:00">
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Added share_methods(), copy_methods() and delete_method() calls to the
+        RPC::XML::Server class (and thus to the Apache class as well). Had
+        already added an INSTALL_DIR method to retrieve the class-specific
+        installation dir to the Apache class, so mirrored it here, as well.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Added list_servers() static method to Apache::RPC::Server, to allow
+        for abstract retrieval of the ID-tags of the current known servers.
+        This is mainly so Apache::RPC::Status can use it in conjunction with
+        get_server() to examine the server objects for the sake of stats and
+        such.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Added list_methods() to RPC::XML::Server, to list the object's known
+        (published) methods by name. Mainly for use in the regression suites,
+        but worth documenting in the API in case someone else finds it
+        useful.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="methods/introspection.code" />
+        <file path="methods/listMethods.code" />
+        <file path="methods/methodHelp.code" />
+        <file path="methods/methodSignature.code" />
+      </filelist>
+      <description>
+        Four of the provided methods in the introspection API
+        (system.introspection, system.listMethods, system.methodHelp and
+        system.methodSignature) needed to be updated to use the newer API for
+        the XML::RPC::Method class when retrieving information from the server.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="t/30_method.t" placement="added" />
+        <file path="t/40_server.t" placement="added" />
+      </filelist>
+      <description>
+        Started the test suites for RPC::XML::Method and RPC::XML::Server.
+        The tests that are delivered as part of this build are not fully
+        complete, but should be a reasonable start.
+      </description>
+    </item>
+  </release>
+  <release version="0.28" date="2001-10-07T21:27:39-07:00">
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Found a subtle-but-nasty bug in the handling of RPC::XML::string
+        objects. Thanks to Dominic Mitchell &lt;dom@semantico.com> for pointing
+        me in the right direction.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Started down the path of making the suite as a whole geared more
+        towards real use than illustrative example. The XML data-classes now
+        no longer use indention (or any superfluous whitespace) in their
+        stringification. This shortened the code quite a bit, and will also
+        mean shorter messages. This could not have been done cleanly without
+        the tests in t/10_data.t.
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="lib/RPC/XML/Method.pm" placement="added" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="lib/Apache/RPC/Server.pm" />
+      </filelist>
+      <description>
+        Extracted the method-manipulation code into a new class, called
+        RPC::XML::Method. This should make method-sharing easier, and pull
+        a lot of method-specific code out of RPC::XML::Server and
+        Apache::RPC::Server.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Clarified some issues in the new() constructor of the
+        Apache::RPC::Server class, and also changed the calling convention.
+        It no longer treats the first few arguments in any special way at all.
+        The arguments are all consistently taken as option/value pairs, just
+        as with RPC::XML::Server. The documentation reflects this. This may
+        break things built on the old style, but in the long run it should
+        prove much better.
+      </description>
+    </item>
+  </release>
+  <release version="0.27" date="2001-07-08T16:25:51-07:00">
+    <item>
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Removed a -w warning from RPC/XML.pm. Fixed some cases in the new()
+        method of RPC::XML::boolean that would have permitted invalid data.
+        Added two convenience methods to RPC::XML::fault, called code() and
+        string(), that fetch the faultCode and faultString member values as
+        native Perl values. The RPC::XML::base64 class was using the wrong
+        container tags in the as_string method.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Clarified and expanded some of the documentation in RPC/XML/Server.pm.
+      </description>
+    </item>
+    <item>
+      <file path="Makefile.PL" />
+      <description>
+        Adjusted the PREREQ_PM hash in Makefile.PL so that it correctly looks
+        for LWP, and also looks for File::Spec 0.8 or newer (needed to ensure
+        that the splitpath() method is available).
+      </description>
+    </item>
+    <item>
+      <filelist>
+        <file path="t/00_load.t" />
+        <file path="t/10_data.t" />
+        <file path="t/20_parser.t" />
+      </filelist>
+      <description>
+        Cleaned up the load-tests (t/00_load.t) to use the Test harnessing
+        package. Added test suites for the RPC::XML data classes (t/10_data.t,
+        96 tests) and the RPC::XML::Parser container-class (t/20_parser.t,
+        7 tests).
+      </description>
+    </item>
+  </release>
+  <release version="0.26" date="2001-06-25T22:30:18-07:00">
+    <item>
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Fixed some doc errors in RPC::XML::Server. Mainly things I had
+        simplified, but not updated the docs to reflect.
+      </description>
+    </item>
+    <item>
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Added a fair amount to the docs in Apache::RPC::Server. In particular,
+        a new section was added that illustrates using &lt;Perl> configuration
+        sections to create the server objects in the master Apache process,
+        so that they are automatically inherited by children.
+      </description>
+    </item>
+  </release>
+  <release version="0.25" date="2001-06-12T22:35:09-07:00">
+    <description>
+      This is the initial release.
+    </description>
+    <item>
+      <file path="*" />
+      <description>All files are tracked from this point forward.</description>
+    </item>
+  </release>
+</changelog>
