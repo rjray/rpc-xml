@@ -9,6 +9,7 @@ Group: Applications/CPAN
 Source: ${DISTNAME}-${VERSION}.tar.gz
 Url: http://www.blackperl.com/${NAME}
 BuildRequires: perl >= 0:5.00503
+AutoReq: no
 Requires: perl >= 0:5.00503
 Provides: perl-${DISTNAME} = ${VERSION}
 BuildRoot: %{_tmppath}/%{name}-root
@@ -37,10 +38,10 @@ make PREFIX=$RPM_BUILD_ROOT/usr install
 
 [ -x /usr/lib/rpm/brp-compress ] && /usr/lib/rpm/brp-compress
 
+rm -f $RPM_BUILD_ROOT${INSTALLSITEARCH}/perlocal.pod
+rm -f $RPM_BUILD_ROOT${INSTALLSITEARCH}/auto/RPC/XML/.packlist
 find $RPM_BUILD_ROOT/usr -type f -print |
-        sed "s@^$RPM_BUILD_ROOT@@g" |
-        grep -v perllocal.pod |
-        grep -v "\.packlist" > ${DISTNAME}-${VERSION}-filelist
+        sed "s@^$RPM_BUILD_ROOT@@g" > ${DISTNAME}-${VERSION}-filelist
 if [ "$(cat ${DISTNAME}-${VERSION}-filelist)X" = "X" ] ; then
     echo "ERROR: EMPTY FILE LIST"
     exit -1
@@ -52,3 +53,6 @@ fi
 %changelog
 * Fri Aug  10 2001 rjray <rjray@blackperl.com>
 - Spec file template created
+
+* Fri Jan 31 2003  rjray <rjray@blackperl.com>
+- specfile now works again, also under rpm 4.1.
