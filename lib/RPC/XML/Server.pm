@@ -1,4 +1,3 @@
-
 ###############################################################################
 #
 # This file copyright (c) 2001 by Randy J. Ray <rjray@blackperl.com>,
@@ -10,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.32 2003/01/20 06:29:52 rjray Exp $
+#   $Id: Server.pm,v 1.33 2003/01/27 01:27:49 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -30,6 +29,8 @@
 #                   compress
 #                   compress_thresh
 #                   compress_re
+#                   message_file_thresh
+#                   message_temp_dir
 #                   xpl_path
 #                   add_method
 #                   method_from_file
@@ -77,15 +78,15 @@ BEGIN {
     @XPL_PATH = ($INSTALL_DIR, File::Spec->curdir);
 }
 
+use HTTP::Status;
 require HTTP::Response;
-require HTTP::Status;
 require URI;
 
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.32 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.33 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -157,7 +158,7 @@ sub new
                   # Set any other headers as well
                   Accept       => 'text/xml');
     $resp->content_type('text/xml');
-    $resp->code(&HTTP::Status::RC_OK);
+    $resp->code(RC_OK);
     $resp->message('OK');
     $self->{__response} = $resp;
 
@@ -177,7 +178,7 @@ sub new
     $self->{__compress} = '';
     unless ($args{no_compress})
     {
-        eval { require Compress::Zlib };
+        eval "require Compress::Zlib";
         $self->{__compress} = $@ ? '' : 'deflate';
         # Add some more headers to the default response object for compression.
         # It looks wasteful to keep using the hash key, but it makes it easier
@@ -188,9 +189,17 @@ sub new
         $self->{__compress_re} = qr/$self->{__compress}/;
     }
 
+    # Parameters to control the point at which messages are shunted to temp
+    # files due to size, and where to home the temp files. Start with a size
+    # threshhold of 1Meg and no specific dir (which will fall-through to the
+    # tmpdir() method of File::Spec).
+    $self->{__message_file_thresh} = $args{message_file_thresh} || 1048576;
+    $self->{__message_temp_dir}    = $args{message_temp_dir}    || '';
+
     # Remove the args we've already dealt with directly
     delete @args{qw(no_default no_http debug path server_name server_version
-                    no_compress compress_thresh parser)};
+                    no_compress compress_thresh parser message_file_thresh
+                    message_temp_dir)};
     # Copy the rest over untouched
     $self->{$_} = $args{$_} for (keys %args);
 
@@ -209,19 +218,21 @@ sub url
     my $self = shift;
 
     return $self->{__daemon}->url if $self->{__daemon};
-    return undef unless ($self->{__host});
+    return undef unless (my $host = $self->host);
 
-    if ($self->{__port} == 443)
+    my $path = $self->path;
+    my $port = $self->port;
+    if ($port == 443)
     {
-        return "https://$self->{__host}$self->{__path}";
+        return "https://$host$path";
     }
-    elsif ($self->{__port} == 80)
+    elsif ($port == 80)
     {
-        return "http://$self->{__host}$self->{__path}";
+        return "http://$host$path";
     }
     else
     {
-        return "http://$self->{__host}:$self->{__port}$self->{__path}";
+        return "http://$host:$port$path";
     }
 }
 
@@ -254,11 +265,37 @@ sub compress_thresh
     $old;
 }
 
+# Fetch/set the threshhold for spooling messages to files
+sub message_file_thresh
+{
+    my $self = shift;
+    my $set = shift || 0;
+
+    my $old = $self->{__message_file_thresh};
+    $self->{__message_file_thresh} = $set if ($set);
+
+    $old;
+}
+
+# Fetch/set the temp dir to use for spooling large messages to files
+sub message_temp_dir
+{
+    my $self = shift;
+    my $set = shift || 0;
+
+    my $old = $self->{__message_temp_dir};
+    $self->{__message_temp_dir} = $set if ($set);
+
+    $old;
+}
+
 BEGIN
 {
     no strict 'refs';
 
-    for my $method (qw(path host port requests response compress compress_re))
+    # These are immutable member values, so this simple block applies to all
+    for my $method (qw(path host port requests response compress compress_re
+                       parser))
     {
         *$method = sub { shift->{"__$method"} }
     }
@@ -454,6 +491,24 @@ array reference. The contents of that array are passed to the B<new> method
 of the B<RPC::XML::Parser> object that the server object caches for its use.
 See the B<RPC::XML::Parser> manual page for a list of recognized parameters
 to the constructor.
+
+=item message_file_thresh
+
+If this key is passed, the value associated with it is assumed to be a
+numerical limit to the size of in-memory messages. Any out-bound request that
+would be larger than this when stringified is instead written to an anonynous
+temporary file, and spooled from there instead. This is useful for cases in
+which the request includes B<RPC::XML::base64> objects that are themselves
+spooled from file-handles. This test is independent of compression, so even
+if compression of a request would drop it below this threshhold, it will be
+spooled anyway. The file itself is unlinked after the file-handle is created,
+so once it is freed the disk space is immediately freed.
+
+=item message_temp_dir
+
+If a message is to be spooled to a temporary file, this key can define a
+specific directory in which to open those files. If this is not given, then
+the C<tmpdir> method from the B<File::Spec> package is used, instead.
 
 =back
 
@@ -933,6 +988,33 @@ old value is returned.
 
 =back
 
+=head2 Spooling Large Messages
+
+If the server anticipates handling large out-bound messages (for example, if
+the hosted code returns large Base64 values pre-encoded from file handles),
+the C<message_file_thresh> and C<message_temp_dir> settings may be used in a
+manner similar to B<RPC::XML::Client>. Specifically, the threshhold is used to
+determine when a message should be spooled to a filehandle rather than made
+into an in-memory string (the B<RPC::XML::base64> type can use a filehandle,
+thus eliminating the need for the data to ever be completely in memory). An
+anonymous temporary file is used for these operations.
+
+Note that the message size is checked before compression is applied, since the
+size of the compressed output cannot be known until the full message is
+examined. It is possible that a message will be spooled even if its compressed
+size is below the threshhold, if the uncompressed size exceeds the threshhold.
+
+=over 4
+
+=item message_file_thresh
+
+=item message_temp_dir
+
+These methods may be used to retrieve or alter the values of the given keys
+as defined earlier for the C<new> method.
+
+=back
+
 =head1 DIAGNOSTICS
 
 Unless explicitly stated otherwise, all methods return some type of reference
@@ -1139,7 +1221,7 @@ sub server_loop
 
             last if $exit_now;
             next unless $conn;
-            $conn->timeout($self->{__timeout});
+            $conn->timeout($self->timeout);
             $self->process_request($conn);
             $conn->close;
             undef $conn; # Free up any lingering resources
@@ -1161,8 +1243,8 @@ sub server_loop
             if (exists($self->{conf_file}) and (! exists $args{conf_file}));
         unless ($args{conf_file} or $args{port})
         {
-            $args{port} = $self->{port} || $self->{__port} || 9000;
-            $args{host} = $self->{host} || $self->{__host} || '*';
+            $args{port} = $self->{port} || $self->port || 9000;
+            $args{host} = $self->{host} || $self->host || '*';
         }
 
         # Try to load the Net::Server::MultiType module
@@ -1244,7 +1326,8 @@ sub process_request
     my $self = shift;
     my $conn = shift;
 
-    my ($req, $reqxml, $resp, $respxml, $compress);
+    my ($req, $reqxml, $resp, $respxml, $compress, $do_compress, $parser,
+       $com_engine, $length, $read, $buf, $resp_fh);
 
     unless ($conn and ref($conn))
     {
@@ -1253,7 +1336,7 @@ sub process_request
         ${*$conn}{'httpd_daemon'} = $self;
     }
 
-    while ($req = $conn->get_request)
+    while ($req = $conn->get_request('headers only'))
     {
         if ($req->method eq 'HEAD')
         {
@@ -1261,34 +1344,223 @@ sub process_request
             # both as a means of self-identification and a verification
             # of live-status. All the headers were pre-set in the cached
             # HTTP::Response object. Also, we don't count this for stats.
-            $conn->send_response($self->{__response});
+            $conn->send_response($self->response);
         }
         elsif ($req->method eq 'POST')
         {
-            $reqxml = $req->content;
-            # Is the content compressed?
-            $reqxml = Compress::Zlib::uncompress($reqxml)
-                if (($compress = $self->compress) &&
-                    ($req->content_encoding || '') =~ $self->compress_re);
+            # Get a XML::Parser::ExpatNB object
+            $parser = $self->parser->parse();
+
+            if (($req->content_encoding || '') =~ $self->compress_re)
+            {
+                unless ($self->compress)
+                {
+                    $conn->send_error(RC_BAD_REQUEST,
+                                      "$me: Compression not permitted in " .
+                                      'requests');
+                    next;
+                }
+
+                $do_compress = 1;
+            }
+
+            if ($req->content_encoding =~ /chunked/i)
+            {
+                # Technically speaking, we're not supposed to honor chunked
+                # transfer-encoding...
+            }
+            else
+            {
+                $length = $req->content_length;
+                if ($do_compress)
+                {
+                    # Spin up the compression engine
+                    unless ($com_engine = Compress::Zlib::inflateInit())
+                    {
+                        $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                          "$me: Unable to initialize the " .
+                                          'Compress::Zlib engine');
+                        next;
+                    }
+                }
+
+                $buf = '';
+                while ($length)
+                {
+                    if ($buf = $conn->read_buffer)
+                    {
+                        # Anything that get_request read, but didn't use, was
+                        # left in the read buffer. The call to sysread() should
+                        # NOT be made until we've emptied this source, first.
+                        $read = length($buf);
+                        $conn->read_buffer(''); # Clear it, now that it's read
+                    }
+                    else
+                    {
+                        $read = sysread($conn, $buf,
+                                        ($length < 2048) ? $length : 2048);
+                    }
+                    $length -= $read;
+                    if ($do_compress)
+                    {
+                        unless ($buf = $com_engine->inflate($buf))
+                        {
+                            $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                              "$me: Error inflating " .
+                                              'compressed data');
+                            # This error also means that even if Keep-Alive
+                            # is set, we don't know how much of the stream
+                            # is corrupted.
+                            $conn->force_last_request;
+                            next;
+                        }
+                    }
+
+                    eval { $parser->parse_more($buf); };
+                    if ($@)
+                    {
+                        $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                          "$me: Parse error in (compressed) " .
+                                          "XML request (mid): $@");
+                        # Again, the stream is likely corrupted
+                        $conn->force_last_request;
+                        next;
+                    }
+                }
+
+                eval { $reqxml = $parser->parse_done(); };
+                if ($@)
+                {
+                    $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                      "$me: Parse error in (compressed) " .
+                                      "XML request (end): $@");
+                    next;
+                }
+            }
+
             # Dispatch will always return a RPC::XML::response
-            $resp = $self->dispatch(\$reqxml);
-            $respxml = $resp->as_string;
-            # Now clone the pre-fab response and add content
-            $resp = $self->{__response}->clone;
-            if ($compress and (length($respxml) > $self->compress_thresh) and
+            $respxml = $self->dispatch($reqxml);
+
+            # Clone the pre-fab response and set headers
+            $resp = $self->response->clone;
+            # Should we apply compression to the outgoing response?
+            $do_compress = 0; # In case it was set above for incoming data
+            if ($self->compress and
+                ($respxml->length > $self->compress_thresh) and
                 ($req->header('Accept-Encoding') =~ $self->compress_re))
             {
-                $respxml = Compress::Zlib::compress($respxml);
+                $do_compress = 1;
                 $resp->content_encoding($compress);
             }
-            $resp->content($respxml);
-            $resp->content_length(bytelength($respxml));
+            # Next step, determine the response disposition. If it is above the
+            # threshhold for a requested file cut-off, send it to a temp file
+            if ($self->message_file_thresh and
+                $self->message_file_thresh < $respxml->length)
+            {
+                require File::Spec;
+                # Start by creating a temp-file
+                $tmpfile = $self->message_temp_dir || File::Spec->tmpdir;
+                $tmpfile = File::Spec->catfile($tmpfile,
+                                               __PACKAGE__ . $$ . time);
+                unless (open($resp_fh, "+> $tmpfile"))
+                {
+                    $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                      "$me: Error opening $tmpfile: $!");
+                    next;
+                }
+                unlink $tmpfile;
+                # Make it auto-flush
+                my $old_fh = select($resp_fh); $| = 1; select($old_fh);
+
+                # Now that we have it, spool the response to it. This is a
+                # little hairy, since we still have to allow for compression.
+                # And though the response could theoretically be HUGE, in
+                # order to compress we have to write it to a second temp-file
+                # first, so that we can compress it into the primary handle.
+                if ($do_compress)
+                {
+                    my $fh2;
+                    $tmpfile .= '-2';
+                    unless (open($fh2, "+> $tmpfile"))
+                    {
+                        $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                          "$me: Error opening $tmpfile: $!");
+                        next;
+                    }
+                    unlink $tmpfile;
+                    # Make it auto-flush
+                    $old_fh = select($fh2); $| = 1; select($old_fh);
+
+                    # Write the request to the second FH
+                    $respxml->serialize($fh2);
+                    seek($fh2, 0, 0);
+
+                    # Spin up the compression engine
+                    unless ($com_engine = Compress::Zlib::deflateInit())
+                    {
+                        $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                          "$me: Unable to initialize the " .
+                                          'Compress::Zlib engine');
+                        next;
+                    }
+
+                    # Spool from the second FH through the compression engine,
+                    # into the intended FH.
+                    $buf = '';
+                    my $out;
+                    while (read($fh2, $buf, 4096))
+                    {
+                        unless (defined($out = $com_engine->deflate(\$buf)))
+                        {
+                            $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                              "$me: Compression failure in " .
+                                              'deflate()');
+                            next;
+                        }
+                    }
+                    # Make sure we have all that's left
+                    unless (defined($out = $com_engine->flush))
+                    {
+                        $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                          "$me: Compression flush failure in" .
+                                          ' deflate()');
+                        next;
+                    }
+                    print $resp_fh $out;
+
+                    # Close the secondary FH. Rewinding the primary is done
+                    # later.
+                    close($fh2);
+                }
+                else
+                {
+                    $req->serialize($resp_fh);
+                }
+                seek($resp_fh, 0, 0);
+
+                $resp->content_length(-s $resp_fh);
+                $resp->content(sub {
+                                   my $b = '';
+                                   return undef unless
+                                       defined(read($resp_fh, $b, 4096));
+                                   $b;
+                               });
+            }
+            else
+            {
+                # Treat the content strictly in-memory
+                $buf = $respxml->as_string;
+                $buf = Compress::Zlib::compress($buf) if $do_compress;
+                $resp->content($buf);
+                $resp->content_length($respxml->length);
+            }
+
             $conn->send_response($resp);
             undef $resp;
         }
         else
         {
-            $conn->send_error(&HTTP::Status::RC_FORBIDDEN);
+            $conn->send_error(RC_FORBIDDEN);
         }
     }
 
@@ -1323,7 +1595,7 @@ sub dispatch
 
     if (ref($xml) eq 'SCALAR')
     {
-        $reqobj = $self->{__parser}->parse($$xml);
+        $reqobj = $self->parser->parse($$xml);
         return RPC::XML::response
             ->new(RPC::XML::fault->new(200, "XML parse failure: $reqobj"))
                 unless (ref $reqobj);
@@ -1341,7 +1613,7 @@ sub dispatch
     }
     else
     {
-        $reqobj = $self->{__parser}->parse($xml);
+        $reqobj = $self->parser->parse($xml);
         return RPC::XML::response
             ->new(RPC::XML::fault->new(200, "XML parse failure: $reqobj"))
                 unless (ref $reqobj);
