@@ -1,5 +1,10 @@
 Revision history for Perl extension RPC::XML.
 
+0.36	Tue Jan 29 12:11:30 PST 2002
+
+	The file util.pl in the t directory was accidentally omitted from the
+	0.35 release. This release is meant only to correct that oversight.
+
 0.35	Sun Jan 27 16:29:19 PST 2002
 
 	Fixed a small bug in make_method that would have caused a failure if

@@ -55,3 +55,4 @@ t/60_net_server.t
 t/meth_bad_1.xpl
 t/meth_bad_2.xpl
 t/meth_good_1.xpl
+t/util.pl

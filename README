@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.35 (seventh release)
+Version: 0.36 (eighth release)
 
 WHAT IS IT
 
@@ -65,7 +65,6 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-See the ChangeLog file for the full details. There are some very significant
-changes in this release, particularly in terms of the send_request method of
-RPC::XML::Client and the general handling/managing of published routines in the
-server classes. Please see those manual pages, as well, for full details.
+The 0.35 release was sent out missing a new file that was meant as part of the
+regression test suite. 0.36 is issued only for the sake of providing a complete
+distribution.
