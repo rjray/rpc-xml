@@ -51,8 +51,8 @@ fi
 %defattr(-,root,root)
 
 %changelog
-* Fri Aug  10 2001 rjray <rjray@blackperl.com>
-- Spec file template created
-
 * Fri Jan 31 2003  rjray <rjray@blackperl.com>
 - specfile now works again, also under rpm 4.1.
+
+* Fri Aug  10 2001 rjray <rjray@blackperl.com>
+- Spec file template created
