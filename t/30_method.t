@@ -8,7 +8,7 @@ use vars qw($obj $obj2 $flag $dir $tmp);
 use File::Spec;
 use Test;
 
-use RPC::XML::Method;
+use RPC::XML::Procedure;
 
 BEGIN { plan tests => 25 }
 
