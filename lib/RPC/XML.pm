@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.28 2003/03/26 12:10:01 rjray Exp $
+#   $Id: XML.pm,v 1.29 2003/05/19 07:57:46 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -63,7 +63,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.28 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.29 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -1465,11 +1465,17 @@ reference will contain datatype objects (a shallow rather than deep copy).
 Creates a struct object, the analogy of a hash table in Perl. The keys are
 ordinary strings, and the values must all be data-type objects. The C<value>
 method returns a hash table reference, with native Perl types in the values.
-Key order is not preserved. Key strings are not encoded for special XML
-characters, so the use of such (C<E<lt>>, C<E<gt>>, etc.) is discouraged. If a
-non-null value is passed as an argument to C<value()>, then the hash
-reference will contain the datatype objects rather than native Perl data (a
-shallow vs. deep copy, as with the array type above).
+Key order is not preserved. Key strings are now encoded for special XML
+characters, so the use of such (C<E<lt>>, C<E<gt>>, etc.) should be
+transparent to the user. If a non-null value is passed as an argument to
+C<value()>, then the hash reference will contain the datatype objects rather
+than native Perl data (a shallow vs. deep copy, as with the array type above).
+
+When creating B<RPC::XML::struct> objects, there are two ways to pass the
+content in for the new object: Either an existing hash reference may be passed,
+or a series of key/value pairs may be passed. If a reference is passed, the
+existing data is copied (the reference is not re-blessed), with the values
+encoded into new objects as needed.
 
 =item RPC::XML::fault
 
