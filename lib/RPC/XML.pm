@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.14 2002/07/29 00:17:41 rjray Exp $
+#   $Id: XML.pm,v 1.15 2002/08/18 11:51:52 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.14 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.15 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -51,6 +51,7 @@ $ERROR = '';
 sub RPC_STRING           ( $ ) { RPC::XML::string->new($_[0]) }
 sub RPC_BOOLEAN          ( $ ) { RPC::XML::boolean->new($_[0]) }
 sub RPC_INT              ( $ ) { RPC::XML::int->new($_[0]) }
+sub RPC_I4               ( $ ) { RPC::XML::i4->new($_[0]) }
 sub RPC_DOUBLE           ( $ ) { RPC::XML::double->new($_[0]) }
 sub RPC_DATETIME_ISO8601 ( $ ) { RPC::XML::datetime_iso8601->new($_[0]) }
 sub RPC_BASE64           ( $ ) { RPC::XML::base64->new($_[0]) }
@@ -791,7 +792,6 @@ sub as_string
     $text;
 }
 
-
 __END__
 
 =head1 NAME
@@ -869,19 +869,44 @@ classes and I<message> classes.
 =head2 Data Classes
 
 The following data classes are provided by this library. Each of these provide
-at least C<new>, C<value>, C<as_string> and C<is_fault> methods. Note that
-these classes are designed to create throw-away objects. There is currently no
-mechanism for changing the value stored within one of these object after the
-constructor returns. It is assumed that a new object would be created,
-instead.
+at least the set of methods below. Note that these classes are designed to
+create throw-away objects. There is currently no mechanism for changing the
+value stored within one of these object after the constructor returns. It is
+assumed that a new object would be created, instead.
 
-The C<new> methods are constructors, C<value> returns the value stored within
-the object (processed recursively for arrays and structs), and C<as_string>
-stringifies the object as a chunk of XML. The C<is_fault> method always
-returns a false value (0), except when the object itself is of type
-B<RPC::XML::fault>. In that case, the return value is true (1).  indention
-level which is applied as a base indention for output. Other arguments are
-specified with the classes.
+The common methods to all data classes are:
+
+=over 4
+
+=item new($value)
+
+Constructor. The value passed in is the value to be encapsulated in the new
+object.
+
+=item value
+
+Returns the value kept in the object. Processes recursively for C<array> and
+C<struct> objects.
+
+=item as_string
+
+Returns the value as a XML-RPC fragment, with the proper tags, etc.
+
+=item type
+
+Returns the type of data being stored in an object. The type matches the
+XML-RPC specification, so the normalized form C<datetime_iso8601> comes back
+as C<dateTime.iso8601>.
+
+=item is_fault
+
+All types except the fault class return false for this. This is to allow
+consistent testing of return values for fault status, without checking for a
+hash reference with specific keys defined.
+
+=back
+
+The classes themselves are:
 
 =over 4
 
@@ -892,7 +917,9 @@ argument.
 
 =item RPC::XML::i4
 
-This is like the C<int> class.
+This is like the C<int> class. Note that services written in strictly-typed
+languages such as C, C++ or Java may consider the C<i4> and C<int> types as
+distinct and different.
 
 =item RPC::XML::double
 
@@ -931,8 +958,7 @@ Creates an array object. The constructor takes zero or more data-type
 instances as arguments, which are inserted into the array in the order
 specified. C<value> returns an array reference of native Perl types. If a
 non-null value is passed as an argument to C<value()>, then the array
-reference will contain the datatype objects (a shallow copy rather than a deep
-one).
+reference will contain datatype objects (a shallow rather than deep copy).
 
 =item RPC::XML::struct
 
@@ -942,8 +968,8 @@ method returns a hash table reference, with native Perl types in the values.
 Key order is not preserved. Key strings are not encoded for special XML
 characters, so the use of such (C<E<lt>>, C<E<gt>>, etc.) is discouraged. If a
 non-null value is passed as an argument to C<value()>, then the hash
-reference will contain the datatype objects (a shallow copy rather than a deep
-one).
+reference will contain the datatype objects rather than native Perl data (a
+shallow vs. deep copy, as with the array type above).
 
 =item RPC::XML::fault
 
