@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.3 2001/07/30 00:22:53 rjray Exp $
+#   $Id: Parser.pm,v 1.4 2002/05/22 09:44:49 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -86,7 +86,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -158,7 +158,8 @@ sub parse
                                    Char  => sub { char_data $self, @_ },
                                   });
 
-    $parser->parse($stream);
+    eval { $parser->parse($stream) };
+    return $@ if $@;
     # Look at the top-most marker, it'll need to be one of the end cases
     my $marker = pop(@{$self->{stack}});
     # There should be only on item on the stack after it
