@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.17 2003/01/25 10:58:09 rjray Exp $
+#   $Id: Client.pm,v 1.18 2003/02/10 09:32:09 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.17 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.18 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -530,7 +530,7 @@ RPC::XML::Client - An XML-RPC client class
     $cli = RPC::XML::Client->new('http://www.localhost.net/RPCSERV');
     $resp = $cli->send_request('system.listMethods');
 
-    print (ref $resp) ? join(', ', @{$resp->value}) : "Error: $resp";
+    print ref $resp ? join(', ', @{$resp->value}) : "Error: $resp";
 
 =head1 DESCRIPTION
 
