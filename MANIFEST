@@ -42,3 +42,5 @@ methods/status.base
 methods/status.code
 methods/status.help
 t/00_load.t                    # Test suites
+t/10_data.t
+t/20_parser.t
