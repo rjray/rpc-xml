@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.1 2001/04/18 09:28:45 rjray Exp $
+#   $Id: Server.pm,v 1.2 2001/05/08 08:42:56 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -33,23 +33,29 @@ package RPC::XML::Server;
 use 5.005;
 use strict;
 use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR @XPL_PATH);
+use constant WDAY => [ qw(Sun Mon Tue Wed Thu Fri Sat) ];
+use constant MON  => [ qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec) ];
 
 BEGIN {
     ($INSTALL_DIR) = (__FILE__ =~ m|(.*)/|);
     @XPL_PATH = ($INSTALL_DIR, '.');
 }
 
+use Carp 'carp';
 require DirHandle;
 require IO::File;
 require File::Spec;
 
-use HTTP::Status;
+require HTTP::Daemon;
+require HTTP::Response;
+use HTTP::Status; # The only one we import from
+require URI;
 require XML::Parser;
 
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -78,17 +84,18 @@ sub new
     my $class = shift;
     my %args = @_;
 
-    my ($self, $http, $resp, $host, $port, $queue, $path, $URI);
+    my ($self, $http, $resp, $host, $port, $queue, $path, $URI, $srv_name,
+        $srv_version);
 
     $class = ref($class) || $class;
     $self = bless {}, $class;
 
+    $srv_version = $args{server_version} || $RPC::XML::Server::VERSION;
+    $srv_name    = $args{server_name}    || __PACKAGE__;
+    $self->{__version} = "$srv_name/$srv_version";
+
     unless ($args{no_http})
     {
-        require HTTP::Daemon;
-        require HTTP::Response;
-        require URI;
-
         $host = $args{host}   || '';
         $port = $args{port}   || '';
         $queue = $args{queue} || 5;
@@ -100,22 +107,22 @@ sub new
         $URI = URI->new($http->url);
         $self->{__host} = $URI->host;
         $self->{__port} = $URI->port;
-        $resp = new HTTP::Response;
-        return "${class}::new: Unable to create HTTP::Response object"
-            unless $resp;
-        $resp->header(PI_RPC_Version => '1.0',
-                      # This is essentially the same string returned by the
-                      # default "identity" method that may be loaded from a
-                      # XPL file. But it hasn't been loaded yet, and may not be
-                      PI_RPC_Server =>
-                      __PACKAGE__ . "/$RPC::XML::Server::VERSION, CRIS/1.0");
-        $resp->code(RC_OK);
-        $resp->message('OK');
         $self->{__daemon} = $http;
-        $self->{__response} = $resp;
-        # Remove those we've already processed
-        delete @args{qw(host port queue no_http)};
+
+        # Remove those we've processed
+        delete @args{qw(host port queue)};
     }
+    $resp = new HTTP::Response;
+    return "${class}::new: Unable to create HTTP::Response object"
+        unless $resp;
+    $resp->header(# This is essentially the same string returned by the
+                  # default "identity" method that may be loaded from a
+                  # XPL file. But it hasn't been loaded yet, and may not
+                  # be, hence we set it here (possibly from option values)
+                  RPC_Server => $self->{__version});
+    $resp->code(RC_OK);
+    $resp->message('OK');
+    $self->{__response} = $resp;
 
     $self->{__path}            = $args{path} || '';
     $self->{__started}         = 0;
@@ -128,7 +135,7 @@ sub new
     $self->add_default_methods unless ($args{no_default});
 
     # Remove the args we've already dealt with directly
-    delete @args{qw(no_default debug path)};
+    delete @args{qw(no_default no_http debug path server_name server_version)};
     # Copy the rest over untouched
     $self->{$_} = $args{$_} for (keys %args);
 
@@ -143,7 +150,16 @@ sub version { $RPC::XML::Server::VERSION }
 sub url
 {
     my $self = shift;
-    $self->{__daemon} ? $self->{__daemon}->url : undef;
+
+    return $self->{__daemon}->url if $self->{__daemon};
+    return undef unless ($self->{__host});
+
+    "http://$self->{__host}:$self->{__port}$self->{__path}";
+}
+
+sub product_tokens
+{
+    "RPC::XML::Server/$RPC::XML::Server::VERSION";
 }
 
 # This fetches/sets the internal "started" timestamp
@@ -182,7 +198,7 @@ sub debug    { shift->{__debug} }
 #                   Failure:    error string
 #
 ###############################################################################
-sub add_method ($$)
+sub add_method
 {
     my $self = shift;
     my $meth = shift;
@@ -293,7 +309,7 @@ sub method_to_ref
 #                   $self     in      ref       Class instance
 #                   %args     in      hash      Config settings
 #
-#   Globals:        $RPC::XML::Compatible
+#   Globals:        None.
 #
 #   Environment:    None.
 #
@@ -305,59 +321,198 @@ sub accept_loop
     my $self = shift;
     my %args = @_;
 
-    my ($conn, $req, $resp, $reqxml, $return, $respxml);
+    my ($conn, $req, $resp, $reqxml, $return, $respxml, $exit_now, $timeout);
 
     return unless $self->{__daemon};
     # Localize and set the signal handler as an exit route
     local %SIG;
     if (exists $args{signal})
     {
-        $SIG{$args{signal}} = sub { goto LOOP_EXIT; }
+        $SIG{$args{signal}} = sub { $exit_now++; }
             unless ($args{signal} eq 'NONE');
     }
     else
     {
-        $SIG{QUIT} = sub { goto LOOP_EXIT; };
+        $SIG{QUIT} = sub { $exit_now++; };
     }
 
     $self->started('set');
-    while ($conn = $self->{__daemon}->accept)
+    $exit_now = 0;
+    $timeout = $self->{__daemon}->timeout(1);
+    while (1)
     {
-        while ($req = $conn->get_request)
-        {
-            if ($req->method eq 'HEAD')
-            {
-                # The HEAD method will be answered with our return headers,
-                # both as a means of self-identification and a verification
-                # of live-status. All the headers were pre-set in the cached
-                # HTTP::Response object. Also, we don't count this for stats.
-                $conn->send_response($self->{__response});
-            }
-            elsif ($req->method eq 'POST')
-            {
-                # A request! WOW!
-                $reqxml = $req->content;
-                # Dispatch will always return a RPC::XML::response
-                $resp = $self->dispatch(\$reqxml);
-                $respxml = $resp->as_string;
-                # Now clone the pre-fab response and add content
-                $resp = $self->{__response}->clone;
-                $resp->content($respxml);
-                $conn->send_response($resp);
-                undef $resp;
-                $self->{__requests}++;
-            }
-            else
-            {
-                $conn->send_error(RC_FORBIDDEN);
-            }
-        }
+        $conn = $self->{__daemon}->accept;
+
+        last if $exit_now;
+        next unless $conn;
+        process_request($self, $conn);
         $conn->close;
         undef $conn; # Free up any lingering resources
     }
 
-    # I *do* hate labels and crap, but the HTTP::Daemon::accept call forces me
-  LOOP_EXIT:
+    $self->{__daemon}->timeout($timeout);
+    return;
+}
+
+###############################################################################
+#
+#   Sub Name:       server_loop
+#
+#   Description:    Enter a server-loop situation, only usable if this object
+#                   has access to the Net::Server package.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   %args     in      hash      Additional parameters to set up
+#                                                 before calling the superclass
+#                                                 Run method
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        string if error, otherwise void
+#
+###############################################################################
+sub server_loop
+{
+    my $self = shift;
+    my %args = @_;
+
+    # Don't do this next part if they've already given a port, or are pointing
+    # to a config file:
+    unless ($args{conf_file} or $args{port})
+    {
+        $args{port} = $self->{port} || $self->{__port} || 9000;
+        $args{host} = $self->{host} || $self->{__host} || '*';
+    }
+
+    # Try to load the Net::Server::MultiType module
+    eval { require Net::Server::MultiType; };
+    return ref($self) .
+        "::server_loop: Error loading Net::Server::MultiType: $@"
+            if ($@);
+    unshift(@RPC::XML::Server::ISA, 'Net::Server::MultiType');
+
+    $self->started('set');
+    # ...and we're off!
+    $self->run(%args);
+
+    return;
+}
+
+###############################################################################
+#
+#   Sub Name:       post_configure_loop
+#
+#   Description:    Called by the Net::Server classes after all the config
+#                   steps have been done and merged.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Class object
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        $self
+#
+###############################################################################
+sub post_configure_hook
+{
+    my $self = shift;
+
+    $self->{__host} = $self->{server}->{host};
+    $self->{__port} = $self->{server}->{port};
+
+    $self;
+}
+
+###############################################################################
+#
+#   Sub Name:       pre_loop_hook
+#
+#   Description:    Called by Net::Server classes after the post_bind method,
+#                   but before the socket-accept loop starts.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object instance
+#
+#   Globals:       %ENV
+#
+#   Environment:    None.
+#
+#   Returns:        $self
+#
+###############################################################################
+sub pre_loop_hook
+{
+    # We have to disable the __DIE__ handler for the sake of XML::Parser::Expat
+    $SIG{__DIE__} = '';
+}
+
+###############################################################################
+#
+#   Sub Name:       process_request
+#
+#   Description:    This is provided for the case when we run as a subclass
+#                   of Net::Server.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       This class object
+#                   $conn     in      ref       If present, it's a connection
+#                                                 object from HTTP::Daemon
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        void
+#
+###############################################################################
+sub process_request
+{
+    my $self = shift;
+    my $conn = shift;
+
+    my ($req, $reqxml, $resp, $respxml);
+
+    unless ($conn and ref($conn))
+    {
+        $conn = $self->{server}->{client};
+        bless $conn, 'HTTP::Daemon::ClientConn';
+        ${*$conn}{'httpd_daemon'} = $self;
+    }
+
+    while ($req = $conn->get_request)
+    {
+        if ($req->method eq 'HEAD')
+        {
+            # The HEAD method will be answered with our return headers,
+            # both as a means of self-identification and a verification
+            # of live-status. All the headers were pre-set in the cached
+            # HTTP::Response object. Also, we don't count this for stats.
+            $conn->send_response($self->{__response});
+        }
+        elsif ($req->method eq 'POST')
+        {
+            $reqxml = $req->content;
+            # Dispatch will always return a RPC::XML::response
+            $resp = $self->dispatch(\$reqxml);
+            $respxml = $resp->as_string;
+            # Now clone the pre-fab response and add content
+            $resp = $self->{__response}->clone;
+            $resp->content($respxml);
+            $conn->send_response($resp);
+            undef $resp;
+            $self->{__requests}++;
+        }
+        else
+        {
+            $conn->send_error(RC_FORBIDDEN);
+        }
+    }
+
     return;
 }
 
