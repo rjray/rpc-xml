@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.7 2001/06/26 05:27:49 rjray Exp $
+#   $Id: Server.pm,v 1.8 2001/07/30 00:22:53 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -44,7 +44,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -580,12 +580,12 @@ environment:
 
     # First, create and configure some Apache::RPC::Server objects
     my %obj_table;
-    my $defobj = new Apache::RPC::Server (path         => '/RPC',
+    my $defobj = Apache::RPC::Server->new(path         => '/RPC',
                                           auto_methods => 1,
                                           auto_updates => 1);
     $obj_table{'/RPC'} = $defobj;
     $obj_table('/rpc-secured'} =
-        new Apache::RPC::Server (no_default => 1,
+        Apache::RPC::Server->new(no_default => 1,
                                  path => '/rpc-secured');
 
     # Imagine that add_method and/or add_methods_in_dir has been used to
@@ -621,9 +621,10 @@ is called to note internal errors.
 
 =head1 CAVEATS
 
-This is a reference implementation in which clarity of process and readability
-of the code took precedence over general efficiency. Much, if not all, of this
-can be written more compactly and/or efficiently.
+This began as a reference implementation in which clarity of process and
+readability of the code took precedence over general efficiency. It is now
+being maintained as production code, but may still have parts that could be
+written more efficiently.
 
 =head1 CREDITS
 
@@ -634,7 +635,7 @@ specification.
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
+Perl. See <http://language.perl.com/misc/Artistic.html> for the
 license itself.
 
 =head1 SEE ALSO

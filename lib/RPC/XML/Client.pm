@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.3 2001/06/08 09:13:23 rjray Exp $
+#   $Id: Client.pm,v 1.4 2001/07/30 00:22:53 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -45,7 +45,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -226,23 +226,23 @@ __END__
 
 =head1 NAME
 
-RPC::XML::Client - Sample implementation of a RPC::XML client
+RPC::XML::Client - An XML-RPC client class
 
 =head1 SYNOPSIS
 
     require RPC::XML;
     require RPC::XML::Client;
 
-    $cli = new RPC::XML::Client 'http://www.localhost.net/RPCSERV';
+    $cli = RPC::XML::Client->new('http://www.localhost.net/RPCSERV');
     $resp = $cli->send_request(RPC::XML::request->new('system.listMethods');
 
     # Assuming a successful return, should produce a well-formed XML doc
-    print $resp->as_string;
+    print (ref $resp) ? $resp->as_string : "Error: $resp";
 
 =head1 DESCRIPTION
 
-This is a sample XML-RPC client built upon the B<RPC::XML> data classes, and
-using B<LWP::UserAgent> and B<HTTP::Request> for the communication layer. This
+This is an XML-RPC client built upon the B<RPC::XML> data classes, and using
+B<LWP::UserAgent> and B<HTTP::Request> for the communication layer. This
 client supports the full XML-RPC specification.
 
 =head1 METHODS
@@ -311,9 +311,10 @@ failure. Non-reference return values should always be interpreted as errors.
 
 =head1 CAVEATS
 
-This is a reference implementation in which clarity of process and readability
-of the code took precedence over general efficiency. Much, if not all, of this
-can be written more compactly and/or efficiently.
+This began as a reference implementation in which clarity of process and
+readability of the code took precedence over general efficiency. It is now
+being maintained as production code, but may still have parts that could be
+written more efficiently.
 
 =head1 CREDITS
 
@@ -324,8 +325,8 @@ specification.
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
-license itself.
+Perl. See <http://language.perl.com/misc/Artistic.html> for the license
+itself.
 
 =head1 SEE ALSO
 

@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.2 2001/06/08 09:13:50 rjray Exp $
+#   $Id: Parser.pm,v 1.3 2001/07/30 00:22:53 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -86,7 +86,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -334,7 +334,7 @@ sub tag_end
                      'Only a <struct> value may be within a <fault>')
             unless ($obj->isa('RPC::XML::struct'));
 
-        $obj = new RPC::XML::fault $obj;
+        $obj = RPC::XML::fault->new($obj);
         return error($robj, $self, 'Unable to instantiate fault object: ' .
                             $RPC::XML::ERROR)
             unless $obj;
@@ -493,7 +493,7 @@ RPC::XML::Parser - A container class for XML::Parser
 
     use RPC::XML::Parser;
     ...
-    $P = new RPC::XML::Parser;
+    $P = RPC::XML::Parser->new();
     $P->parse($message);
 
 =head1 DESCRIPTION
@@ -530,9 +530,10 @@ in the global variable B<C<$RPC::XML::ERROR>>.
 
 =head1 CAVEATS
 
-This is part of a reference implementation in which clarity of process and
-readability of the code take precedence over general efficiency. Much, if not
-all, of this can be written more compactly and/or efficiently.
+This began as a reference implementation in which clarity of process and
+readability of the code took precedence over general efficiency. It is now
+being maintained as production code, but may still have parts that could be
+written more efficiently.
 
 =head1 CREDITS
 
@@ -543,7 +544,7 @@ specification.
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
+Perl. See <http://language.perl.com/misc/Artistic.html> for the
 license itself.
 
 =head1 SEE ALSO

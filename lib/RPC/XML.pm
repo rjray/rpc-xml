@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.5 2001/07/08 10:03:39 rjray Exp $
+#   $Id: XML.pm,v 1.6 2001/07/30 00:22:53 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -94,11 +94,11 @@ sub smart_encode
             }
             elsif ($type eq 'HASH')
             {
-                $type = new RPC::XML::struct $_;
+                $type = RPC::XML::struct->new($_);
             }
             elsif ($type eq 'ARRAY')
             {
-                $type = new RPC::XML::array $_;
+                $type = RPC::XML::array->new($_);
             }
             else
             {
@@ -109,16 +109,16 @@ sub smart_encode
         # You have to check ints first, because they match the next pattern too
         elsif (/^[-+]?\d+$/)
         {
-            $type = new RPC::XML::int $_;
+            $type = RPC::XML::int->new($_);
         }
         # Pattern taken from perldata(1)
         elsif (/^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/)
         {
-            $type = new RPC::XML::double $_;
+            $type = RPC::XML::double->new($_);
         }
         else
         {
-            $type = new RPC::XML::string $_;
+            $type = RPC::XML::string->new($_);
         }
 
         $type;
@@ -949,7 +949,7 @@ RPC::XML - A set of classes for core data, message and XML handling
 
     use RPC::XML;
 
-    $req = new RPC::XML::request ('fetch_prime_factors',
+    $req = RPC::XML::request->new('fetch_prime_factors',
                                   RPC::XML::int->new(985120528));
     ...
     $resp = RPC::XML::Parser->new()->parse(STREAM);
@@ -1200,11 +1200,10 @@ in the package-global variable B<C<$RPC::XML::ERROR>>.
 
 =head1 CAVEATS
 
-As was stated at the beginning, this is a reference implementation in which
-clarity of process and readability of the code took precedence over general
-efficiency. Much, if not all, of this can be written more compactly and/or
-efficiently. However, if done that will be done in a separate module so that
-this remains legible to the casual programmer.
+This began as a reference implementation in which clarity of process and
+readability of the code took precedence over general efficiency. It is now
+being maintained as production code, but may still have parts that could be
+written more efficiently.
 
 =head1 CREDITS
 
@@ -1215,7 +1214,7 @@ specification.
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
+Perl. See <http://language.perl.com/misc/Artistic.html> for the
 license itself.
 
 =head1 SEE ALSO

@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.14 2001/07/08 23:25:27 rjray Exp $
+#   $Id: Server.pm,v 1.15 2001/07/30 00:22:53 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -74,7 +74,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.14 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.15 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -118,7 +118,7 @@ sub new
         $host = $args{host}   || '';
         $port = $args{port}   || '';
         $queue = $args{queue} || 5;
-        $http = new HTTP::Daemon (($host ? (LocalHost => $host) : ()),
+        $http = HTTP::Daemon->new(($host ? (LocalHost => $host) : ()),
                                   ($port ? (LocalPort => $port) : ()),
                                   ($queue ? (Listen => $queue)  : ()));
         return "${class}::new: Unable to create HTTP::Daemon object"
@@ -131,7 +131,7 @@ sub new
         # Remove those we've processed
         delete @args{qw(host port queue)};
     }
-    $resp = new HTTP::Response;
+    $resp = HTTP::Response->new();
     return "${class}::new: Unable to create HTTP::Response object"
         unless $resp;
     $resp->header(# This is essentially the same string returned by the
@@ -152,7 +152,7 @@ sub new
     $self->{__auto_methods}    = $args{auto_methods} || 0;
     $self->{__auto_updates}    = $args{auto_updates} || 0;
     $self->{__debug}           = $args{debug} || 0;
-    $self->{__parser}          = new RPC::XML::Parser;
+    $self->{__parser}          = RPC::XML::Parser->new();
     $self->{__xpl_path}        = $args{xpl_path} || [];
 
     $self->add_default_methods unless ($args{no_default});
@@ -313,7 +313,7 @@ RPC::XML::Server - A sample server implementation based on RPC::XML
     use RPC::XML::Server;
 
     ...
-    $srv = new RPC::XML::Server (port => 9000);
+    $srv = RPC::XML::Server->new(port => 9000);
     # Several of these, most likely:
     $srv->add_method(...);
     ...
@@ -848,9 +848,10 @@ always be interpreted as errors unless otherwise noted.
 
 =head1 CAVEATS
 
-This is a reference implementation in which clarity of process and readability
-of the code took precedence over general efficiency. Much, if not all, of this
-can be written more compactly and/or efficiently.
+This began as a reference implementation in which clarity of process and
+readability of the code took precedence over general efficiency. It is now
+being maintained as production code, but may still have parts that could be
+written more efficiently.
 
 =head1 CREDITS
 
@@ -861,7 +862,7 @@ specification.
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
+Perl. See <http://language.perl.com/misc/Artistic.html> for the
 license.
 
 =head1 SEE ALSO
