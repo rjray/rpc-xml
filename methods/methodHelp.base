@@ -3,3 +3,6 @@ Version:   1.0
 Hidden:    no
 Signature: string string
 Signature: array array
+Helpfile:  methodHelp.help
+Package:   RPC::XML::Server::__methods__
+Code:      methodHelp.code
