@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.19 2003/02/18 08:59:02 rjray Exp $
+#   $Id: Client.pm,v 1.20 2020/05/14 09:22:07 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.19 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.20 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -337,8 +337,9 @@ sub send_request
 
         if ($compression)
         {
-            die "$me: Error in inflate() expanding data"
-                unless ($data = $com_engine->inflate($data));
+            my $error;
+            die "$me: Error in inflate() expanding data: $error"
+                unless (($data, $error) = $com_engine->inflate($data));
         }
 
         $parser->parse_more($data);
@@ -350,7 +351,7 @@ sub send_request
     {
         # One of the die's was triggered
         return (ref($self->error_handler) eq 'CODE') ?
-            $self->error_handler->($@) : $@;
+            $self->error_handler->($message) : $message;
     }
     unless ($response->is_success)
     {
