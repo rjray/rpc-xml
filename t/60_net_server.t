@@ -105,9 +105,8 @@ $res = $client->send_request('system.methodHelp', 'system.teaseMe');
 ok(ref($res) && $res->is_fault() && $res->string() =~ /Method.*unknown/);
 
 # system.methodSignature
-$res = $client->simple_request('system.methodSignature', 'system.methodHelp')
-    ;
-ok(join('', sort @$res) eq
+$res = $client->simple_request('system.methodSignature', 'system.methodHelp');
+ok(join('', sort (map { join(' ', @$_) } @$res)) eq
    join('', sort @{ $srv->get_method('system.methodHelp')->{signature} }));
 
 # system.methodSignature, with an invalid request

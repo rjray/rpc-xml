@@ -278,7 +278,7 @@ $res = $UA->request($req);
 alarm(0);
 $res = ($res->is_error) ? '' : $parser->parse($res->content);
 $meth = $srv->get_method('system.methodHelp');
-ok(join('', sort @{ $res->value->value }) eq
+ok(join('', sort (map { join(' ', @$_) } @{ $res->value->value })) eq
    join('', sort @{ $meth->{signature} }));
 
 #

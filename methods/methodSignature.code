@@ -32,8 +32,8 @@ sub methodSignature
     {
         if (ref($method = $srv->get_method($_)) and (! $method->hidden))
         {
-            $list = $method->signature;
-            push(@results, [ @$list ]);
+            push(@results,
+                 [ map { [ split(/ /) ] } @{$method->signature} ]);
         }
         else
         {
