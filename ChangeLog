@@ -1,5 +1,16 @@
 Revision history for Perl extension RPC::XML.
 
+0.37	Fri Mar 22 22:16:08 PST 2002
+
+	Applied a patch to RPC::XML::Server from Tino Wuensche
+	(<tino_wuensche@yahoo.com>) that fixed some of the signal-handling
+	and exit-case-handling in server_loop().
+
+	Fixed a bug in RPC::XML::Procedure found by a user (a former
+	co-worker from my Denver days, coincidentally enough) that would
+	trigger when auto_methods was set to 1 on a server object, but the
+	request had no matching file anywhere in the search path.
+
 0.36	Tue Jan 29 12:11:30 PST 2002
 
 	The file util.pl in the t directory was accidentally omitted from the
