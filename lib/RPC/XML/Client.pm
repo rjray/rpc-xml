@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.5 2002/01/24 06:52:51 rjray Exp $
+#   $Id: Client.pm,v 1.6 2002/01/27 23:16:13 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -147,7 +147,7 @@ sub simple_request
 
     $RPC::XML::ERROR = '';
 
-    $return = $self->send_request($args[0]);
+    $return = $self->send_request(@args);
     unless (ref $return)
     {
         $RPC::XML::ERROR = ref($self) . "::simple_request: $return";
@@ -195,7 +195,7 @@ sub send_request
     unless ($response->is_success)
     {
         $message =  "$me: HTTP server error: " . $response->message;
-        return (exists $self->{__error_cb}) ?
+        return (ref($self->{__error_cb}) eq 'CODE') ?
             $self->{__error_cb}->($message) : $message;
     }
 
@@ -208,12 +208,12 @@ sub send_request
     if (! ref($value))
     {
         $message =  "$me: parse-level error: $value";
-        return (exists $self->{__error_cb}) ?
+        return (ref($self->{__error_cb}) eq 'CODE') ?
             $self->{__error_cb}->($message) : $message;
     }
     elsif ($value->is_fault)
     {
-        return (exists $self->{__fault_cb}) ?
+        return (ref($self->{__fault_cb}) eq 'CODE') ?
             $self->{__fault_cb}->($value->value) : $value->value;
     }
 
@@ -250,6 +250,8 @@ sub fault_handler
 
     my $val = $self->{__fault_cb};
     $self->{__fault_cb} = $newval if ($newval and ref($newval));
+    # Special: an explicit undef is used to clear the callback
+    $self->{__fault_cb} = undef if (@_ == 2 and (! defined $newval));
 
     $val;
 }
@@ -259,6 +261,8 @@ sub error_handler
 
     my $val = $self->{__error_cb};
     $self->{__error_cb} = $newval if ($newval and ref($newval));
+    # Special: an explicit undef is used to clear the callback
+    $self->{__error_cb} = undef if (@_ == 2 and (! defined $newval));
 
     $val;
 }
