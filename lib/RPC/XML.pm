@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.23 2003/01/20 08:08:41 rjray Exp $
+#   $Id: XML.pm,v 1.24 2003/01/30 08:44:08 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -59,7 +59,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.23 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.24 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -625,7 +625,7 @@ sub value
         # This is simplified into two cases (rather than four) since we always
         # keep in-memory data as cleartext
         return $as_base64 ?
-            MIME::Base64::encode_base64($self->{value}) : $self->{value};
+            MIME::Base64::encode_base64($self->{value}, '') : $self->{value};
     }
     else
     {
@@ -658,7 +658,7 @@ sub value
                 $res = '';
                 while (read($self->{value_fh}, $res, 60*57))
                 {
-                    $accum .= MIME::Base64::encode_base64($res);
+                    $accum .= MIME::Base64::encode_base64($res, '');
                 }
             }
             else
@@ -721,7 +721,7 @@ sub serialize
             # on ideal Base-64 chunks, with the 60 part being arbitrary.
             while (read($self->{value_fh}, $buf, 60*57))
             {
-                print $fh &MIME::Base64::encode_base64($buf);
+                print $fh &MIME::Base64::encode_base64($buf, '');
             }
         }
         print $fh '</base64>';
@@ -743,7 +743,7 @@ sub length
     if ($self->{inmem})
     {
         # If it's in-memory, it's cleartext. Size the encoded version
-        $len += length(MIME::Base64::encode_base64($self->{value}));
+        $len += length(MIME::Base64::encode_base64($self->{value}, ''));
     }
     else
     {
@@ -762,7 +762,7 @@ sub length
             seek($self->{value_fh}, 0, 0);
             while ($cnt = read($self->{value_fh}, $buf, 60*57))
             {
-                $len += length(MIME::Base64::encode_base64($buf));
+                $len += length(MIME::Base64::encode_base64($buf, ''));
             }
             seek($self->{value_fh}, $self->{fh_pos}, 0);
         }
