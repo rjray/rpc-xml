@@ -4,11 +4,11 @@ Makefile.PL                    # MakeMaker skeleton
 README                         # Overview
 etc/make_method                # Tool to create *.xpl files
 etc/rpc-method.dtd             # DTD for the *.xpl file structure
-#Apache/RPC/Server.pm           # Apache-centric server implementation
-RPC/XML.pm                     # Base data-type manipuation, etc.
-RPC/XML/Client.pm              # Reference client implementation
-RPC/XML/Parser.pm              # Parser class for client and server
-RPC/XML/Server.pm              # Reference server implementation
+lib/Apache/RPC/Server.pm       # Apache-centric server implementation
+lib/RPC/XML.pm                 # Base data-type manipuation, etc.
+lib/RPC/XML/Client.pm          # Reference client implementation
+lib/RPC/XML/Parser.pm          # Parser class for client and server
+lib/RPC/XML/Server.pm          # Reference server implementation
 methods/identity.code          # Everything under method/ is template for the
 methods/identity.help          # etc/make_method tool to create *.xpl files.
 methods/identity.text

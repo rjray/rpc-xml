@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.1 2001/04/18 09:28:44 rjray Exp $
+# $Id: Makefile.PL,v 1.2 2001/06/05 18:41:22 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -18,12 +18,10 @@ $CLEAN   = File::Spec->catfile(qw(methods *.xpl));
 @PM_FILES = ();
 @XPL_FILES = ();
 
-find(sub { push(@PM_FILES, $File::Find::name) if (-f $_ and /\.pm$/) },
-    'RPC');
+find(sub { push(@PM_FILES, $File::Find::name) if (-f $_ and /\.pm$/) }, 'lib');
 find(sub { push(@XPL_FILES, $_) if (-f $_ and /\.code$/) }, 'methods');
-for (@XPL_FILES) { s/\.code$//; }
 
-%PM_FILES = map { ($temp = $_) =~ s|^|\$\(INST_LIB\)/|; $_ => $temp }
+%PM_FILES = map { ($temp = $_) =~ s|^lib|\$\(INST_LIB\)|; $_ => $temp }
     @PM_FILES;
 for (@XPL_FILES)
 {
