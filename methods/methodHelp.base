@@ -1,5 +1,5 @@
 Name:		system.methodHelp
-Version:	1.0
+Version:	1.1
 Hidden:		no
 Signature:	string string
 Signature:	array array
