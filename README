@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.44
+Version: 0.45
 
 WHAT IS IT
 
@@ -65,20 +65,8 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-Cleaned up the exports list in RPC::XML.pm, which still had remnants
-from when this package was intended to extend XML-RPC. There were no
-routines to match the symbols, but the potential for error was there.
+Fixed a problem in the test-usage of the bytes pragma in RPC::XML,
+reported by Marc Jauvin.
 
-Fixed a typo in the docs for RPC::XML::Client, and some documentation
-goofs in RPC::XML::Server (regarding the timeout method/option). A
-few doc fixes in RPC::XML::Procedure, for good measure.
-
-Implemented two fixes sent in by Marc Liyanage: a fix for setting the
-Content-Length headers on messages that takes the length in bytes
-rather than characters; the second is a fix around the compression
-support that makes certain an undef isn't evaluated against the
-regex.
-
-The above added an exported function to RPC::XML, so that got
-documented. In the process, it occurred to me to document the helper
-functions like RPC_BOOLEAN, RPC_DOUBLE, etc.
+Closed a potential security hole in the parsing of external entities,
+pointed out by Gregory Steuck.

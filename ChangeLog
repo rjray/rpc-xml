@@ -1,5 +1,13 @@
 Revision history for Perl extension RPC::XML.
 
+0.45	Tue Oct 29 21:06:00 PST 2002
+
+	Fixed a problem in the test-usage of the bytes pragma in RPC::XML,
+	reported by Marc Jauvin.
+
+	Closed a potential security hole in the parsing of external entities,
+	pointed out by Gregory Steuck.
+
 0.44	Fri Aug 30 23:44:08 PDT 2002
 
 	Cleaned up the exports list in RPC::XML.pm, which still had remnants
