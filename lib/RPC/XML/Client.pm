@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.20 2020/05/14 09:22:07 rjray Exp $
+#   $Id: Client.pm,v 1.21 2004/12/08 09:10:43 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.20 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.21 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -203,7 +203,7 @@ sub send_request
     my ($me, $message, $response, $reqclone, $content, $can_compress, $value,
         $do_compress, $req_fh, $tmpfile, $com_engine);
 
-    $me = ref($self) . ':send_request';
+    $me = ref($self) . '::send_request';
 
     if (! UNIVERSAL::isa($req, 'RPC::XML::request'))
     {
@@ -218,7 +218,7 @@ sub send_request
     $reqclone->header(Host => URI->new($reqclone->uri)->host);
     $can_compress = $self->compress; # Avoid making 4+ calls to the method
     if ($self->compress_requests and $can_compress and
-        $req->length > $self->compress_thresh)
+        $req->length >= $self->compress_thresh)
     {
         # If this is a candidate for compression, set a flag and note it
         # in the Content-encoding header.
@@ -230,12 +230,12 @@ sub send_request
     # threshhold for a requested file cut-off, send it to a temp file and use
     # a closure on the request object to manage content.
     if ($self->message_file_thresh and
-        $self->message_file_thresh < $req->length)
+        $self->message_file_thresh <= $req->length)
     {
         require File::Spec;
         require Symbol;
         # Start by creating a temp-file
-        $tmpfile = $self->message_temp_dir || File::Spec->tmpdir;
+	$tmpfile = $self->message_temp_dir || File::Spec->tmpdir;
         $tmpfile = File::Spec->catfile($tmpfile, __PACKAGE__ . $$ . time);
         $req_fh = Symbol::gensym();
         return "$me: Error opening $tmpfile: $!"
@@ -249,9 +249,9 @@ sub send_request
         # request could theoretically be HUGE, in order to compress we have to
         # write it to a second temp-file first, so that we can compress it
         # into the primary handle.
-        if ($do_compress)
+        if ($do_compress && ($req->length >= $self->compress_thresh))
         {
-            my $fh2 = Symbol::gensym();
+	    my $fh2 = Symbol::gensym();
             $tmpfile .= '-2';
             return "$me: Error opening $tmpfile: $!"
                 unless (open($fh2, "+> $tmpfile"));
@@ -726,7 +726,7 @@ outgoing messages that are longer than the threshhold setting in bytes.
 With no arguments, returns the current compression threshhold; messages
 smaller than this number of bytes will not be compressed, regardless of the
 above method setting. If a number is passed, this is set to the new
-lower-limit. The default value is 4096.
+lower-limit. The default value is 4096 (4k).
 
 =back
 
