@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.1 2001/04/18 09:28:45 rjray Exp $
+#   $Id: XML.pm,v 1.2 2001/06/08 09:16:40 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -1195,6 +1195,12 @@ this remains legible to the casual programmer.
 The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
 See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
 specification.
+
+=head1 LICENSE
+
+This module is licensed under the terms of the Artistic License that covers
+Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
+license itself.
 
 =head1 SEE ALSO
 
