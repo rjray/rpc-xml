@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.2 2001/06/07 03:59:03 rjray Exp $
+#   $Id: Server.pm,v 1.3 2001/06/07 09:26:49 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -42,9 +42,11 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
+
+sub version { $Apache::RPC::Server::VERSION }
 
 ###############################################################################
 #
@@ -119,6 +121,35 @@ sub handler ($$)
 
 ###############################################################################
 #
+#   Sub Name:       init_handler
+#
+#   Description:    Provide a handler for the PerlChildInitHandler phase that
+#                   walks through the table of server objects and updates the
+#                   child_started time on each.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $class    in      scalar    Calling class (this is a method
+#                                                 handler)
+#                   $r        in      ref       Apache reference object
+#
+#   Globals:        %SERVER_TABLE
+#
+#   Environment:    None.
+#
+#   Returns:        1
+#
+###############################################################################
+sub init_handler ($$)
+{
+    my ($class, $r) = @_;
+
+    $_->child_started(1) for (values %Apache::RPC::Server::SERVER_TABLE);
+
+    1;
+}
+
+###############################################################################
+#
 #   Sub Name:       new
 #
 #   Description:    Create a new server object, which is blessed into this
@@ -164,9 +195,10 @@ sub new
     # Create the object, ensuring that the defaults are not yet loaded:
     $self = $class->SUPER::new(no_default => 1, @argz);
     return $self unless (ref $self); # Non-ref means an error message
+    $self->started('set');
     $self->add_default_methods(-except => 'status.xpl');
     $self->add_method('status.xpl');  # This should find the Apache one instead
-    
+
     # Determine what methods we are configuring for this server instance
     @dirs    = $R->dir_config->get("${prefix}RpcMethodDir");
     @files   = $R->dir_config->get("${prefix}RpcMethod");
@@ -185,6 +217,18 @@ sub new
     }
 
     $self;
+}
+
+# Accessor similar to started() that has a time localized to this child process
+sub child_started
+{
+    my $self = shift;
+    my $set  = shift || 0;
+
+    my $old = $self->{__child_started} || $self->{__started} || 0;
+    $self->{__child_started} = time if $set;
+
+    $old;
 }
 
 ###############################################################################
