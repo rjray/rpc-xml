@@ -1,17 +1,23 @@
 #!/usr/bin/perl
 
+use strict;
+use vars qw(@MODULES);
+
+use Test;
+
 # Verify that the individual modules will load
 
-@MODULES = qw(RPC::XML RPC::XML::Parser RPC::XML::Client RPC::XML::Server);
+BEGIN
+{
+    @MODULES = qw(RPC::XML RPC::XML::Parser RPC::XML::Client RPC::XML::Server
+                  Apache::RPC::Server);
+    plan tests => scalar(@MODULES);
+}
 
-printf "1..%d\n", scalar(@MODULES);
-
-$count = 0;
 for (@MODULES)
 {
     eval "use $_";
-
-    printf "%sok %d\n", ($@) ? 'not ' : '', ++$count;
+    ok(! $@);
 }
 
 exit 0;
