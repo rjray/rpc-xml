@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Method.pm,v 1.2 2001/10/04 07:36:00 rjray Exp $
+#   $Id: Method.pm,v 1.3 2001/10/06 10:20:39 rjray Exp $
 #
 #   Description:    This class abstracts out all the method-related operations
 #                   from the RPC::XML::Server class
@@ -24,6 +24,9 @@
 #                   hidden      /
 #                   add_signature
 #                   delete_signature
+#                   make_sig_table
+#                   match_signature
+#                   reload
 #                   load_XPL_file
 #
 #   Libraries:      XML::Parser (used only on demand in load_XPL_file)
@@ -40,12 +43,13 @@ package RPC::XML::Method;
 use 5.005;
 use strict;
 use vars qw($VERSION);
-use subs qw(new check name code signature add_sig del_sig help version hidden
-            load_XPL_file);
+use subs qw(new is_valid name code signature help version hidden
+            add_signature delete_signature make_sig_table match_signature
+            reload load_XPL_file);
 
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -117,6 +121,8 @@ sub new
     }
 
     bless $data, $class;
+    # This needs to happen post-bless in case of error (for error messages)
+    $data->make_sig_table;
 }
 
 ###############################################################################
@@ -246,6 +252,92 @@ sub delete_signature
 
 ###############################################################################
 #
+#   Sub Name:       make_sig_table
+#
+#   Description:    Create a hash table of the signatures that maps to the
+#                   corresponding return type for that particular invocation.
+#                   Makes looking up call patterns much easier.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#
+#   Returns:        Success:    $self
+#                   Failure:    error message
+#
+###############################################################################
+sub make_sig_table
+{
+    my $self = shift;
+
+    my ($sig, $return, $rest);
+
+    delete $self->{sig_table};
+    for $sig (@{$self->{signature}})
+    {
+        ($return, $rest) = split(/ /, $sig, 2);
+        # If the key $rest already exists, then this is a collision
+        return ref($self) . '::make_sig_table: Cannot have two different ' .
+            "return values for one set of params ($return vs. " .
+            "$self->{sig_table}->{$rest})"
+                if $self->{sig_table}->{$rest};
+        $self->{sig_table}->{$rest} = $return;
+    }
+
+    $self;
+}
+
+###############################################################################
+#
+#   Sub Name:       match_signature
+#
+#   Description:    Determine if the passed-in signature string matches any
+#                   of this method's known signatures.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $sig      in      scalar    Signature to check for
+#
+#   Returns:        Success:    return type as a string
+#                   Failure:    0
+#
+###############################################################################
+sub match_signature
+{
+    my $self = shift;
+    my $sig  = shift;
+
+    $sig = join(' ', @$sig) if ref $sig;
+
+    return $self->{sig_table}->{$sig} || 0;
+}
+
+###############################################################################
+#
+#   Sub Name:       reload
+#
+#   Description:    Reload the method's code and ancillary data from the file
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#
+#   Returns:        Success:    $self
+#                   Failure:    error message
+#
+###############################################################################
+sub reload
+{
+    my $self = shift;
+
+    return ref($self) . '::reload: No file associated with method ' .
+        $self->{name} unless $self->{file};
+    my $tmp = $self->load_XPL_file($self->{file});
+
+    # Re-calculate the signature table, in case that changed as well
+    return (ref $tmp) ? $self->make_sig_table : $tmp;
+}
+
+###############################################################################
+#
 #   Sub Name:       load_XPL_file
 #
 #   Description:    Load a XML-encoded method description (generally denoted
@@ -266,15 +358,17 @@ sub load_XPL_file
 
     require XML::Parser;
 
-    my ($signature, $code, $codetext, $return, $accum, $P, %attr);
+    my ($me, $signature, $code, $codetext, $accum, $P, %attr);
     local *F;
 
-    $return = {};
+    $me = (ref $self) ? ref($self) : __PACKAGE__;
+    $me .= '::load_XPL_file';
+    $self = {} unless ref $self;
     # So these don't end up undef, since they're optional elements
-    $return->{hidden} = 0; $return->{version} = ''; $return->{help} = '';
-    $return->{signature} = [];
+    $self->{hidden} = 0; $self->{version} = ''; $self->{help} = '';
+    $self->{called} = 0; $self->{signature} = [];
     open(F, "< $file");
-    return "Error opening $file for reading: $!" if ($?);
+    return "$me: Error opening $file for reading: $!" if ($?);
     $P = XML::Parser
         ->new(Handlers => {Char  => sub { $accum .= $_[1] },
                            Start => sub { %attr = splice(@_, 2) },
@@ -286,40 +380,39 @@ sub load_XPL_file
                                $accum =~ s/[\s\n]+$//;
                                if ($elem eq 'signature')
                                {
-                                   push(@{$return->{signature}},
-                                        [ split(/ /, $accum) ]);
+                                   push(@{$self->{signature}}, $accum);
                                }
                                elsif ($elem eq 'code')
                                {
-                                   $return->{$elem} = $accum
+                                   $self->{$elem} = $accum
                                        unless ($attr{language} and
                                                $attr{language} ne 'perl');
                                }
                                else
                                {
-                                   $return->{$elem} = $accum;
+                                   $self->{$elem} = $accum;
                                }
 
                                %attr = ();
                                $accum = '';
                            }});
-    return "Error creating XML::Parser object" unless $P;
+    return "$me: Error creating XML::Parser object" unless $P;
     # Trap any errors
     eval { $P->parse(*F) };
-    return "Error parsing $file: $@" if $@;
+    return "$me: Error parsing $file: $@" if $@;
 
     # Try to normalize $codetext before passing it to eval
-    ($codetext = $return->{code}) =~
+    ($codetext = $self->{code}) =~
         s/sub[\s\n]+[\w:]+[\s\n]+\{/\$code = sub \{/;
     eval "$codetext";
-    return "Error creating anonymous sub: $@" if $@;
+    return "$me: Error creating anonymous sub: $@" if $@;
 
-    $return->{code} = $code;
+    $self->{code} = $code;
     # The XML::Parser approach above gave us an empty "methoddef" key
-    delete $return->{methoddef};
+    delete $self->{methoddef};
     # Add the file's mtime for when we check for stat-based reloading
-    $return->{mtime} = (stat $file)[9];
-    $return->{file} = $file;
+    $self->{mtime} = (stat $file)[9];
+    $self->{file} = $file;
 
-    $return;
+    $self;
 }
