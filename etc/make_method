@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: make_method,v 1.5 2001/06/08 09:16:55 rjray Exp $
+#   $Id: make_method,v 1.6 2001/06/13 04:36:40 rjray Exp $
 #
 #   Description:    Simple tool to turn a Perl routine and the support data
 #                   into the simple XML representation that RPC::XML::Server
@@ -36,7 +36,7 @@ use Getopt::Long;
 use IO::File;
 use File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 ($cmd = $0) =~ s|.*/||;
 $USAGE = "$cmd [ --options ]
 
@@ -86,6 +86,7 @@ if ($opts{base})
     # This simplifies a lot of it
 
     (undef, $path, $name) = File::Spec->splitpath($opts{base});
+    $path = '.' unless $path;
     $codetxt = {};
 
     $ifh = new IO::File "< $opts{base}.base";
@@ -115,7 +116,7 @@ if ($opts{base})
         {
             $helptxt = read_external "$path/$1";
         }
-        elsif (/^code(\[(.*)\])?:\s+(.*)/i)
+        elsif (/^codefile(\[(.*)\])?:\s+(.*)/i)
         {
             $lang = $2 || 'perl';
             $codetxt->{$lang} = read_external "$path/$3";
@@ -251,11 +252,17 @@ sub write_file
     my $date = scalar localtime;
 
     # Armor against XML confusion
-    foreach ($name, $$help, (values %$code))
+    foreach ($name, $$help)
     {
         s/&/&amp;/g;
         s/</&lt;/g;
         s/>/&gt;/g;
+    }
+    for (keys %$code)
+    {
+	${$code->{$_}} =~ s/&/&amp;/g;
+	${$code->{$_}} =~ s/</&lt;/g;
+	${$code->{$_}} =~ s/>/&gt;/g;
     }
 
     print $ofh <<"EO_HDR";
@@ -407,7 +414,7 @@ one signature, so a lack of any will cause an error.
 Specifies the file from which to read the help text. It is not an error if
 no help text is specified.
 
-=item B<Code: I<STRING>>
+=item B<Codefile: I<STRING>>
 
 Specifies the file from which to read the code. If no code has been read, then
 the tool will exit with an error message.
