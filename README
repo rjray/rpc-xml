@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.43
+Version: 0.44
 
 WHAT IS IT
 
@@ -65,23 +65,20 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-Changed methods/methodSignature.code, t/40_server.t and
-t/60_net_server.t so that the provided system.methodSignature follows
-the accepted API (returns a list of lists, rather than list of
-strings). Pointed out by Bjoern Stierand.
+Cleaned up the exports list in RPC::XML.pm, which still had remnants
+from when this package was intended to extend XML-RPC. There were no
+routines to match the symbols, but the potential for error was there.
 
-Added a missing helper (RPC_I4) to RPC::XML.pm.
+Fixed a typo in the docs for RPC::XML::Client, and some documentation
+goofs in RPC::XML::Server (regarding the timeout method/option). A
+few doc fixes in RPC::XML::Procedure, for good measure.
 
-Fixed a bad bug with the newly-added compression support in
-Apache::RPC::Server::handler. Because $self was defined earlier,
-strict failed to point out that my object in that scope was called
-$srv, rather than $self. And $self->compress didn't work, amazingly
-enough. Found and reported by Scott Fagg.
+Implemented two fixes sent in by Marc Liyanage: a fix for setting the
+Content-Length headers on messages that takes the length in bytes
+rather than characters; the second is a fix around the compression
+support that makes certain an undef isn't evaluated against the
+regex.
 
-Added a credentials() method to the RPC::XML::Client class to set
-Basic Authentication credentials on the underlying LWP::UserAgent
-object. Per suggestion and sample implementation from Stuart Clark.
-
-Fixed a docs-nit in RPC::XML::Server, and did some major clean-up in
-the docs for RPC::XML. In particular, added documentation for one
-of the data class methods that had been overlooked ("type").
+The above added an exported function to RPC::XML, so that got
+documented. In the process, it occurred to me to document the helper
+functions like RPC_BOOLEAN, RPC_DOUBLE, etc.

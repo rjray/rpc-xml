@@ -1,5 +1,25 @@
 Revision history for Perl extension RPC::XML.
 
+0.44	Fri Aug 30 23:44:08 PDT 2002
+
+	Cleaned up the exports list in RPC::XML.pm, which still had remnants
+	from when this package was intended to extend XML-RPC. There were no
+	routines to match the symbols, but the potential for error was there.
+
+	Fixed a typo in the docs for RPC::XML::Client, and some documentation
+	goofs in RPC::XML::Server (regarding the timeout method/option). A
+	few doc fixes in RPC::XML::Procedure, for good measure.
+
+	Implemented two fixes sent in by Marc Liyanage: a fix for setting the
+	Content-Length headers on messages that takes the length in bytes
+	rather than characters; the second is a fix around the compression
+	support that makes certain an undef isn't evaluated against the
+	regex.
+
+	The above added an exported function to RPC::XML, so that got
+	documented. In the process, it occurred to me to document the helper
+	functions like RPC_BOOLEAN, RPC_DOUBLE, etc.
+
 0.43	Sun Aug 18 22:19:30 PDT 2002
 
 	Changed methods/methodSignature.code, t/40_server.t and
