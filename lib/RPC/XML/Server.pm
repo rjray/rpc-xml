@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.26 2002/05/04 07:41:04 rjray Exp $
+#   $Id: Server.pm,v 1.27 2002/08/01 07:30:11 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -26,6 +26,9 @@
 #                   port
 #                   requests
 #                   response
+#                   compress
+#                   compress_thresh
+#                   compress_re
 #                   xpl_path
 #                   add_method
 #                   method_from_file
@@ -46,10 +49,11 @@
 #
 #   Libraries:      AutoLoader
 #                   HTTP::Daemon
+#                   HTTP::Response
 #                   HTTP::Status
+#                   URI
 #                   RPC::XML
 #                   RPC::XML::Parser
-#                   RPC::XML::Method
 #                   RPC::XML::Procedure
 #
 #   Global Consts:  $VERSION
@@ -72,7 +76,6 @@ BEGIN {
     @XPL_PATH = ($INSTALL_DIR, File::Spec->curdir);
 }
 
-require HTTP::Daemon;
 require HTTP::Response;
 require HTTP::Status;
 require URI;
@@ -81,7 +84,7 @@ require RPC::XML;
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.26 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.27 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -124,6 +127,8 @@ sub new
     }
     else
     {
+        require HTTP::Daemon;
+
         $host = $args{host}   || '';
         $port = $args{port}   || '';
         $queue = $args{queue} || 5;
@@ -149,7 +154,10 @@ sub new
                   # XPL file. But it hasn't been loaded yet, and may not
                   # be, hence we set it here (possibly from option values)
                   RPC_Server   => $self->{__version},
-                  RPC_Encoding => 'XML-RPC');
+                  RPC_Encoding => 'XML-RPC',
+                  # Set the Content-Type header and others, as well
+                  Content_Type => 'text/xml',
+                  Accept       => 'text/xml');
     $resp->code(&HTTP::Status::RC_OK);
     $resp->message('OK');
     $self->{__response} = $resp;
@@ -166,9 +174,23 @@ sub new
     $self->{__timeout}         = $args{timeout}  || 10;
 
     $self->add_default_methods unless ($args{no_default});
+    $self->{__compress} = '';
+    unless ($args{no_compress})
+    {
+        eval { require Compress::Zlib };
+        $self->{__compress} = $@ ? '' : 'deflate';
+        # Add some more headers to the default response object for compression.
+        # It looks wasteful to keep using the hash key, but it makes it easier
+        # to change the string in just one place (above) if I have to.
+        $resp->header(Accept_Encoding  => $self->{__compress})
+            if $self->{__compress};
+        $self->{__compress_thresh} = $args{compress_thresh} || 4096;
+        $self->{__compress_re} = qr/$self->{__compress}/;
+    }
 
     # Remove the args we've already dealt with directly
-    delete @args{qw(no_default no_http debug path server_name server_version)};
+    delete @args{qw(no_default no_http debug path server_name server_version
+                    no_compress compress_thresh)};
     # Copy the rest over untouched
     $self->{$_} = $args{$_} for (keys %args);
 
@@ -220,11 +242,27 @@ sub started
     $old;
 }
 
-sub path     { shift->{__path} }
-sub host     { shift->{__host} }
-sub port     { shift->{__port} }
-sub requests { shift->{__requests} }
-sub response { shift->{__response} }
+# Fetch/set the compression threshhold
+sub compress_thresh
+{
+    my $self = shift;
+    my $set = shift || 0;
+
+    my $old = $self->{__compress_thresh};
+    $self->{__compress_thresh} = $set if ($set);
+
+    $old;
+}
+
+BEGIN
+{
+    no strict 'refs';
+
+    for my $method (qw(path host port requests response compress compress_re))
+    {
+        *$method = sub { shift->{"__$method"} }
+    }
+}
 
 # Get/set the search path for XPL files
 sub xpl_path
@@ -326,6 +364,9 @@ for dispatching requests (and possibly for the HTTP listening, as well).
 The following methods are provided by the B<RPC::XML::Server> class. Unless
 otherwise explicitly noted, all methods return the invoking object reference
 upon success, and a non-reference error string upon failure.
+
+See L</Content Compression> below for details of how the server class manages
+gzip-based compression and expansion of messages.
 
 =over 4
 
@@ -851,6 +892,32 @@ in the C<methods> directory of the distribution using the B<make_method> tool
 (see L<make_method>). The files there provide the Perl code that implements
 these, their help files and other information.
 
+=head2 Content Compression
+
+The B<RPC::XML::Server> class now supports compressed messages, both incoming
+and outgoing. If a client indicates that it can understand compressed content,
+the server will use the B<Compress::Zlib> (available from CPAN) module, if
+available, to compress any outgoing messages above a certain threshhold in
+size (the default threshhold is set to 4096 bytes). The following methods are
+all related to the compression support within the server class:
+
+=over 4
+
+=item compress
+
+Returns a false value if compression is not available to the server object.
+This is based on the availability of the B<Compress::Zlib> module at start-up
+time, and cannot be changed.
+
+=item compress_thresh([MIN_LIMIT])
+
+Return or set the compression threshhold value. Messages smaller than this
+size in bytes will not be compressed, even when compression is available, to
+save on CPU resources. If a value is passed, it becomes the new limit and the
+old value is returned.
+
+=back
+
 =head1 DIAGNOSTICS
 
 Unless explicitly stated otherwise, all methods return some type of reference
@@ -1067,7 +1134,9 @@ sub server_loop
     }
     else
     {
-        # This is the Net::Server block
+        # This is the Net::Server block, but for now HTTP::Daemon is needed
+        # for the code that converts socket data to a HTTP::Request object
+        require HTTP::Daemon;
 
         # Don't do this next part if they've already given a port, or are
         # pointing to a config file:
@@ -1160,7 +1229,7 @@ sub process_request
     my $self = shift;
     my $conn = shift;
 
-    my ($req, $reqxml, $resp, $respxml);
+    my ($req, $reqxml, $resp, $respxml, $compress);
 
     unless ($conn and ref($conn))
     {
@@ -1182,11 +1251,21 @@ sub process_request
         elsif ($req->method eq 'POST')
         {
             $reqxml = $req->content;
+            # Is the content compressed?
+            $reqxml = Compress::Zlib::uncompress($reqxml)
+                if (($compress = $self->compress) &&
+                    $req->content_encoding =~ $self->compress_re);
             # Dispatch will always return a RPC::XML::response
             $resp = $self->dispatch(\$reqxml);
             $respxml = $resp->as_string;
             # Now clone the pre-fab response and add content
             $resp = $self->{__response}->clone;
+            if ($compress and (length($respxml) > $self->compress_thresh) and
+                ($req->header('Accept-Encoding') =~ $self->compress_re))
+            {
+                $respxml = Compress::Zlib::compress($respxml);
+                $resp->content_encoding($compress);
+            }
             $resp->content($respxml);
             $conn->send_response($resp);
             undef $resp;
