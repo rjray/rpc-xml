@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.12 2002/12/30 07:30:42 rjray Exp $
+#   $Id: Client.pm,v 1.13 2003/01/20 06:29:52 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -126,9 +126,9 @@ sub new
     $self->{$_} = $attrs{$_} for (keys %attrs);
 
     # Then, get the RPC::XML::Parser instance
-    $PARSER = RPC::XML::Parser->new() or
+    $self->{__parser} = RPC::XML::Parser->new($attrs{parser} ?
+                                              @{$attrs{parser}} : ()) or
         return "${class}::new: Unable to get RPC::XML::Parser object";
-    $self->{__parser} = $PARSER;
 
     bless $self, $class;
 }
@@ -411,7 +411,15 @@ Any additional arguments are treated as key-value pairs. Most are attached to
 the object itself without change. The following are recognized by C<new> and
 treated specially:
 
-=over 8
+=over 4
+
+=item parser
+
+If this parameter is passed, the value following it is expected to be an
+array reference. The contents of that array are passed to the B<new> method
+of the B<RPC::XML::Parser> object that the client object caches for its use.
+See the B<RPC::XML::Parser> manual page for a list of recognized parameters
+to the constructor.
 
 =item error_handler
 

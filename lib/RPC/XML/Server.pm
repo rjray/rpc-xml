@@ -1,3 +1,4 @@
+
 ###############################################################################
 #
 # This file copyright (c) 2001 by Randy J. Ray <rjray@blackperl.com>,
@@ -9,7 +10,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.31 2002/12/30 07:24:50 rjray Exp $
+#   $Id: Server.pm,v 1.32 2003/01/20 06:29:52 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -84,7 +85,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.31 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.32 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -167,7 +168,8 @@ sub new
     $self->{__auto_methods}    = $args{auto_methods} || 0;
     $self->{__auto_updates}    = $args{auto_updates} || 0;
     $self->{__debug}           = $args{debug} || 0;
-    $self->{__parser}          = RPC::XML::Parser->new();
+    $self->{__parser}          = RPC::XML::Parser->new($args{parser} ?
+                                                       @{$args{parser}} : ());
     $self->{__xpl_path}        = $args{xpl_path} || [];
     $self->{__timeout}         = $args{timeout}  || 10;
 
@@ -188,7 +190,7 @@ sub new
 
     # Remove the args we've already dealt with directly
     delete @args{qw(no_default no_http debug path server_name server_version
-                    no_compress compress_thresh)};
+                    no_compress compress_thresh parser)};
     # Copy the rest over untouched
     $self->{$_} = $args{$_} for (keys %args);
 
@@ -444,6 +446,14 @@ the file has changed, the method is re-loaded before execution is handed
 off. As with the auto-loading of methods, this represents a security risk, and
 should only be permitted by a server administrator with fully informed
 acknowledgement and consent.
+
+=item B<parser>
+
+If this parameter is passed, the value following it is expected to be an
+array reference. The contents of that array are passed to the B<new> method
+of the B<RPC::XML::Parser> object that the server object caches for its use.
+See the B<RPC::XML::Parser> manual page for a list of recognized parameters
+to the constructor.
 
 =back
 
