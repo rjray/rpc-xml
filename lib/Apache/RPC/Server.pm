@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.24 2003/05/19 07:49:24 rjray Exp $
+#   $Id: Server.pm,v 1.25 2004/11/30 09:13:15 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.24 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.25 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 sub version { $Apache::RPC::Server::VERSION }
 
@@ -339,7 +339,6 @@ sub new
     $prefix = $argz{prefix};                   delete $argz{prefiz};
     $argz{path} = $R->location unless $argz{path};
     $servid = substr($argz{path}, 1) unless ($servid);
-    $R = $R->server if (ref($R) eq 'Apache');
 
     #
     # For these Apache-conf type of settings, something explicitly passed in
@@ -373,10 +372,11 @@ sub new
     }
 
     # Create the object, ensuring that the defaults are not yet loaded:
+    my $Raux = (ref($R) eq 'Apache') ? $R->server : $R;
     $self = $class->SUPER::new(no_default => 1, no_http => 1,
                                path => $argz{path},
-                               host => $R->server_hostname || 'localhost',
-                               port => $R->port,
+                               host => $Raux->server_hostname || 'localhost',
+                               port => $Raux->port,
                                %argz);
     return $self unless (ref $self); # Non-ref means an error message
     $self->started('set');
@@ -498,6 +498,7 @@ Apache::RPC::Server - A subclass of RPC::XML::Server tuned for mod_perl
 =head1 SYNOPSIS
 
     # In httpd.conf:
+    PerlModule Apache::RPC::Server
     PerlSetVar RpcMethodDir /var/www/rpc:/usr/lib/perl5/RPC-shared
     PerlChildInitHandler Apache::RPC::Server->init_handler
     ...
