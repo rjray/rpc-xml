@@ -1,5 +1,5 @@
 <!--
-        $Id: rpc-method.dtd,v 1.2 2001/06/07 06:48:14 rjray Exp $
+        $Id: rpc-method.dtd,v 1.3 2001/06/07 08:32:55 rjray Exp $
 
         This is a very simple DTD for the specification of a published RPC
         method/routine. This is here as a reference, and possibly for use with
@@ -18,7 +18,5 @@
 <!ELEMENT  hidden        EMPTY                                       >
 <!ELEMENT  signature     (#PCDATA)                                   >
 <!ELEMENT  help          (#PCDATA)                                   >
-<!ELEMENT  package       (#PCDATA)                                   >
-<!ATTLIST  package       language (#PCDATA)                          >
 <!ELEMENT  code          (#PCDATA)                                   >
 <!ATTLIST  code          language (#PCDATA)                          >
