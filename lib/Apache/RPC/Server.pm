@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.21 2003/01/27 11:19:02 rjray Exp $
+#   $Id: Server.pm,v 1.22 2003/02/06 11:26:49 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.21 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.22 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 sub version { $Apache::RPC::Server::VERSION }
 
@@ -113,12 +113,12 @@ sub handler ($$)
     $hdrs_out = $r->headers_out;
     $hdrs = $srv->response->headers;
     for (keys %$hdrs) { $hdrs_out->{$_} = $hdrs->{$_} }
+    $r->content_type('text/xml');
     # We're essentially done if this was a HEAD request
     if ($r->header_only)
     {
         # These headers are either only sent for HEAD requests or are different
         # enough to move here from the above block
-        $r->content_type('text/xml');
         $r->set_last_modified($srv->started);
         $r->send_http_header;
     }
@@ -179,7 +179,6 @@ sub handler ($$)
         $resp = $srv->dispatch($content);
 
         # Step 4: Form up and send the headers and body of the response
-        $r->content_type('text/xml');
         $r->no_cache(1);
         $do_compress = 0; # Clear it
         if ($compress and ($resp->length > $srv->compress_thresh) and
@@ -256,6 +255,7 @@ sub handler ($$)
             seek($resp_fh, 0, 0);
 
             $r->set_content_length(-s $resp_fh);
+            $r->send_http_header;
             $r->send_fd($resp_fh);
         }
         else
@@ -264,6 +264,7 @@ sub handler ($$)
             $content = $resp->as_string;
             $content = Compress::Zlib::compress($content) if $do_compress;
             $r->set_content_length(length $content);
+            $r->send_http_header;
             $r->print($content);
         }
     }
