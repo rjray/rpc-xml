@@ -1,4 +1,5 @@
 Name:		linux.proc.cpuinfo
+Type:		procedure
 Version:	1.0
 Hidden:		no
 Signature:	struct

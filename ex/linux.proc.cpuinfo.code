@@ -5,12 +5,7 @@
 #   Description:    Read the /proc/cpuinfo on a Linux server and return a
 #                   STRUCT with the information.
 #
-#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $srv      in      ref       Server object reference
-#
-#   Globals:        None.
-#
-#   Environment:    None.
+#   Arguments:      None.
 #
 #   Returns:        hashref
 #
@@ -18,8 +13,6 @@
 sub linux_proc_sysinfo
 {
     use strict;
-
-    my $srv = shift;
 
     my (%cpuinfo, $line, $key, $value);
     local *F;

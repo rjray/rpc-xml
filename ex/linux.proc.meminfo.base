@@ -1,4 +1,5 @@
 Name:		linux.proc.meminfo
+Type:		procedure
 Version:	1.0
 Hidden:		no
 Signature:	struct
