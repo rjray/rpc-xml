@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.13 2002/05/22 09:43:49 rjray Exp $
+#   $Id: XML.pm,v 1.14 2002/07/29 00:17:41 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.14 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -59,7 +59,7 @@ sub RPC_BASE64           ( $ ) { RPC::XML::base64->new($_[0]) }
 # time in UTC.
 sub time2iso8601
 {
-    my $time = shift;
+    my $time = shift || time;
     my $zone = shift || '';
 
     my @time = gmtime($time);
@@ -839,10 +839,11 @@ C<import>:
 
 =over 4
 
-=item time2iso8601($time)
+=item time2iso8601([$time])
 
-Convert the integer time value in C<$time> to a ISO 8601 string in the UTC
-time zone. This is a convenience function for occassions when the return value
+Convert the integer time value in C<$time> (which defaults to calling the
+built-in C<time> if not present) to a ISO 8601 string in the UTC time
+zone. This is a convenience function for occassions when the return value
 needs to be of the B<dateTime.iso8601> type, but the value on hand is the
 return from the C<time> built-in.
 
