@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.7 2001/06/07 08:43:00 rjray Exp $
+#   $Id: Server.pm,v 1.8 2001/06/07 08:50:27 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -51,7 +51,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -1124,7 +1124,7 @@ sub load_XPL_file
     # as a class method, which is easier for sub-classes than having them have
     # to import the function, or hard-code the class.
 
-    my ($signature, $code, $codetext, $return, $accum, $P, @path);
+    my ($signature, $code, $codetext, $return, $accum, $P, @path, %attr);
     local *F;
 
     unless (File::Spec->file_name_is_absolute($file))
@@ -1143,8 +1143,9 @@ sub load_XPL_file
     open(F, "< $file");
     return "Error opening $file for reading: $!" if ($?);
     $P = XML::Parser
-        ->new(Handlers => {Char => sub { $accum .= $_[1] },
-                           End  =>
+        ->new(Handlers => {Char  => sub { $accum .= $_[1] },
+                           Start => sub { %attr = splice(@_, 2) },
+                           End   =>
                            sub {
                                my $elem = $_[1];
 
@@ -1155,11 +1156,18 @@ sub load_XPL_file
                                    push(@{$return->{signature}},
                                         [ split(/ /, $accum) ]);
                                }
+                               elsif ($elem eq 'code')
+                               {
+                                   $return->{$elem} = $accum
+                                       unless ($attr{language} and
+                                               $attr{language} ne 'perl');
+                               }
                                else
                                {
                                    $return->{$elem} = $accum;
                                }
 
+                               %attr = ();
                                $accum = '';
                            }});
     return "Error creating XML::Parser object" unless $P;
