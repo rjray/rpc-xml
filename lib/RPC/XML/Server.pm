@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.19 2001/11/30 11:54:38 rjray Exp $
+#   $Id: Server.pm,v 1.20 2001/12/08 22:56:19 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -78,7 +78,7 @@ require RPC::XML;
 require RPC::XML::Parser;
 require RPC::XML::Method;
 
-$VERSION = do { my @r=(q$Revision: 1.19 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.20 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -113,7 +113,13 @@ sub new
     $srv_name    = $args{server_name}    || $class;
     $self->{__version} = "$srv_name/$srv_version";
 
-    unless ($args{no_http})
+    if ($args{no_http})
+    {
+        $self->{__host} = $args{host} || '';
+        $self->{__port} = $args{port} || '';
+        delete @args{qw(host port)};
+    }
+    else
     {
         require HTTP::Daemon;
 
@@ -182,7 +188,18 @@ sub url
     return $self->{__daemon}->url if $self->{__daemon};
     return undef unless ($self->{__host});
 
-    "http://$self->{__host}:$self->{__port}$self->{__path}";
+    if ($self->{__port} == 443)
+    {
+        return "https://$self->{__host}$self->{__path}";
+    }
+    elsif ($self->{__port} == 80)
+    {
+        return "http://$self->{__host}$self->{__path}";
+    }
+    else
+    {
+        return "http://$self->{__host}:$self->{__port}$self->{__path}";
+    }
 }
 
 sub product_tokens
