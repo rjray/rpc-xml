@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.36 2003/01/30 08:46:27 rjray Exp $
+#   $Id: Server.pm,v 1.37 2003/01/31 12:50:08 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -86,7 +86,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.36 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.37 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -1162,7 +1162,7 @@ sub get_method
     if ($self->{__auto_updates} && $meth->{file} &&
         ($meth->{mtime} < (stat $meth->{file})[9]))
     {
-        $ret = $meth->reload;
+        my $ret = $meth->reload;
         return "Reload of method $name failed: $ret" unless ref($ret);
     }
 
@@ -1329,8 +1329,9 @@ sub process_request
     my $conn = shift;
 
     my ($req, $reqxml, $resp, $respxml, $compress, $do_compress, $parser,
-       $com_engine, $length, $read, $buf, $resp_fh);
+       $com_engine, $length, $read, $buf, $resp_fh, $tmpfile);
 
+    my $me = ref($self) . '::process_request';
     unless ($conn and ref($conn))
     {
         $conn = $self->{server}->{client};
@@ -1449,7 +1450,8 @@ sub process_request
             $do_compress = 0; # In case it was set above for incoming data
             if ($self->compress and
                 ($respxml->length > $self->compress_thresh) and
-                ($req->header('Accept-Encoding') =~ $self->compress_re))
+                (($req->header('Accept-Encoding') || '') =~
+                 $self->compress_re))
             {
                 $do_compress = 1;
                 $resp->content_encoding($compress);
