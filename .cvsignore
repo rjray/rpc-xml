@@ -3,6 +3,8 @@ Makefile
 pm_to_blib
 *.html
 pod2html-*
-RPC-XML.spec
+perl-RPC-XML.spec
 RPC-XML-*
 .gdbinit
+rpmrc
+rpmmacro
