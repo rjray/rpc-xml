@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.7 2002/12/30 07:22:20 rjray Exp $
+#   $Id: Parser.pm,v 1.8 2003/01/16 08:29:14 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -83,10 +83,11 @@ use constant TAG2TOKEN   => { methodCall        => METHOD,
                               name              => STRUCTNAME  };
 
 use XML::Parser;
+require File::Spec;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -113,10 +114,7 @@ sub new
     my %attrs = @_;
 
     my $self = {};
-    if (keys %attrs)
-    {
-        for (keys %attrs) { $self->{$_} = $attrs{$_} }
-    }
+    %$self = %attrs if (keys %attrs);
 
     bless $self, $class;
 }
@@ -199,6 +197,25 @@ sub tag_start
     {
         # All datatypes are represented on the stack by this generic token
         push(@{$robj->{stack}}, DATATYPE);
+        # If the tag is <base64> and we've been told to use filehandles, set
+        # that up.
+        if ($elem eq 'base64')
+        {
+            return unless ($robj->{base64_to_fh});
+            my ($fh, $file) = (undef, File::Spec->tmpdir);
+
+            $file = $robj->{base64_temp_dir} if ($robj->{base64_temp_dir});
+            $file  = File::Spec->catfile($file, 'b64' . $self->current_byte);
+            unless (open($fh, "+> $file"))
+            {
+                push(@{$robj->{stack}},
+                     "Error opening temp file for base64: $!", PARSE_ERROR);
+                $self->finish;
+            }
+            unlink($file);
+            $robj->{cdata} = $fh;
+            $robj->{spooling_base64_data} = 1;
+        }
     }
     else
     {
@@ -278,6 +295,7 @@ sub tag_end
                             $RPC::XML::ERROR)
             unless ($obj);
         push(@{$robj->{stack}}, $obj, DATAOBJECT);
+        delete $robj->{spooling_base64_data}; # Just in case
     }
     elsif ($elem eq 'value')
     {
@@ -482,7 +500,14 @@ sub char_data
     my $self = shift;
     my $data = shift;
 
-    $robj->{cdata} .= $data;
+    if ($robj->{spooling_base64_data})
+    {
+        print { $robj->{cdata} } $data;
+    }
+    else
+    {
+        $robj->{cdata} .= $data;
+    }
 }
 
 # At some future point, this may be expanded to provide more entities than
@@ -522,11 +547,35 @@ objects are not. The methods are:
 
 =over 4
 
-=item new
+=item new([ARGS])
 
 Create a new instance of the class. Any extra data passed to the constructor
 is taken as key/value pairs (B<not> a hash reference) and attached to the
 object.
+
+The following parameters are currently recognized:
+
+=over 8
+
+=item base64_to_fh
+
+If passed with a true value, this tells the parser that incoming Base64 data
+is to be spooled to a filehandle opened onto an anonymous temporary file. The
+file itself is unlinked after opening, though the resulting B<RPC::XML::base64>
+object can use its C<to_file> method to save the data to a specific file at a
+later point. No checks on size are made; if this option is set, B<all> Base64
+data goes to filehandles.
+
+=item base64_temp_dir
+
+If this argument is passed, the value is taken as the directory under which
+the temporary files are created. This is so that the application is not locked
+in to the list of directories that B<File::Spec> defaults to with its
+C<tmpdir> method. If this is not passed, the previously-mentioned method is
+used to derive the directory in which to create the temporary files. Only
+relevant if B<base64_to_fh> is set.
+
+=back
 
 =item parse { STRING | STREAM }
 
