@@ -19,11 +19,12 @@ lib/Apache/RPC/status.base     # Apache version of the system.status method
 lib/Apache/RPC/status.code
 lib/Apache/RPC/status.help
 lib/RPC/XML.pm                 # Base data-type manipuation, etc.
-lib/RPC/XML/Client.pm          # Reference client implementation
+lib/RPC/XML/Client.pm          # Basic client class
+lib/RPC/XML/Function.pm        # Reference client implementation
 lib/RPC/XML/Method.pm          # Class encapsulation of RPC server methods
 lib/RPC/XML/Parser.pm          # Parser class for client and server
 lib/RPC/XML/Procedure.pm       # Class encapsulation of RPC procedures
-lib/RPC/XML/Server.pm          # Reference server implementation
+lib/RPC/XML/Server.pm          # Basic server class
 methods/identity.base          # Everything under method/ is template for the
 methods/identity.code          # etc/make_method tool to create *.xpl files.
 methods/identity.help
