@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.9 2001/06/08 09:11:17 rjray Exp $
+#   $Id: Server.pm,v 1.10 2001/06/08 11:25:21 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -74,7 +74,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -588,6 +588,112 @@ above.
 
 =back
 
+=head2 Specifying Server-Side Remote Methods
+
+Specifying the methods themselves can be a tricky undertaking. Some packages
+(in other languages) delegate a specific class to handling incoming requests.
+This works well, but it can lead to routines not intended for public
+availability to in fact be available. There are also issues around the access
+that the methods would then have to other resources within the same running
+system.
+
+The approach taken by B<RPC::XML::Server> (and the B<Apache::RPC::Server>
+subclass of it) require that methods be explicitly published in one of the
+several ways provided. Methods may be added directly within code by using
+C<add_method> as described above, with full data provided for the code
+reference, signature list, etc. The C<add_method> technique can also be used
+with a file that conforms to a specific XML-based format. Entire directories
+of files may be added using C<add_methods_in_dir>, which merely reads the
+given directory for files that appear to be method definitions.
+
+This section focuses on the way in which methods are expressed in these files,
+referred to here as "XPL files" due to the C<*.xpl> filename extension
+(which stands for "XML Procedure Layout"). This mini-dialect, based on XML,
+is meant to provide a simple means of specifying method definitions separate
+from the code that comprises the application itself. Thus, methods may
+theoretically be added, removed, debugged or even changed entirely without
+requiring that the server application itself be rebuilt (or, possibly, without
+it even being restarted).
+
+=head3 The XPL file structure
+
+The B<XPL Procedure Layout> dialect is a very simple application of XML to the
+problem of expressing the method in such a way that it could be useful to
+other packages than this one, or useful in other contexts than this one.
+
+The lightweight DTD for the layout can be summarized as:
+
+        <!ELEMENT  methoddef  (name, version?, hidden?, signature+,
+                               help?, code)>
+        <!ELEMENT  name       (#PCDATA)>
+        <!ELEMENT  version    (#PCDATA)>
+        <!ELEMENT  hidden     EMPTY>
+        <!ELEMENT  signature  (#PCDATA)>
+        <!ELEMENT  help       (#PCDATA)>
+        <!ELEMENT  code       (#PCDATA)>
+        <!ATTLIST  code       language (#PCDATA)>
+
+The containing tag is always C<E<lt>methoddefE<gt>>. The tags that specify
+name, signatures and the code itself must always be present. Some optional
+information may also be supplied. The "help" text, or what an introspection
+API would expect to use to document the method, is also marked as optional.
+Having some degree of documentation for all the methods a server provides is
+a good rule of thumb, however.
+
+The default methods that this package provides are turned into XPL files by
+the B<make_method> tool, described later. The final forms of these may serve
+as direct examples of what the file should look like.
+
+=head3 Information used only for book-keeping
+
+Some of the information in the XPL file is only for book-keeping: the version
+stamp of a method is never involved in the invocation. The server also keeps
+track of the last-modified time of the file the method is read from, as well
+as the full directory path to that file. The C<E<lt>hidden /E<gt>> tag is used
+to identify those methods that should not be exposed to the outside world
+through any sort of introspection/documentation API. They are still available
+and callable, but the client must possess the interface information in order
+to do so.
+
+=head3 The information crucial to the method
+
+The name, signatures and code must be present for obvious reasons. The
+C<E<lt>nameE<gt>> tag tells the server what external name this procedure is
+known by. The C<E<lt>signatureE<gt>> tag, which may appear more than once,
+provides the definition of the interface to the function in terms of what
+types and quantity of arguments it will accept, and for a given set of
+arguments what the type of the returned value is. Lastly is the
+C<E<lt>codeE<gt>> tag, without which there is no procedure to remotely call.
+
+=head3 Why the <code> tag allows multiple languages
+
+Note that the C<E<lt>codeE<gt>> tag is the only one with an attribute, in this
+case "language". This is designed to allow for one XPL file to provide a given
+method in multiple languages. Why, one might ask, would there be a need for
+this?
+
+It is the hope behind this package that collections of RPC suites may one
+day be made available as separate entities from this specific software
+package. Given this hope, it is not unreasonable to suggest that such a
+suite of code might be implemented in more than one language (each of Perl,
+Python, Ruby and Tcl, for example). Languages which all support the means by
+which to take new code and add it to a running process on demand (usually
+through an "C<eval>" keyword or something similar). If the file F<A.xpl> is
+provided with implementations in all four of those languages, the name, help
+text, signature and even hidden status would likely be identical. So, why
+not share the non-language-specific elements in the spirit of re-use?
+
+=head3 The "make_method" utility
+
+The utility script C<make_method> is provided as a part of this package. It
+allows for the automatic creation of XPL files from either command-line
+information or from template files. It has a wide variety of features and
+options, and is out of the scope of this particular manual page. The package
+F<Makefile.PL> features an example of engineering the automatic generation of
+XPL files and their delivery as a part of the normal Perl module build
+process. Using this tool is highly recommended over managing XPL files
+directly.
+
 =head2 How Methods Are Called
 
 When a routine is called via the server dispatcher, it is called with the
@@ -618,8 +724,6 @@ refer to the arguments themselves.
 The methods should not make (excessive) use of global variables. Likewise,
 methods should not change their package space within the definition. Bad
 Things Could Happen.
-
-=head2 Specifying Server-Side Remote Methods
 
 =head2 The Default Methods Provided
 
