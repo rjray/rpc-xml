@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.16 2003/01/24 11:13:35 rjray Exp $
+#   $Id: Client.pm,v 1.17 2003/01/25 10:58:09 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.16 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.17 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -78,16 +78,19 @@ sub new
     my ($self, $UA, $REQ, $PARSER);
 
     # Start by getting the LWP::UA object
-    $UA = LWP::UserAgent->new() or
+    $UA = LWP::UserAgent->new((exists $attrs{useragent}) ?
+                              @{$attrs{useragent}} : ()) or
         return "${class}::new: Unable to get LWP::UserAgent object";
     $UA->agent(sprintf("%s/%s %s", $class, $VERSION, $UA->agent));
     $self->{__useragent} = $UA;
+    delete $attrs{useragent};
 
     # Next get the request object for later use
     $REQ = HTTP::Request->new(POST => $location) or
         return "${class}::new: Unable to get HTTP::Request object";
     $self->{__request} = $REQ;
     $REQ->header(Content_Type => 'text/xml');
+    $REQ->protocol('HTTP/1.0');
 
     # Check for compression support
     $self->{__compress} = '';
@@ -563,6 +566,13 @@ array reference. The contents of that array are passed to the B<new> method
 of the B<RPC::XML::Parser> object that the client object caches for its use.
 See the B<RPC::XML::Parser> manual page for a list of recognized parameters
 to the constructor.
+
+=item useragent
+
+This is similar to the C<parser> argument above, and also expects an array
+reference to follow it. The contents are passed to the constructor of the
+B<LWP::UserAgent> class when creating that component of the client object.
+See the manual page for B<LWP::UserAgent> for supported values.
 
 =item error_handler
 
