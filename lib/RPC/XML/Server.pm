@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.35 2003/01/27 11:05:53 rjray Exp $
+#   $Id: Server.pm,v 1.36 2003/01/30 08:46:27 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -86,7 +86,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.35 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.36 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -186,7 +186,9 @@ sub new
         $resp->header(Accept_Encoding  => $self->{__compress})
             if $self->{__compress};
         $self->{__compress_thresh} = $args{compress_thresh} || 4096;
-        $self->{__compress_re} = qr/$self->{__compress}/;
+        # Yes, I know this is redundant. It's for future expansion/flexibility.
+        $self->{__compress_re} =
+            $self->{__compress} ? qr/$self->{__compress}/ : qr/deflate/;
     }
 
     # Parameters to control the point at which messages are shunted to temp
@@ -1364,7 +1366,7 @@ sub process_request
                 $do_compress = 1;
             }
 
-            if ($req->content_encoding =~ /chunked/i)
+            if (($req->content_encoding || '') =~ /chunked/i)
             {
                 # Technically speaking, we're not supposed to honor chunked
                 # transfer-encoding...
@@ -1517,7 +1519,7 @@ sub process_request
                                               'deflate()');
                             next;
                         }
-			print $resp_fh $out;
+                        print $resp_fh $out;
                     }
                     # Make sure we have all that's left
                     unless (defined($out = $com_engine->flush))
