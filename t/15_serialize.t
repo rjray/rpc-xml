@@ -3,7 +3,8 @@
 # Test the serialization of XML structures to filehandles
 
 use strict;
-use vars qw($dir $fh $file $tmpfile $md5_able $faux_req $faux_res $ofh $data);
+use vars qw($dir $fh $file $tmpfile $md5_able $faux_req $faux_res $ofh $data
+            $os_offset);
 
 use RPC::XML ':all';
 
@@ -20,6 +21,7 @@ BEGIN
     eval "use Digest::MD5";
     $md5_able = $@ ? 0 : 1;
 
+    $os_offset = $^O =~ /win32/i ? 1 : 0;
     plan tests => 8;
 }
 
@@ -50,7 +52,7 @@ $ofh->autoflush(1);
 $faux_req->serialize($ofh);
 ok(1); # Just happy we made it this far.
 
-ok(-s $ofh, length($faux_req->as_string));
+ok(-s $ofh, length($faux_req->as_string) + $os_offset);
 
 $ofh->seek(0, 0);
 $data = '';
@@ -74,7 +76,7 @@ ok(length($faux_res->as_string), $faux_res->length);
 $faux_res->serialize($ofh);
 ok(1); # Again, this means that all the triggered calls managed to not die
 
-ok(-s $ofh, length($faux_res->as_string));
+ok(-s $ofh, length($faux_res->as_string) + $os_offset);
 
 $ofh->seek(0, 0);
 $data = '';
