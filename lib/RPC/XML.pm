@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.29 2003/05/19 07:57:46 rjray Exp $
+#   $Id: XML.pm,v 1.30 2004/04/12 10:14:47 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -63,7 +63,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.29 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.30 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -107,7 +107,11 @@ sub smart_encode
 
     @values = map
     {
-        if ($type = ref($_))
+        if (!defined $_)
+        {
+            $type = RPC::XML::string->new('');
+        }
+        elsif ($type = ref($_))
         {
             # Skip any that have already been encoded
             if (UNIVERSAL::isa($_, 'RPC::XML::datatype'))
@@ -288,7 +292,7 @@ sub as_string
 
     return unless ($class = $self->type);
 
-    ($value = $$self) =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
+    ($value = $$self || '') =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
 
     "<$class>$value</$class>";
 }
