@@ -15,16 +15,14 @@ use Test;
 
 BEGIN
 {
+    plan tests => 17;
+
     eval "use Net::Server";
     if ($@)
     {
         # If they do not have Net::Server, quietly skip
-        plan tests => 0;
+        skip("Skipped: Net::Server not available") for (1 .. 17);
         exit;
-    }
-    else
-    {
-        plan tests => 17;
     }
 }
 
