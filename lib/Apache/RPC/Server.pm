@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.10 2001/11/30 11:54:39 rjray Exp $
+#   $Id: Server.pm,v 1.11 2001/12/08 22:58:24 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -49,7 +49,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -59,7 +59,7 @@ sub INSTALL_DIR { $Apache::RPC::Server::INSTALL_DIR }
 
 # Return a list (not list reference) of currently-known server objects,
 # represented as the text-keys from the hash table.
-sub list_servers { sort keys %Apache::RPC::Server::SERVER_TABLE }
+sub list_servers { keys %Apache::RPC::Server::SERVER_TABLE }
 
 # This is kinda funny, since I don't actually have a debug() method in the
 # RPC::XML::Server class at the moment...
@@ -223,9 +223,12 @@ sub new
     # value, it is only applied if the corresponding key doesn't already exist
     #
 
-    # Is debugging requested?
-    $debug = $R->dir_config("${prefix}RpcDebugLevel") || 0;
-    $argz{debug} = $debug unless exists $argz{debug};
+    unless (exists $argz{debug})
+    {
+        # Is debugging requested?
+        $debug = $R->dir_config("${prefix}RpcDebugLevel") || 0;
+        $argz{debug} = $debug;
+    }
 
     # Check for disabling of auto-loading or mtime-checking
     $do_auto  = $R->dir_config("${prefix}RpcAutoMethods");
@@ -351,8 +354,8 @@ sub get_server
         # method to get the server object for a specific name. Thus, if it
         # doesn't exist yet, we lack sufficient information to create it on
         # the fly.
-        return $Apache::RPC::Server::SERVER_TABLE{$servid} ||
-            "Error: No such server object '$servid' known (yet)";
+        return $Apache::RPC::Server::SERVER_TABLE{$r} ||
+            "Error: No such server object '$r' known (yet)";
     }
 }
 
