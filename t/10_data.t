@@ -125,7 +125,7 @@ $obj = RPC::XML::struct->new('>'  => these   =>
                              '&'  => special =>
                              '<>' => XML     =>
                              '&&' => 'characters');
-ok($obj->as_string =~ tr/&/&/, 7);
+ok((my $tmp = $obj->as_string) =~ tr/&/&/, 7);
 
 # Faults are a subclass of structs
 $obj = RPC::XML::fault->new(faultCode => 1, faultString => 'test');

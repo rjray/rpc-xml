@@ -21,7 +21,7 @@ BEGIN
     if ($@)
     {
         # If they do not have Net::Server, quietly skip
-        skip("Skipped: Net::Server not available") for (1 .. 17);
+        skip("Skipped: Net::Server not available", 0) for (1 .. 17);
         exit;
     }
 }
