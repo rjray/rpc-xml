@@ -8,7 +8,7 @@ use subs qw(start_server find_port);
 
 use Test;
 
-BEGIN { plan tests => 18 }
+BEGIN { plan tests => 19 }
 
 require File::Spec;
 
@@ -129,9 +129,18 @@ if (open($fh1, '<' . File::Spec->catfile($dir, 'svsm_text.gif')) and
                               RPC::XML::base64->new($fh1),
                               RPC::XML::base64->new($fh2));
     ok((ref($res) eq 'RPC::XML::boolean') && $res->value);
+
+    # Force the compression threshhold down, to test that branch
+    $cli->compress_requests(1);
+    $cli->compress_thresh(-s $fh1);
+    $res = $cli->send_request(cmpImg =>
+                              RPC::XML::base64->new($fh1),
+                              RPC::XML::base64->new($fh2));
+    ok((ref($res) eq 'RPC::XML::boolean') && $res->value);
 }
 else
 {
+    skip("Error opening svsm_text.gif: $!");
     skip("Error opening svsm_text.gif: $!");
 }
 
