@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.11 2001/08/10 08:29:34 rjray Exp $
+# $Id: Makefile.PL,v 1.12 2001/08/11 08:51:02 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -15,7 +15,7 @@ use Cwd 'cwd';
 
 $cwd = cwd;
 
-$CLEAN = 'pod2html-* *.html RPC-XML.spec *.rpm rpmrc rpmmacro ';
+$CLEAN = 'pod2html-* *.html *.spec *.rpm rpmrc rpmmacro ';
 
 @scripts = (File::Spec->catfile(qw(etc make_method)));
 $CLEAN  .= File::Spec->catfile(qw(methods *.xpl));
@@ -85,7 +85,7 @@ sub MY::post_constants
 {
     my $self = shift;
 
-    "SPECFILE=$self->{DISTNAME}.spec";
+    "SPECFILE=perl-$self->{DISTNAME}.spec";
 }
 
 sub MY::postamble
@@ -97,15 +97,15 @@ sub MY::postamble
     #
     # Generate the spec file from <DATA> with substitutions
     #
-    print "Generating $self->{DISTNAME}.spec...\n";
+    print "Generating perl-$self->{DISTNAME}.spec...\n";
     $self->{RELEASE} = 1 unless $self->{RELEASE};
     $self->{INSTALLDIR} = $Config{installsitelib} unless $self->{INSTALLDIR};
-    open(SPECI, "< $self->{DISTNAME}.spec.in");
+    open(SPECI, "< spec.in");
     if ($?)
     {
         die "Error opening template spec file: $!, stopped";
     }
-    open(SPECO, "> $self->{DISTNAME}.spec");
+    open(SPECO, "> perl-$self->{DISTNAME}.spec");
     if ($?)
     {
         die "Error creating output spec file: $!, stopped";
