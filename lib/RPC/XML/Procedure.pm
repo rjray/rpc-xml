@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.7 2002/12/30 07:24:50 rjray Exp $
+#   $Id: Procedure.pm,v 1.8 2003/01/12 08:36:50 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -485,7 +485,9 @@ theoretically be added, removed, debugged or even changed entirely without
 requiring that the server application itself be rebuilt (or, possibly, without
 it even being restarted).
 
-=head3 The XPL file structure
+=over 4
+
+=item The XML-based file structure
 
 The B<XPL Procedure Layout> dialect is a very simple application of XML to the
 problem of expressing the method in such a way that it could be useful to
@@ -517,7 +519,7 @@ The default methods that this package provides are turned into XPL files by
 the B<make_method> tool (see L<make_method>). The final forms of these may
 serve as direct examples of what the file should look like.
 
-=head3 Information used only for book-keeping
+=item Information used only for book-keeping
 
 Some of the information in the XPL file is only for book-keeping: the version
 stamp of a method is never involved in the invocation. The server also keeps
@@ -528,7 +530,7 @@ through any sort of introspection/documentation API. They are still available
 and callable, but the client must possess the interface information in order
 to do so.
 
-=head3 The information crucial to the method
+=item The information crucial to the method
 
 The name, signatures and code must be present for obvious reasons. The
 C<E<lt>nameE<gt>> tag tells the server what external name this procedure is
@@ -538,7 +540,7 @@ types and quantity of arguments it will accept, and for a given set of
 arguments what the type of the returned value is. Lastly is the
 C<E<lt>codeE<gt>> tag, without which there is no procedure to remotely call.
 
-=head3 Why the <code> tag allows multiple languages
+=item Why the <code> tag allows multiple languages
 
 Note that the C<E<lt>codeE<gt>> tag is the only one with an attribute, in this
 case "language". This is designed to allow for one XPL file to provide a given
@@ -556,7 +558,7 @@ implementations in all four of the above languages, the name, help text,
 signature and even hidden status would likely be identical. So, why not share
 the non-language-specific elements in the spirit of re-use?
 
-=head3 The "make_method" utility
+=item The "make_method" utility
 
 The utility script C<make_method> is provided as a part of this software
 suite. It allows for the automatic creation of XPL files from either
@@ -566,6 +568,8 @@ page. The package F<Makefile.PL> features an example of engineering the
 automatic generation of XPL files and their delivery as a part of the normal
 Perl module build process. Using this tool is highly recommended over managing
 XPL files directly. For the full details, see L<make_method>.
+
+=back
 
 =head1 DIAGNOSTICS
 
