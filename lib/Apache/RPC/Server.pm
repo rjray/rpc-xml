@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.19 2002/12/30 07:22:19 rjray Exp $
+#   $Id: Server.pm,v 1.20 2003/01/27 11:10:29 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.19 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.20 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 sub version { $Apache::RPC::Server::VERSION }
 
@@ -98,12 +98,14 @@ sub handler ($$)
     my $class = shift;
     my $r = shift;
 
-    my ($srv, $content, $resp, $respxml, $hdrs, $hdrs_out, $compress);
+    my ($srv, $content, $resp, $respxml, $hdrs, $hdrs_out, $compress, $length,
+        $do_compress, $com_engine, $parser, $me, $resp_fh);
 
     $srv = (ref $class) ? $class : $class->get_server($r);
+    $me = (ref($class) || $class) . '::handler';
     unless (ref $srv)
     {
-        $r->log_error(__PACKAGE__ . ': PANIC! ' . $srv);
+        $r->log_error("$me: PANIC! " . $srv);
         return SERVER_ERROR;
     }
 
@@ -124,31 +126,146 @@ sub handler ($$)
     {
         # Step 1: Do we have the correct content-type?
         return DECLINED unless ($r->header_in('Content-Type') =~ m|text/xml|i);
+        $compress = $srv->compress;
+        $do_compress = 1
+            if ($compress and
+                ($r->header_in('Content-Encoding') || '') =~
+                 $srv->compress_re);
+
+        # Step 2: Read the request in and convert it to a request object
         # Note that this currently binds us to the Content-Length header a lot
         # more tightly than I like. Expect to see this change sometime soon.
-        $r->read($content, $r->header_in('Content-Length'));
-        $content = Compress::Zlib::uncompress($content)
-            if (($compress = $srv->compress) &&
-                ($r->header_in('Content-Encoding') || '') =~
-                $srv->compress_re);
+        $length = $r->header_in('Content-Length');
+        $parser = $srv->parser->parse(); # Get the ExpatNB object
+        if ($do_compress)
+        {
+            # Spin up the compression engine
+            unless ($com_engine = Compress::Zlib::inflateInit())
+            {
+                $r->log_error("$me: Unable to init the Compress::Zlib engine");
+                return SERVER_ERROR;
+            }
+        }
 
-        # Step 2: Process the request and encode the outgoing response
+        while ($length)
+        {
+            $r->read($content, ($length < 2048) ? $length : 2048);
+            $length -= length($content);
+            if ($do_compress)
+            {
+                unless ($content = $com_engine->inflate($content))
+                {
+                    $r->log_error("$me: Error inflating compressed data");
+                    return SERVER_ERROR;
+                }
+            }
+            eval { $parser->parse_more($content); };
+            if ($@)
+            {
+                $r->log_error("$me: XML parse error: $@");
+                return SERVER_ERROR;
+            }
+        }
+
+        eval { $content = $parser->parse_done; };
+        if ($@)
+        {
+            $r->log_error("$me: XML parse error at end: $@");
+            return SERVER_ERROR;
+        }
+
+        # Step 3: Process the request and encode the outgoing response
         # Dispatch will always return a RPC::XML::response object
-        $resp = $srv->dispatch(\$content);
-        $respxml = $resp->as_string;
+        $resp = $srv->dispatch($content);
 
-        # Step 3: Form up and send the headers and body of the response
-        if ($compress and (length($respxml) > $srv->compress_thresh) and
+        # Step 4: Form up and send the headers and body of the response
+        $r->content_type('text/xml');
+        $r->no_cache(1);
+        $do_compress = 0; # Clear it
+        if ($compress and ($resp->length > $srv->compress_thresh) and
             (($r->header_in('Accept-Encoding') || '') =~ $srv->compress_re))
         {
-            $respxml = Compress::Zlib::compress($respxml);
+            $do_compress = 1
             $hdrs_out->{'Content-Encoding'} = $compress;
         }
-        $r->content_type('text/xml');
-        $r->set_content_length(bytelength $respxml);
-        $r->no_cache(1);
-        $r->send_http_header;
-        print $respxml;
+        # Determine if we need to spool this to a file due to size
+        if ($self->message_file_thresh and
+            $self->message_file_thresh < $respxml->length)
+        {
+            unless ($resp_fh = Apache::File->tmpfile)
+            {
+                $r->log_error("$me: Error opening tmpfile");
+                return SERVER_ERROR;
+            }
+
+            # Now that we have it, spool the response to it. This is a
+            # little hairy, since we still have to allow for compression.
+            # And though the response could theoretically be HUGE, in
+            # order to compress we have to write it to a second temp-file
+            # first, so that we can compress it into the primary handle.
+            if ($do_compress)
+            {
+                my $fh2 = Apache::File->tmpfile;
+                unless ($fh2)
+                {
+                    $r->log_error("$me: Error opening second tmpfile");
+                    return SERVER_ERROR;
+                }
+
+                # Write the request to the second FH
+                $resp->serialize($fh2);
+                seek($fh2, 0, 0);
+
+                # Spin up the compression engine
+                unless ($com_engine = Compress::Zlib::deflateInit())
+                {
+                    $r->log_error("$me: Unable to initialize the " .
+                                  'Compress::Zlib engine');
+                    return SERVER_ERROR;
+                }
+
+                # Spool from the second FH through the compression engine,
+                # into the intended FH.
+                my $buf = '';
+                my $out;
+                while (read($fh2, $buf, 4096))
+                {
+                    unless (defined($out = $com_engine->deflate(\$buf)))
+                    {
+                        $r->log_error("$me: Compression failure in deflate()");
+                        return SERVER_ERROR;
+                    }
+                    print $resp_fh $out;
+                }
+                # Make sure we have all that's left
+                unless (defined($out = $com_engine->flush))
+                {
+                    $r->log_error("$me: Compression flush failure in deflate");
+                    return SERVER_ERROR;
+                }
+                print $resp_fh $out;
+
+                # Close the secondary FH. Rewinding the primary is done
+                # later.
+                close($fh2);
+            }
+            else
+            {
+                $resp->serialize($resp_fh);
+            }
+            seek($resp_fh, 0, 0);
+
+            $r->set_content_length(-s $resp_fh);
+            $r->send_fd($resp_fh);
+        }
+        else
+        {
+            # Treat the content strictly in-memory
+            $content = $resp->as_string;
+            $content = Compress::Zlib::compress($content) if $do_compress;
+            $r->set_content_length(length $content);
+            $r->print($content);
+        }
     }
     else
     {
