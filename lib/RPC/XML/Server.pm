@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.6 2001/06/07 03:59:26 rjray Exp $
+#   $Id: Server.pm,v 1.7 2001/06/07 08:43:00 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -51,7 +51,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -482,22 +482,24 @@ reference associated with the named method. It returns C<undef> if no such
 method exists. Since the methods are stored internally as closures, this is
 the only reliable way of calling one method from within another.
 
-=item accept_loop(HASH)
+=item server_loop(HASH)
 
 Enters the connection-accept loop, which generally does not return. This is
-only useful if the server object was created with a HTTP listener. It uses
-the C<accept> method of B<HTTP::Daemon> to listen for requests, and marshalls
-them out via the C<dispatch> method described below. It answers HTTP-HEAD
-requests immediately (without counting them on the server statistics) and
-efficiently by using a cached B<HTTP::Response> object.
+the C<accept()>-based loop of B<HTTP::Daemon> if the object was created with
+an instance of that class as a part. Otherwise, this enters the run-loop of
+the B<Net::Server> class. It listens for requests, and marshalls them out via
+the C<dispatch> method described below. It answers HTTP-HEAD requests
+immediately (without counting them on the server statistics) and efficiently
+by using a cached B<HTTP::Response> object.
 
 Because infinite loops requiring a C<HUP> or C<KILL> signal to terminate are
-generally in poor taste, C<accept_loop> sets up a localized signal handler
-which causes an exit when triggered. By default, this is attached to the
-C<INT> signal.
+generally in poor taste, the B<HTTP::Daemon> side of this sets up a localized
+signal handler which causes an exit when triggered. By default, this is
+attached to the C<INT> signal. If the B<Net::Server> module is being used
+instead, it provides its own signal management.
 
 The arguments, if passed, are interpreted as a hash of key/value options (not
-a hash reference, please note). Currently, only one is recognized:
+a hash reference, please note). For B<HTTP::Daemon>, only one is recognized:
 
 =over 4
 
@@ -512,6 +514,10 @@ killing the running process (unless other arrangements are made within the
 application).
 
 =back
+
+The options that B<Net::Server> responds to are detailed in the manual pages
+for that package. All options passed to C<server_loop> in this situation are
+passed unaltered to the C<run()> method in B<Net::Server>.
 
 =item dispatch(REQUEST)
 
@@ -743,64 +749,11 @@ sub method_to_ref
 
 ###############################################################################
 #
-#   Sub Name:       accept_loop
-#
-#   Description:    Enter the server read-loop and manage/dispatch requests
-#
-#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $self     in      ref       Class instance
-#                   %args     in      hash      Config settings
-#
-#   Globals:        None.
-#
-#   Environment:    None.
-#
-#   Returns:        void
-#
-###############################################################################
-sub accept_loop
-{
-    my $self = shift;
-    my %args = @_;
-
-    my ($conn, $req, $resp, $reqxml, $return, $respxml, $exit_now, $timeout);
-
-    return unless $self->{__daemon};
-    # Localize and set the signal handler as an exit route
-    if (exists $args{signal})
-    {
-        local $SIG{$args{signal}} = sub { $exit_now++; }
-            unless ($args{signal} eq 'NONE');
-    }
-    else
-    {
-        local $SIG{INT} = sub { $exit_now++; };
-    }
-
-    $self->started('set');
-    $exit_now = 0;
-    $timeout = $self->{__daemon}->timeout(1);
-    while (1)
-    {
-        $conn = $self->{__daemon}->accept;
-
-        last if $exit_now;
-        next unless $conn;
-        $self->process_request($conn);
-        $conn->close;
-        undef $conn; # Free up any lingering resources
-    }
-
-    $self->{__daemon}->timeout($timeout);
-    return;
-}
-
-###############################################################################
-#
 #   Sub Name:       server_loop
 #
-#   Description:    Enter a server-loop situation, only usable if this object
-#                   has access to the Net::Server package.
+#   Description:    Enter a server-loop situation, using the accept() loop of
+#                   HTTP::Daemon if $self has such an object, or falling back
+#                   Net::Server otherwise.
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object of this class
@@ -820,24 +773,62 @@ sub server_loop
     my $self = shift;
     my %args = @_;
 
-    # Don't do this next part if they've already given a port, or are pointing
-    # to a config file:
-    unless ($args{conf_file} or $args{port})
+    if ($self->{__daemon})
     {
-        $args{port} = $self->{port} || $self->{__port} || 9000;
-        $args{host} = $self->{host} || $self->{__host} || '*';
+        my ($conn, $req, $resp, $reqxml, $return, $respxml, $exit_now,
+            $timeout);
+
+        # Localize and set the signal handler as an exit route
+        if (exists $args{signal})
+        {
+            local $SIG{$args{signal}} = sub { $exit_now++; }
+                unless ($args{signal} eq 'NONE');
+        }
+        else
+        {
+            local $SIG{INT} = sub { $exit_now++; };
+        }
+
+        $self->started('set');
+        $exit_now = 0;
+        $timeout = $self->{__daemon}->timeout(1);
+        while (1)
+        {
+            $conn = $self->{__daemon}->accept;
+
+            last if $exit_now;
+            next unless $conn;
+            $self->process_request($conn);
+            $conn->close;
+            undef $conn; # Free up any lingering resources
+        }
+
+        $self->{__daemon}->timeout($timeout);
     }
+    else
+    {
+        # This is the Net::Server block
 
-    # Try to load the Net::Server::MultiType module
-    eval { require Net::Server::MultiType; };
-    return ref($self) .
-        "::server_loop: Error loading Net::Server::MultiType: $@"
-            if ($@);
-    unshift(@RPC::XML::Server::ISA, 'Net::Server::MultiType');
+        # Don't do this next part if they've already given a port, or are
+        # pointing to a config file:
 
-    $self->started('set');
-    # ...and we're off!
-    $self->run(%args);
+        unless ($args{conf_file} or $args{port})
+        {
+            $args{port} = $self->{port} || $self->{__port} || 9000;
+            $args{host} = $self->{host} || $self->{__host} || '*';
+        }
+
+        # Try to load the Net::Server::MultiType module
+        eval { require Net::Server::MultiType; };
+        return ref($self) .
+            "::server_loop: Error loading Net::Server::MultiType: $@"
+                if ($@);
+        unshift(@RPC::XML::Server::ISA, 'Net::Server::MultiType');
+
+        $self->started('set');
+        # ...and we're off!
+        $self->run(%args);
+    }
 
     return;
 }
@@ -1050,6 +1041,57 @@ sub dispatch
     }
 
     return RPC::XML::response->new($response);
+}
+
+###############################################################################
+#
+#   Sub Name:       call
+#
+#   Description:    This is an internal, end-run-around-dispatch() method to
+#                   allow the RPC methods that this server has and knows about
+#                   to call each other through their reference to the server
+#                   object.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $name     in      scalar    Name of the method to call
+#                   @args     in      list      Arguments (if any) to pass
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        Success:    return value of the call
+#                   Failure:    error string
+#
+###############################################################################
+sub call
+{
+    my $self = shift;
+    my ($name, @args) = @_;
+
+    #
+    # Two VERY important notes here: The values in @args are not pre-treated
+    # in any way, so not only should the receiver understand what they're
+    # getting, there's no signature checking taking place, either.
+    #
+    # Second, if the normal return value is not distinguishable from a string,
+    # then the caller may not recognize if an error occurs.
+    #
+
+    my $response;
+
+    return "Unknown method: $name" unless ($self->{__method_table}->{$name});
+    eval {
+        $response = &{$self->{__method_table}->{$name}->{code}}($self, @args);
+    };
+    if ($@)
+    {
+        # Report a Perl-level error/failure
+        $response = $@;
+    }
+
+    $response;
 }
 
 ###############################################################################
