@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.1 2001/04/18 09:28:45 rjray Exp $
+#   $Id: Parser.pm,v 1.2 2001/06/08 09:13:50 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -86,7 +86,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -539,6 +539,12 @@ all, of this can be written more compactly and/or efficiently.
 The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
 See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
 specification.
+
+=head1 LICENSE
+
+This module is licensed under the terms of the Artistic License that covers
+Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
+license itself.
 
 =head1 SEE ALSO
 

@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.2 2001/05/08 08:44:51 rjray Exp $
+#   $Id: Client.pm,v 1.3 2001/06/08 09:13:23 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -45,7 +45,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -320,6 +320,12 @@ can be written more compactly and/or efficiently.
 The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
 See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
 specification.
+
+=head1 LICENSE
+
+This module is licensed under the terms of the Artistic License that covers
+Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
+license itself.
 
 =head1 SEE ALSO
 
