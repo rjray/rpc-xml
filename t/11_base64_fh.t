@@ -95,7 +95,6 @@ else
 if (open(F, "< $tmpfile"))
 {
     autoflush F 1;
-    print F $value;
     seek(F, 0, 0);
     $pos = tell(F);
 
