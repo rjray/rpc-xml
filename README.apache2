@@ -1,0 +1,12 @@
+Note:
+
+At present, this package does not work with Apache2 and the soon-to-be
+mod_perl2. The changes to the API for location handlers are too drastic to
+try and support both within the same class (I tried, using the compatibility
+layer). Also, mp2 does not currently provide support for <Perl> sections, which
+are the real strength of the Apache::RPC::Server class.
+
+As time permits, and the Apache2/mod_perl2 API develops, I intend to have
+versions of both Apache::RPC::Server and Apache::RPC::Status for that platform.
+
+Randy

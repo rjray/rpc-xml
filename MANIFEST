@@ -3,6 +3,7 @@ MANIFEST                       # This file
 Makefile.PL                    # MakeMaker skeleton
 README                         # Overview
 README.apache                  # Notes on XML::Parser and Apache
+README.apache2                 # Notes on Apache2 and mod_perl2
 etc/make_method                # Tool to create *.xpl files
 etc/rpc-method.dtd             # DTD for the *.xpl file structure
 ex/linux.proc.meminfo.base     # Base/help/code files for the sample methods
