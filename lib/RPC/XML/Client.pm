@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.11 2002/12/05 04:16:15 rjray Exp $
+#   $Id: Client.pm,v 1.12 2002/12/30 07:30:42 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,9 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
-
-1;
+$VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -204,7 +202,7 @@ sub send_request
 
     $reqclone = $self->{__request}->clone;
     $content = $req->as_string;
-    $compress = $self->compress;
+    $compress = $self->compress; # Avoid making 4+ calls to the method
     if ($self->compress_requests and $compress and
         length($content) > $self->compress_thresh)
     {
@@ -367,6 +365,8 @@ sub combined_handler
 
     ($self->fault_handler($newval), $self->error_handler($newval));
 }
+
+1;
 
 __END__
 
