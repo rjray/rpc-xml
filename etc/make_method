@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: make_method,v 1.6 2001/06/13 04:36:40 rjray Exp $
+#   $Id: make_method,v 1.7 2002/01/13 10:40:46 rjray Exp $
 #
 #   Description:    Simple tool to turn a Perl routine and the support data
 #                   into the simple XML representation that RPC::XML::Server
@@ -36,7 +36,7 @@ use Getopt::Long;
 use IO::File;
 use File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 ($cmd = $0) =~ s|.*/||;
 $USAGE = "$cmd [ --options ]
 
@@ -114,12 +114,12 @@ if ($opts{base})
         }
         elsif (/^helpfile:\s+(.*)/i)
         {
-            $helptxt = read_external "$path/$1";
+            $helptxt = read_external(File::Spec->catfile($path, $1));
         }
         elsif (/^codefile(\[(.*)\])?:\s+(.*)/i)
         {
             $lang = $2 || 'perl';
-            $codetxt->{$lang} = read_external "$path/$3";
+            $codetxt->{$lang} = read_external(File::Spec->catfile($path, $3));
         }
     }
     die "Error: no code specified in $opts{base}.base, stopped"
@@ -169,11 +169,11 @@ else
 
     if ($opts{code})
     {
-        $$codetxt = read_external($opts{code});
+        $codetxt->{perl} = read_external($opts{code});
     }
     else
     {
-        $$codetxt = join('', <STDIN>);
+        $codetxt->{perl} = join('', <STDIN>);
     }
 
     if ($opts{output})
@@ -260,9 +260,9 @@ sub write_file
     }
     for (keys %$code)
     {
-	${$code->{$_}} =~ s/&/&amp;/g;
-	${$code->{$_}} =~ s/</&lt;/g;
-	${$code->{$_}} =~ s/>/&gt;/g;
+        ${$code->{$_}} =~ s/&/&amp;/g;
+        ${$code->{$_}} =~ s/</&lt;/g;
+        ${$code->{$_}} =~ s/>/&gt;/g;
     }
 
     print $ofh <<"EO_HDR";
@@ -416,12 +416,21 @@ no help text is specified.
 
 =item B<Codefile: I<STRING>>
 
-Specifies the file from which to read the code. If no code has been read, then
-the tool will exit with an error message.
+Specifies the file from which to read the code. Code is assumed to be Perl,
+and will be tagged as such in the resulting file.
+
+=item B<Codefile[lang]: I<string>>
+
+Specifies the file from which to read code, while also identifying the
+language that the code is in. This allows for the creation of a B<XPL> file
+that includes multiple language implementations of the given method or
+procedure.
 
 =back
 
 Any other lines than the above patterns are ignored.
+
+If no code has been read, then the tool will exit with an error message.
 
 The output is written to B<BASE>.xpl, preserving the path information so that
 the resulting file is right alongside the source files. This allows constructs
