@@ -1,11 +1,60 @@
 Revision history for Perl extension RPC::XML.
 
-0.31
+0.35	Sun Jan 27 16:29:19 PST 2002
 
 	Fixed a small bug in make_method that would have caused a failure if
 	anyone used the command-line switches to specify data, rather than a
 	base-file (specifically, the handling of the --code argument). Also
 	clarified a few places in the man page.
+
+	Found bugs in both versions of the system.status server method (both
+	the basic and the Apache flavor). Both were neglecting to set the
+	"methods_known" value. Also found a bug in system.methodHelp. Amazing
+	what writing the regression tests can uncover.
+
+	RPC::XML::Method is now a skeleton file, slated to be removed by or
+	before 1.0. It has been renamed to RPC::XML::Procedure, and the
+	RPC::XML::Method class is declared as an empty subclass of the
+	RPC::XML::Procedure class. Procedures differ from methods in that they
+	do not get the server object instance as a first parameter in the list
+	that gets passed in.
+
+	Support for RPC::XML::Procedure (and general procedure vs. method)
+	added to the DTD and the make_method tool. All the routines in the
+	ex/ directory are declared as procedures, to further illustrate the
+	concept.
+
+	When code blocks for XPL files are eval'd, they are given a "package"
+	statement to force subsequent calls to be in the RPC::XML::Pprocedure
+	namespace, rather than defaulting to main (a potentially dangerous
+	assumption). The docs on routine-calling in RPC::XML::Server have been
+	updated to discuss this.
+
+	Many more tests added to the suite for RPC::XML::Server.
+
+	Created the test suite for RPC::XML::Client.
+
+	RPC::XML::Client no longer returns a full RPC::XML::response object
+	from any of its routines. Rather, simple_request still does what it
+	always has, and send_request now returns a data-type value. All the
+	data-type classes have a method called "is_fault" that returns false
+	for all except (of course) RPC::XML::fault. This lets callers of
+	send_request test the return value to see if it is a fault.
+
+	Added callback support for errors and faults to the RPC::XML::Client
+	class. This allows programmers to tie specific actions to cases where
+	a call returns a RPC::XML::fault object, or an outright error.
+
+	Created a separate test suite for RPC::XML::Server when used in
+	conjunction with the Net::Server package (it skips if the latter is
+	not installed on the system).
+
+	Almost all of the method-manipulation routines in RPC::XML::Server (all
+	but add_default_methods()) now have counterparts called by the same
+	name after s/method/proc/. This is purely for syntactical sugar and
+	symmetry. Except in the case of add_proc(), where it actually ensures
+	that a hash-reference calling convention is geared correctly to add a
+	RPC::XML::Procedure object rather than RPC::XML::Method.
 
 0.30	Thu Jan  3 01:57:29 PST 2002
 	- first beta release
