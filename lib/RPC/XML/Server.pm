@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.22 2002/01/24 06:57:36 rjray Exp $
+#   $Id: Server.pm,v 1.23 2002/01/27 23:18:12 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -72,6 +72,7 @@ BEGIN {
     @XPL_PATH = ($INSTALL_DIR, File::Spec->curdir);
 }
 
+require HTTP::Daemon;
 require HTTP::Response;
 require HTTP::Status;
 require URI;
@@ -80,7 +81,7 @@ require RPC::XML;
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.22 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.23 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -123,8 +124,6 @@ sub new
     }
     else
     {
-        require HTTP::Daemon;
-
         $host = $args{host}   || '';
         $port = $args{port}   || '';
         $queue = $args{queue} || 5;
@@ -976,6 +975,9 @@ sub server_loop
         # Don't do this next part if they've already given a port, or are
         # pointing to a config file:
 
+        # An explicitly-given conf-file trumps any specified at creation
+        $args{conf_file} = $self->{conf_file}
+            if (exists($self->{conf_file}) and (! exists $args{conf_file}));
         unless ($args{conf_file} or $args{port})
         {
             $args{port} = $self->{port} || $self->{__port} || 9000;
