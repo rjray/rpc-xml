@@ -1,0 +1,65 @@
+###############################################################################
+#
+#   Sub Name:       introspection__CRIS
+#
+#   Description:    Collates the data from listMethods, methodHelp and
+#                   methodSignature into a single array
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $srv      in      ref       Server object instance
+#                   $list     in      listref   If passed, limit methods listed
+#                                     or scalar   to these.
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        Success:    string or listref
+#                   Failure:    fault object
+#
+###############################################################################
+sub introspection__CRIS
+{
+    use strict;
+
+    my $srv = shift;
+    my $list = shift;
+
+    my (@methods, @all_methods, %all_methods, @bad, @results, $scalar);
+
+    my $name = $srv->{method_name};
+    $scalar = ($list and (! ref($list))) ? 1 : 0;
+    @all_methods = sort keys %{$srv->{__method_table}};
+
+    if ($list)
+    {
+        # This is an expensive-enough operation that I don't want to do it
+        # if I don't have to
+        @methods = ($scalar) ? ($list) : @$list;
+        @all_methods{@all_methods} = (1) x scalar(@all_methods);
+        if (@bad = grep(! $all_methods{$_}, @methods))
+        {
+            local $" = ', ';
+            return RPC::XML::fault->new(302, "$name: Method(s) @bad unknown");
+        }
+    }
+    else
+    {
+        @methods = @all_methods;
+    }
+
+    # Now exclude any that are hidden from introspection APIs
+    @methods = grep(! $srv->{__method_table}->{$_}->{hidden}, @methods);
+
+    for (@methods)
+    {
+        push(@results, { name => $_,
+                         help => $srv->{__method_table}->{$_}->{help},
+                         signature => $srv->{__method_table}->{$_}->{signature},
+                         version =>
+                         RPC::XML::string
+                         ->new($srv->{__method_table}->{$_}->{version}) });
+    }
+
+    return $scalar ? $results[0] : \@results;
+}

@@ -1,0 +1,29 @@
+<!--
+        $Id: rpc-method.dtd,v 1.1 2001/04/18 09:28:45 rjray Exp $
+
+        This is a very simple DTD for the specification of a published RPC
+        method/routine. This is here as a reference, and possibly for use with
+        an XML editor in order to troubleshoot files.
+
+        Copyright © 2001, Randy J. Ray (rjray@blackperl.com)
+        Freely usable and redistributable under the terms of the
+        Artistic License as applied to the Perl Programming Language.
+        See http://language.perl.com/misc/Artistic.html
+-->
+
+<!--                   Ampersand                                   -->
+<!ENTITY   amp         "&#38;"                                       >
+<!--                   Greater-Than                                -->
+<!ENTITY   gt          "&#62;"                                       >
+<!--                   Less-Than                                   -->
+<!ENTITY   lt          "&#60;"                                       >
+
+<!ELEMENT  methoddef     (name, version?, hidden?, signature+,
+                          help?, code)                               >
+<!ELEMENT  name          (#PCDATA)                                   >
+<!ELEMENT  version       (#PCDATA)                                   >
+<!ELEMENT  hidden        EMPTY                                       >
+<!ELEMENT  signature     (#PCDATA)                                   >
+<!ELEMENT  help          (#PCDATA)                                   >
+<!ELEMENT  code          (#PCDATA)                                   >
+<!ATTLIST  code          language (#PCDATA)                          >

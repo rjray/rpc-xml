@@ -1,0 +1,34 @@
+###############################################################################
+#
+#   Sub Name:       listMethods__CRIS
+#
+#   Description:    Read the current list of methods from the server object
+#                   and return the names in a list reference.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $srv      in      ref       Server object instance
+#                   $pat      in      scalar    If passed, a substring to match
+#                                                 names against. NOT a regex!
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        listref
+#
+###############################################################################
+sub listMethods__CRIS
+{
+    use strict;
+
+    my $srv = shift;
+    my $pat = shift;
+
+    my @list = (sort keys %{$srv->{__method_table}});
+
+    # Exclude any that are hidden from introspection APIs
+    @list = grep(! $srv->{__method_table}->{$_}->{hidden}, @list);
+    @list = grep(index($_, $pat) != -1, @list) if ($pat);
+
+    \@list;
+}

@@ -1,0 +1,43 @@
+###############################################################################
+#
+#   Sub Name:       status__CRIS
+#
+#   Description:    Create a status-reporting struct and returns it.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $srv      in      ref       Server object instance
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        hashref
+#
+###############################################################################
+sub status__CRIS
+{
+    use strict;
+
+    my $srv = shift;
+
+    my $status = {};
+    my $time = time;
+    my $URI;
+
+    require URI;
+
+    $status->{name} = ref($srv);
+    $status->{version} = new RPC::XML::string $srv->version;
+    $status->{host} = $srv->host || $srv->{host} || '';
+    $status->{port} = $srv->port || $srv->{port} || '';
+    $status->{path} = new RPC::XML::string $srv->path;
+    $status->{date} = RPC::XML::datetime_iso8601
+        ->new(RPC::XML::time2iso8601($time));
+    $status->{started} = RPC::XML::datetime_iso8601
+        ->new(RPC::XML::time2iso8601($srv->started));
+    $status->{date_int} = $time;
+    $status->{started_int} = $srv->started;
+    $status->{total_requests} = $srv->requests() + 1;
+
+    $status;
+}

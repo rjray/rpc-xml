@@ -1,0 +1,4 @@
+List all the methods known to the server. If the STRING parameter is passed,
+it is used as a substring to match against, with only those matching methods
+being returned. Note that the STRING parameter is not a regular expression,
+but rather just a simple substring.

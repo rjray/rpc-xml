@@ -1,0 +1,47 @@
+###############################################################################
+#
+#   Sub Name:       methodSignature__CRIS
+#
+#   Description:    Retrieve the list of method signatures for the specified
+#                   methods.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $srv      in      ref       Server object instance
+#                   $arg      in      ref/sc    Listref or scalar specification
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        Success:    listref
+#                   Failure:    fault object
+#
+###############################################################################
+sub methodSignature__CRIS
+{
+    use strict;
+
+    my $srv = shift;
+    my $arg = shift;
+
+    my $name = $srv->{method_name};
+    my @list = (ref $arg) ? @$arg : ($arg);
+    my (@results, $list);
+
+    # Exclude any that are hidden from introspection APIs
+    @list = grep(! $srv->{__method_table}->{$_}->{hidden}, @list);
+    for (@list)
+    {
+        if ($srv->{__method_table}->{$_})
+        {
+            $list = $srv->{__method_table}->{$_}->{signature};
+            push(@results, [ @$list ]);
+        }
+        else
+        {
+            return RPC::XML::fault->new(302, "$name: Method $_ unknown");
+        }
+    }
+
+    return (ref $arg) ? \@results : $results[0];
+}

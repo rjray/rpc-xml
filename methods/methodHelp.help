@@ -1,0 +1,5 @@
+Return the help text (such as this) associated with the specified method(s).
+If a STRING parameter specifying the method name is passed, the return value
+will be a STRING. If multiple methods are queried by passing an ARRAY of
+STRING values, then the return value will be an ARRAY of STRING values, as
+well.

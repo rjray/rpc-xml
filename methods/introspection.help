@@ -1,0 +1,16 @@
+Return the name, signatures and help text for the registered methods on
+the server. With no parameters, returns an ARRAY of STRUCTs. With an ARRAY
+parameter, expects all elements to be of type STRING and specify method
+names, with the return value being an ARRAY of STRUCT for the named methods
+(in order). If the parameter is a single STRING type, the return value is
+a STRUCT for the named method.
+
+Each STRUCT will have the following members:
+
+        name       A STRING containing the method name
+        version    A STRING version stamp. Empty if none was specified.
+        signature  An ARRAY containing the signatures, each an ARRAY of STRING
+        help       A STRING containing the help text for the method
+
+Note that an ARRAY is returned for the signatures even when there is only one
+signature.

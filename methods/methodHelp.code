@@ -1,0 +1,46 @@
+###############################################################################
+#
+#   Sub Name:       methodHelp__CRIS
+#
+#   Description:    Retrieve any help text for the specified methods.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $srv      in      ref       Server object instance
+#                   $arg      in      ref/sc    Listref or scalar specification
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        Success:    string or listref
+#                   Failure:    fault object
+#
+###############################################################################
+sub methodHelp__CRIS
+{
+    use strict;
+
+    my $srv = shift;
+    my $arg = shift;
+
+    my $name = $srv->{method_name};
+    my $scalar = (ref $arg) ? 0 : 1;
+    my @list = ($scalar) ? ($arg) : @$arg;
+    my @results = ();
+
+    # Exclude any that are hidden from introspection APIs
+    @list = grep(! $srv->{__method_table}->{$_}->{hidden}, @list);
+    for (@list)
+    {
+        if ($srv->{__method_table}->{$_})
+        {
+            push(@results, $srv->{__method_table}->{$_}->{help} || '');
+        }
+        else
+        {
+            return RPC::XML::fault->new(302, "$name: Method $_ unknown");
+        }
+    }
+
+    return ($scalar) ? $results[0] : \@results;
+}

@@ -1,0 +1,17 @@
+Execute a set of one or more procedure calls on the server as a single
+request. The only supported call signature takes an ARRAY of STRUCT values.
+Each STRUCT should have two members:
+
+    methodName         The name of the method/routine to invoke as a STRING
+    params             An ARRAY of the parameters to pass to the routine
+
+If the "params" member is absent, a call with no parameters is assumed. The
+ARRAY of parameters will be expanded prior to the call, otherwise all the
+called routines would have to have a signature allowing for a single ARRAY
+input. Thus, any routine taking such an input will have to nest it within an
+outer containing ARRAY.
+
+The return value is an ARRAY of the return values from the calls, or a fault
+response if one of the calls failed. Because the specification does not allow
+for faults as first-class datatypes, all other results are discarded upon an
+error, and any remaining calls will not get executed.

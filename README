@@ -1,0 +1,68 @@
+RPC::XML - An implementation of XML-RPC (and extensions to)
+
+Version: 0.10 (initial release)
+
+WHAT IS IT
+
+The RPC::XML package is an implementation of XML-RPC. The module provides
+classes for sample client and server implementations, a server designed as an
+Apache location-handler, and a suite of data-manipulation classes that are
+used by them.
+
+
+USING RPC::XML
+
+There are not any pre-packaged executables in this distribution (except for a
+utility tool). Client usage will usually be along the lines of:
+
+    use RPC::XML::Client;
+    ...
+    my $client = new RPC::XML::Client
+        'http://www.oreillynet.com/meerkat/xml-rpc/server.php';
+    my $req = RPC::XML::request->new('meerkat.getChannelsBySubstring', 'perl');
+    my $res = $client->send_request($req);
+    # This returns an object of the RPC::XML::response class. This double-call
+    # of value() first gets a RPC::XML::* data object from the response, then
+    # the actual data from it:
+    my $value = $res->value->value;
+
+Running a simple server is not much more involved:
+
+    use RPC::XML::Server;
+    ...
+    my $srv = new RPC::XML::Server (host => 'localhost',
+                                    port => 9000);
+    # You would then use $srv->add_method to add some remotely-callable code
+    ...
+    $srv->accept_loop; # Stays in an accept/connect loop
+
+
+BUILDING/INSTALLING
+
+This package is set up to configure and build like a typical Perl extension.
+To build:
+
+        perl Makefile.PL
+        make && make test
+
+If RPC::XML passes all tests, then:
+
+        make install
+
+You may need super-user access to install.
+
+
+PROBLEMS/BUG REPORTS
+
+Please send any reports of problems or bugs to rjray@blackperl.com
+
+
+SEE ALSO
+
+XML-RPC:              http://www.xmlrpc.com/spec
+The Artistic License: http://language.perl.com/misc/Artistic.html
+
+
+CHANGES
+
+This is the initial release. Everything changed at least once.

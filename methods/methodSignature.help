@@ -1,0 +1,5 @@
+Return the signatures that the specified method(s) may be called with. Always
+returns an ARRAY, even if there is only one signature. Either a single method
+must be named in the STRING parameter, or a list of one or more may be
+specified in the ARRAY parameter. If an ARRAY is passed, then return value will
+be an ARRAY containing other ARRAY values, one per requested name.

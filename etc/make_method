@@ -1,0 +1,490 @@
+#!/usr/bin/perl
+
+###############################################################################
+#
+# This file copyright (c) 2001 by Randy J. Ray, all rights reserved
+#
+# Copying and distribution are permitted under the terms of the Artistic
+# License as distributed with Perl versions 5.005 and later. See
+# http://language.perl.com/misc/Artistic.html
+#
+###############################################################################
+#
+#   $Id: make_method,v 1.1 2001/04/18 09:28:45 rjray Exp $
+#
+#   Description:    Simple tool to turn a Perl routine and the support data
+#                   into the simple XML representation that RPC::XML::Server
+#                   understands.
+#
+#   Functions:      write_file
+#
+#   Libraries:      Getopt::Long
+#
+#   Global Consts:  $VERSION
+#                   $cmd
+#
+#   Environment:    None.
+#
+###############################################################################
+
+use 5.005;
+use strict;
+use vars qw($cmd $USAGE $VERSION $revision %opts $ifh $ofh
+            $helptxt $codetxt @siglist $name $version $hidden);
+use subs qw(write_file);
+
+use Getopt::Long;
+use IO::File;
+
+$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+($cmd = $0) =~ s|.*/||;
+$USAGE = "$cmd [ --options ]
+
+Where:
+
+--help        Generate this message.
+
+--name        Specifies the external (published) name of the method.
+--version     Gives the version that should be attached to the method.
+--hidden      Takes no value; if passed, flags the method as hidden.
+--signature   Specifies one method signature. May be specified more than once.
+--helptext    Provides the help string.
+--helpfile    Gives the name of a file from which the help-text is read.
+--code        Gives the name of the file from which to read the code.
+--output      Name of the file to write the resulting XML to.
+
+--base        If passed, this is used as a base-name from which to derive all
+              the other information. If <base>.help exists, is read for
+              the help text. If <base>.text exists, the signatures, name,
+              version and hidden status are read from there. Lastly, if
+              <base>.code exists, the code is read from there. When done, the
+              output is written to <base>.xpl.
+
+              If --base is specified, all other options are ignored, and any
+              missing information (such as no signatures, etc.) will cause an
+              error.
+";
+
+GetOptions(\%opts,
+           qw(help
+              base=s
+              name=s version=s hidden signature=s@ helptext=s helpfile=s code=s
+              output=s))
+    or die "$USAGE\n\nStopped";
+
+if ($opts{help})
+{
+    print $USAGE;
+    exit;
+}
+
+#
+# First we start by getting all our data. Once that's all in place, then the
+# generation of the file is simple.
+#
+if ($opts{base})
+{
+    # This simplifies a lot of it
+    # Cut some slack on this, and skip up to the last /
+    ($name = $opts{base}) =~ s|.*/||;
+
+    $ifh = new IO::File "< $opts{base}.code";
+    die "Error opening $opts{base}.code for reading: $!\nStopped"
+        unless ($ifh);
+    $codetxt = join('', <$ifh>);
+
+    $ifh = new IO::File "< $opts{base}.text";
+    die "Error opening $opts{base}.text for reading: $!\nStopped"
+        unless ($ifh);
+    while (defined($_ = <$ifh>))
+    {
+        chomp;
+
+        if (/^name:\s+([\w\.]+)$/i)
+        {
+            $name = $1;
+        }
+        elsif (/^version:\s+(\S+)$/i)
+        {
+            $version = $1;
+        }
+        elsif (/^signature:\s+\b(.*)$/i)
+        {
+            push(@siglist, $1);
+        }
+        elsif (/^hidden:\s+(no|yes)/i)
+        {
+            $hidden = ($1 eq 'yes') ? 1 : 0;
+        }
+    }
+    die "Error: no signatures found in $opts{base}.text, stopped"
+        unless (@siglist);
+
+    $ifh = new IO::File "< $opts{base}.help";
+    # This is optional, so an error is not important
+    $helptxt = join('', <$ifh>) if ($ifh);
+
+    $ofh = new IO::File "> $opts{base}.xpl";
+    die "Error opening $opts{base}.xpl for writing: $!\nStopped"
+        unless ($ofh);
+}
+else
+{
+    if ($opts{name})
+    {
+        $name = $opts{name};
+    }
+    else
+    {
+        die 'No name was specified for the published routine, stopped';
+    }
+
+    $hidden = $opts{hidden} || 0;
+
+    $version = $opts{version} || '';
+
+    if ($opts{signature})
+    {
+        @siglist = map { s/:/ /g; $_ } @{$opts{signature}};
+    }
+    else
+    {
+        die "At least one signature must be specified for $name, stopped";
+    }
+
+    if ($opts{helptext})
+    {
+        $helptxt = "$opts{helptext}\n";
+    }
+    elsif ($opts{helpfile})
+    {
+        $ifh = new IO::File "< $opts{helpfile}";
+        die "Unable to open $opts{helpfile} for reading: $!\nStopped"
+            unless ($ifh);
+        $helptxt = join('', <$ifh>);
+    }
+    else
+    {
+        $helptxt = '';
+    }
+
+    if ($opts{code})
+    {
+        $ifh = new IO::File "< $opts{code}";
+        die "Unable to open $opts{code} for reading: $!\nStopped"
+            unless ($ifh);
+    }
+    else
+    {
+        $ifh = \*STDIN;
+    }
+    $codetxt = join('', <$ifh>);
+
+    if ($opts{output})
+    {
+        $ofh = new IO::File "> $opts{output}";
+        die "Unable to open $opts{output} for writing: $!\nStopped"
+            unless ($ofh);
+    }
+    else
+    {
+        $ofh = \*STDOUT;
+    }
+}
+
+write_file($ofh, $name, $version, $hidden, \$codetxt, \$helptxt, \@siglist);
+
+exit;
+
+###############################################################################
+#
+#   Sub Name:       write_file
+#
+#   Description:    Write the XML file that will describe a publishable method
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $fh       in      IO        Filehandle to write to
+#                   $name     in      scalar    Name (external) of method
+#                   $version  in      scalar    Version string (if any)
+#                   $hidden   in      scalar    Boolean whether to hide it
+#                   $code     in      sc ref    Actual Perl code
+#                   $help     in      sc ref    Help text for the method
+#                   $sigs     in      listref   List of one or more signatures
+#                                                 for the method
+#
+#   Globals:        $cmd
+#                   $VERSION
+#
+#   Environment:    None.
+#
+#   Returns:        void
+#
+###############################################################################
+sub write_file
+{
+    my ($fh, $name, $version, $hidden, $code, $help, $sigs) = @_;
+
+    my $date = scalar localtime;
+    # De-reference the larger bits
+    $code = $$code;
+    $help = $$help;
+
+    # Armor against XML confusion
+    foreach ($name, $code, $help)
+    {
+        s/&/&amp;/g;
+        s/</&lt;/g;
+        s/>/&gt;/g;
+    }
+
+    print $ofh <<"EO_HDR";
+<?xml version="1.0"?>
+<!DOCTYPE methoddef SYSTEM "rpc-method.dtd">
+<!--
+    Generated automatically by $cmd v$VERSION, $date
+
+    Any changes made here will be lost.
+-->
+<methoddef>
+EO_HDR
+
+    print $ofh "<name>$name</name>\n";
+    print $ofh "<version>$version</version>\n" if ($version);
+    print $ofh "<hidden />\n" if ($hidden);
+    print $ofh map { "<signature>$_</signature>\n" } @$sigs;
+    print $ofh "<help>\n$help</help>\n" if ($help);
+    print $ofh qq{<code language="perl">\n$code</code>\n};
+
+    print $ofh "</methoddef>\n";
+
+    return;
+}
+
+__END__
+
+=head1 NAME
+
+make_method - Turn Perl code into an XML description for RPC::XML::Server
+
+=head1 SYNOPSIS
+
+    make_method --name=system.identification --helptext='System ID string'
+        --signature=string --code=ident.pl --output=ident.xpl
+
+    make_method --base=methods/identification
+
+=head1 DESCRIPTION
+
+This is a simple tool to create the XML descriptive files for specifying
+methods to be published by an B<RPC::XML::Server>-based server.
+
+If a server is written such that the methods it exports (or I<publishes>) are
+a part of the running code, then there is no need for this tool. However, in
+cases where the server may be separate and distinct from the code (such as an
+Apache-based RPC server), specifying the routines and filling in the
+supporting information can be cumbersome.
+
+One solution that the B<RPC::XML::Server> package offers is the means to load
+publishable code from an external file. The file is in a simple XML dialect
+that clearly delinates the externally-visible name, the method signatures, the
+help text and the code itself. These files may be created manually, or this
+tool may be used as an aide.
+
+=head1 OPTIONS
+
+The tool recognizes the following options:
+
+=over 4
+
+=item --help
+
+Prints a short summary of the options.
+
+=item --name=STRING
+
+Specifies the published name of the method being encoded. This is the name by
+which it will be visible to clients of the server.
+
+=item --version=STRING
+
+Specify a version stamp for the code routine.
+
+=item --hidden
+
+If this is passe, the resulting file will include a tag that tells the server
+daemon to not make the routine visible through any introspection interfaces.
+
+=item --signature=STRING [ --signature=STRING ... ]
+
+Specify one or more signatures for the method. Signatures should be the type
+names as laid out in the documentation in L<RPC::XML>, with the elements
+separated by a colon. You may also separate them with spaces, if you quote the
+argument. This option may be specified more than once, as some methods may
+have several signatures.
+
+=item --helptext=STRING
+
+Specify the help text for the method as a simple string on the command line.
+Not suited for terribly long help strings.
+
+=item --helpfile=FILE
+
+Read the help text for the method from the file specified.
+
+=item --code=FILE
+
+Read the actual code for the routine from the file specifed. If this option is
+not given, the code is read from the standard input file descriptor.
+
+=item --output=FILE
+
+Write the resulting XML representation to the specified file. If this option
+is not given, then the output goes to the standard output file descriptor.
+
+=item --base=NAME
+
+This is a special, "all-in-one" option. If passed, all other options are
+ignored.
+
+The value is used as the base element for reading information from a file
+named B<BASE>.text and help text from B<BASE>.help. If the help file does not
+exist, it is ignored. However, the lack of a B<BASE>.text file will raise an
+error. This file will contain specification of the name, version, hidden
+status and signatures. Each line of the file should look like one of the
+following:
+
+=over 4
+
+=item B<Name: I<STRING>>
+
+Specify the name of the routine being published. If this line does not appear,
+then the value of the B<--base> argument with all directory elements removed
+will be used.
+
+=item B<Version: I<STRING>>
+
+Provide a version stamp for the function. If no line matching this pattern is
+present, no version tag will be written.
+
+=item B<Hidden: I<STRING>>
+
+If present, I<STRING> should be either C<yes> or C<no> (case not important).
+If it is C<yes>, then the method is marked to be hidden from any introspection
+API.
+
+=item B<Signature: I<STRING>>
+
+This line may appear more than once, and is treated cumulatively. Other
+options override previous values if they appear more than once. The portion
+following the C<Signature:> part is taken to be a published signature for the
+method, with elements separated by whitespace. Each method must have at least
+one signature, so a lack of any will cause an error.
+
+=back
+
+Any other lines than the above patterns are ignored.
+
+The code is read from a file called B<BASE>.code, again raising an
+error if it does not exist.
+
+The output is written to B<BASE>.xpl, preserving the path information so that
+the resulting file is right alongside the source files. This allows constructs
+such as:
+
+    make_method --base=methods/introspection
+
+=back
+
+=head1 FILE FORMAT AND DTD
+
+The file format for these published routines is a very simple XML dialect.
+This is less due to XML being an ideal format than it is the availability of
+the parser, given that the B<RPC::XML::Server> class will already have the
+parser code in core. Writing a completely new format would not have gained
+anything.
+
+The Document Type Declaration for the format can be summarized by:
+
+    <!ENTITY amp  "&#38;">
+    <!ENTITY gt   "&#62;">
+    <!ENTITY lt   "&#60;">
+    <!ELEMENT  methoddef  (name, version?, hidden?, signature+,
+                           help?, code)>
+    <!ELEMENT  name       (#PCDATA)>
+    <!ELEMENT  version    (#PCDATA)>
+    <!ELEMENT  hidden     EMPTY>
+    <!ELEMENT  signature  (#PCDATA)>
+    <!ELEMENT  help       (#PCDATA)>
+    <!ELEMENT  code       (#PCDATA)>
+    <!ATTLIST  code       language (#PCDATA)>
+
+The file C<rpc-method.dtd> that comes with the distribution has some
+commentary in addition to the actual specification.
+
+A file is (for now) limited to one definition. This is started by the opening
+tag, C<E<lt>methoddefE<gt>>. This is followed by exactly one C<E<lt>nameE<gt>>
+container specifying the method name, an optional version stamp, an optional
+hide-from-introspection flag, one or more C<E<lt>signatureE<gt>> containers
+specifying signatures, an optional C<E<lt>helpE<gt>> container with the help
+text, then the C<E<lt>codeE<gt>> container with the actual program code. All
+text should use entity encoding for the symbols:
+
+    & C<&amp;> (ampersand)
+    E<lt> C<&lt;>  (less-than)
+    E<gt> C<&gt;>  (greater-than)
+
+The parsing process within the server class will decode the entities.
+
+=head2 The Specification of Code
+
+This is not I<"Programming 101">, nor is it I<"Perl for the Somewhat Dim">.
+The code that is passed in via one of the C<*.xpl> files gets passed to
+C<eval> with next to no modification (see below). Thus, badly-written or
+malicious code can very well wreak havoc on your server. This is not the fault
+of the server code. The price of the flexibility this system offers is the
+responsibility on the part of the developer to ensure that the code is tested
+and safe.
+
+That being said, the block of code will undergo one minor edit (aside from the
+entity expansion. The server looks for a pattern of C<sub NAME {>, which it
+assumes delinates the start of the declaration. The text is edited to remove
+the name, and the result is an anonymous subroutine definition, which is
+assigned to a lexically-scoped variable within the server. If there is no
+name, no editing is done. If something other than the subroutine declaration
+matches the pattern, then likely the declaration itself will generate an error
+in the C<eval>. Again, this is not I<"Teach Yourself Perl with only 24 Brain
+Cells">.
+
+=head1 EXAMPLES
+
+The B<RPC::XML> distribution comes with a number of default methods in a
+subdirectory called (cryptically enough) C<methods>. Each of these is
+expressed as a set of (C<*.code>, C<*.help>, C<*.text>) files. The MakeMaker
+file configures the resulting Makefile such that these are used to create
+C<*.xpl> files using this tool, and then install them.
+
+=head1 DIAGNOSTICS
+
+Most problems come out in the form of error messages followed by an abrupt
+exit.
+
+=head1 CAVEATS
+
+I don't much like this approach to specifying the methods, but I liked my
+other ideas even less.
+
+=head1 CREDITS
+
+The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
+See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
+specification.
+
+=head1 SEE ALSO
+
+L<RPC::XML>, L<RPC::XML::Server>
+
+=head1 AUTHOR
+
+Randy J. Ray <rjray@blackperl.com>
+
+=cut

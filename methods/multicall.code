@@ -1,0 +1,62 @@
+###############################################################################
+#
+#   Sub Name:       multicall__CRIS
+#
+#   Description:    Execute multiple method calls in a single request
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $srv      in      ref       Server object instance
+#                   $list     in      ref       List of struct's with the call
+#                                                 data within.
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        Success:    listref
+#                   Failure:    fault object
+#
+###############################################################################
+sub multicall__CRIS
+{
+    use strict;
+
+    my $srv = shift;
+    my $list = shift;
+
+    my ($call, $subname, $params, $result, @results);
+
+    my $name = $srv->{method_name};
+
+    for $call (@$list)
+    {
+        unless (ref($call) eq 'HASH')
+        {
+            return RPC::XML::fault->new(200,
+                                        "$name: One of the array elements " .
+                                        'passed in was not a struct');
+        }
+
+        return RPC::XML::fault->new(310,
+                                    "$name: Request was missing required " .
+                                    '"methodName" member')
+            unless ($subname = $call->{methodName});
+        return RPC::XML::fault->new(310,
+                                    "$name: Recursive calling of $name not " .
+                                    'allowed')
+            if ($subname eq $name);
+
+        $params = $call->{params} || [];
+        return RPC::XML::fault->new(200,
+                                    "$name: Request's value for \"params\" " .
+                                    'was not an array')
+            unless (ref($params) eq 'ARRAY');
+
+        $result = $srv->dispatch([ $subname, @$params ]);
+        return $result if $result->is_fault;
+
+        push @results, $result->value;
+    }
+
+    \@results;
+}

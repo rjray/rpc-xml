@@ -1,0 +1,19 @@
+###############################################################################
+#
+#   Sub Name:       identity__CRIS
+#
+#   Description:    Simply returns the server's identity as a string
+#
+#   Arguments:      First arg is server instance
+#
+#   Globals:        None.
+#
+#   Returns:        string
+#
+###############################################################################
+sub identity__CRIS
+{
+    use strict;
+
+    sprintf('%s/%s, CRIS/1.0', ref($_[0]), $_[0]->version);
+}
