@@ -1,5 +1,23 @@
 Revision history for Perl extension RPC::XML.
 
+0.46	Sun Dec 29 23:39:05 PST 2002
+
+	Applied a patch from Andrew Langmead to fix a bug in the uri() method
+	of RPC::XML::Client. Prior, retrieving the value could accidentally
+	reset it. Applied another fix from him to prevent a possible warning.
+
+	Applied another patch to better handle testing of the availability of
+	compression in the client.
+
+	Moving around some of the RPM spec-file generation caused problems
+	with some people trying to build the package if spec.in was missing.
+	Fixed this in Makefile.PL.
+
+	Fix to RPC::XML::Procedure per tip from Stig Porsgaard, to fix the
+	reading of 'signature' arguments to new() when providing all the
+	proc data directly. Reported by others as well, but Stig nailed it
+	down to a specific line.
+
 0.45	Tue Oct 29 21:06:00 PST 2002
 
 	Fixed a problem in the test-usage of the bytes pragma in RPC::XML,
