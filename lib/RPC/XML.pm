@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.27 2003/02/27 12:30:57 rjray Exp $
+#   $Id: XML.pm,v 1.28 2003/03/26 12:10:01 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -27,7 +27,8 @@ package RPC::XML;
 
 use 5.005;
 use strict;
-use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR);
+use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR
+            %xmlmap $xmlre);
 use subs qw(time2iso8601 smart_encode bytelength);
 
 # The following is cribbed from SOAP::Lite, tidied up to suit my tastes
@@ -47,6 +48,9 @@ BEGIN
     {
         eval 'sub bytelength { use bytes; length(@_ ? $_[0] : $_) }';
     }
+
+    %xmlmap = ( '>' => '&gt;' => '<' => '&lt;' => '&' => '&amp;');
+    $xmlre = join('', keys %xmlmap); $xmlre = qr/([$xmlre])/;
 }
 
 require Exporter;
@@ -59,7 +63,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.27 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.28 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -284,9 +288,7 @@ sub as_string
 
     return unless ($class = $self->type);
 
-    ($value = $$self) =~ s/&/&amp;/g;
-    $value            =~ s/</&lt;/g;
-    $value            =~ s/>/&gt;/g;
+    ($value = $$self) =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
 
     "<$class>$value</$class>";
 }
@@ -504,11 +506,13 @@ sub value
 sub as_string
 {
     my $self = shift;
+    my $key;
 
     join('',
          '<struct>',
          (map {
-             ("<member><name>$_</name><value>",
+             ($key = $_) =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
+             ("<member><name>$key</name><value>",
               $self->{$_}->as_string,
               '</value></member>')
          } (keys %$self)),
@@ -520,11 +524,13 @@ sub as_string
 sub serialize
 {
     my ($self, $fh) = @_;
+    my $key;
 
     print $fh '<struct>';
     for (keys %$self)
     {
-        print $fh "<member><name>$_</name><value>";
+        ($key = $_) =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
+        print $fh "<member><name>$key</name><value>";
         $self->{$_}->serialize($fh);
         print $fh '</value></member>';
     }
