@@ -61,3 +61,4 @@ t/meth_bad_2.xpl
 t/meth_good_1.xpl
 t/svsm_text.gif
 t/util.pl
+META.yml                                 Module meta-data (added by MakeMaker)

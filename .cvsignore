@@ -8,3 +8,5 @@ RPC-XML-*
 .gdbinit
 rpmrc
 rpmmacro
+.project
+META.yml
