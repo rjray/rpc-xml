@@ -1,11 +1,11 @@
 <!--
-        $Id: rpc-method.dtd,v 1.5 2002/05/03 20:28:41 rjray Exp $
+        $Id: rpc-method.dtd,v 1.6 2003/08/13 07:06:01 rjray Exp $
 
         This is a very simple DTD for the specification of a published RPC
         method/procedure. This is here as a reference, and possibly for use
 	with an XML editor in order to troubleshoot files.
 
-        Copyright © 2001, Randy J. Ray (rjray@blackperl.com)
+        Copyright (c) 2001, Randy J. Ray (rjray@blackperl.com)
         Freely usable and redistributable under the terms of the
         Artistic License as applied to the Perl Programming Language.
         See http://language.perl.com/misc/Artistic.html
@@ -24,4 +24,4 @@
 <!ELEMENT  signature     (#PCDATA)                                   >
 <!ELEMENT  help          (#PCDATA)                                   >
 <!ELEMENT  code          (#PCDATA)                                   >
-<!ATTLIST  code          language (#PCDATA)                          >
+<!ATTLIST  code          language CDATA #IMPLIED                     >
