@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.12 2002/05/02 04:38:06 rjray Exp $
+#   $Id: XML.pm,v 1.13 2002/05/22 09:43:49 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -727,7 +727,8 @@ sub new
     }
     elsif (UNIVERSAL::isa($argz[0], 'RPC::XML::response'))
     {
-        # This will be a clone-op
+        # This will eventually be a clone-operation. For now, just return in
+        $self = $argz[0];
     }
     elsif (@argz > 1)
     {
