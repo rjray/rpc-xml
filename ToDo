@@ -1,0 +1,17 @@
+$Id: ToDo,v 1.1 2001/06/13 05:32:19 rjray Exp $
+
+* Add more tests. In particular, attack the testing of RPC::XML::Server by
+  using LWP and canned request data. When RPC::XML::Server has passed tests,
+  it can then be used to test RPC::XML::Client.
+
+* Create more examples. Of particular use would be examples of encapsulating
+  an existing library with wrappers.
+
+* Try to create tests for Apache::RPC::Server, perhaps using the
+  Apache::AuthCookie approach to testing as a guide.
+
+* Work towards getting the contents of methods/ to match the developing XML-RPC
+  introspection standard.
+
+* Work on getting all error messages and codes to conform to the developing
+  XML-RPC consensus.
