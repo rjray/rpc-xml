@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.39 2004/11/20 10:11:23 rjray Exp $
+#   $Id: Server.pm,v 1.40 2004/11/30 08:40:54 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -86,7 +86,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.39 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.40 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -1343,8 +1343,8 @@ sub process_request
     my $self = shift;
     my $conn = shift;
 
-    my ($req, $reqxml, $resp, $respxml, $compress, $do_compress, $parser,
-       $com_engine, $length, $read, $buf, $resp_fh, $tmpfile);
+    my ($req, $reqxml, $resp, $respxml, $do_compress, $parser, $com_engine,
+	$length, $read, $buf, $resp_fh, $tmpfile);
 
     my $me = ref($self) . '::process_request';
     unless ($conn and ref($conn))
@@ -1469,7 +1469,7 @@ sub process_request
                  $self->compress_re))
             {
                 $do_compress = 1;
-                $resp->content_encoding($compress);
+                $resp->content_encoding($self->compress);
             }
             # Next step, determine the response disposition. If it is above the
             # threshhold for a requested file cut-off, send it to a temp file
