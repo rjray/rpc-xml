@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.2 2001/06/08 09:16:40 rjray Exp $
+#   $Id: XML.pm,v 1.3 2001/07/08 09:11:42 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -327,16 +327,15 @@ sub new
     my $value = shift || 0;
 
     $RPC::XML::ERROR = '';
-    if ($value =~ /true|yes/i)
+    if ($value =~ /true|yes|1/i)
     {
         $value = 1;
     }
-    elsif ($value =~ /false|no/i)
+    elsif ($value =~ /false|no|0/i)
     {
         $value = 0;
     }
-
-    unless ($value == 1 or $value == 0)
+    else
     {
         $class = ref($class) || $class;
         $RPC::XML::ERROR = "${class}::new: Value must be one of yes, no, " .
@@ -669,6 +668,10 @@ sub as_string
          "$padding</fault>");
 }
 
+# Convenience methods:
+sub code   { $_[0]->{faultCode}->value   }
+sub string { $_[0]->{faultString}->value }
+
 ###############################################################################
 #
 #   Package:        RPC::XML::request
@@ -723,26 +726,24 @@ sub new
     my ($self, $name);
 
     $class = ref($class) || $class;
+    $RPC::XML::ERROR = '';
 
-    if (! ref($argz[0]))
+    unless (@argz)
     {
-        # Assume that this is the method name to be called
-        $name = shift(@argz);
+        $RPC::XML::ERROR = 'RPC::XML::request::new: At least a method name ' .
+            'must be specified';
+        return undef;
     }
 
-    $RPC::XML::ERROR = '';
     if (UNIVERSAL::isa($argz[0], 'RPC::XML::request'))
     {
         # Maybe this will be a clone operation
     }
-    elsif (! $name)
-    {
-        $RPC::XML::ERROR = 'RPC::XML::request::new: At least a method name ' .
-            'must be specified';
-    }
     else
     {
-        # All the remaining args must be datatypes.
+        # This is the method name to be called
+        $name = shift(@argz);
+        # All the remaining args must be data.
         @argz = RPC::XML::smart_encode(@argz);
         $self = { args => [ @argz ], name => $name };
         bless $self, $class;
@@ -1098,6 +1099,21 @@ structure are specifically defined, the constructor may be called with exactly
 two arguments, the first of which will be taken as the code, and the second
 as the string. They will be converted to RPC::XML types automatically and
 stored by the pre-defined key names.
+
+Also as a matter of convenience, the fault class provides the following
+accessor methods for directly retrieving the integer code and error string
+from a fault object:
+
+=over 4
+
+=item code
+
+=item string
+
+=back
+
+Both names should be self-explanatory. The values returned are Perl values,
+not B<RPC::XML> class instances.
 
 =back
 
