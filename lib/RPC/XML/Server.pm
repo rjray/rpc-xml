@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.2 2001/05/08 08:42:56 rjray Exp $
+#   $Id: Server.pm,v 1.3 2001/06/05 05:28:08 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -33,8 +33,6 @@ package RPC::XML::Server;
 use 5.005;
 use strict;
 use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR @XPL_PATH);
-use constant WDAY => [ qw(Sun Mon Tue Wed Thu Fri Sat) ];
-use constant MON  => [ qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec) ];
 
 BEGIN {
     ($INSTALL_DIR) = (__FILE__ =~ m|(.*)/|);
@@ -55,7 +53,7 @@ require XML::Parser;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -687,7 +685,7 @@ sub load_XPL_file
     return "Error creating anonymous sub: $@" if $@;
 
     $return->{code} = $code;
-    # The approach above gave us an empty "methoddef" key
+    # The XML::Parser approach above gave us an empty "methoddef" key
     delete $return->{methoddef};
     $return;
 }
@@ -702,8 +700,10 @@ sub load_XPL_file
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Class instance
+#                   @details  in      list      Possible hanky-panky with the
+#                                                 list of methods to install
 #
-#   Globals:        None.
+#   Globals:        $INSTALL_DIR
 #
 #   Environment:    None.
 #
@@ -713,12 +713,37 @@ sub load_XPL_file
 sub add_default_methods
 {
     my $self = shift;
+    my @details = @_;
+
+    my $negate = 0;
+    my $detail = 0;
+    my %details;
+
+    if (@details)
+    {
+        $detail = 1;
+        if ($details[0] =~ /^-?except/i)
+        {
+            $negate = 1;
+            shift(@details);
+        }
+        for (@details) { $_ .= '.xpl' unless /\.xpl$/ }
+        @details{@details} = (1) x @details;
+    }
 
     my $d = new DirHandle $INSTALL_DIR;
     my @files = grep($_ =~ /\.xpl$/, $d->read);
     $d->close;
 
-    add_method($self, "$INSTALL_DIR/$_") for (@files);
+    for (@files)
+    {
+        # Use $detail as a short-circuit to avoid the other tests when we can
+        next if ($detail and
+                 $negate ? $details{$_} : ! $details{$_});
+        add_method($self, "$INSTALL_DIR/$_");
+    }
+
+    $self;
 }
 
 __END__
@@ -758,7 +783,7 @@ The following methods are provided by the B<RPC::XML::Server> class:
 
 =over 4
 
-=item new(%OPTIONS)
+=item new(OPTIONS)
 
 Creates a new object of the class and returns the blessed reference. Depending
 on the options, the object will contain some combination of an HTTP listener,
@@ -946,13 +971,24 @@ but rather encoded as an object of the B<RPC::XML::fault> class, and returned
 as the result of the dispatch. This distinguishes between server-centric
 errors, and general run-time errors.
 
-=item add_default_methods
+=item add_default_methods([DETAILS])
 
 This method adds all the default methods (those that are shipped with this
 extension) to the calling server object. The files are denoted by their
 C<*.xpl> extension, and are installed into the same directory as this
 B<Server.pm> file. The set of default methods are described below (see
 L<"The Default Methods Provided">).
+
+If any names are passed as a list of arguments to this call, then only those
+methods specified are actually loaded. If the C<*.xpl> extension is absent on
+any of these names, then it is silently added for testing purposes. Note that
+the methods shipped with this package have file names without the leading
+"C<status.>" part of the method name. If the very first element of the list of
+arguments is "C<except>" (or "C<-except>"), then the rest of the list is
+treated as a set of names to I<not> load, while all others do get read. The
+B<Apache::RPC::Server> module uses this to prevent the loading of the default
+C<system.status> method while still loading all the rest of the defaults. (It
+then provides a more Apache-centric status method.)
 
 =back
 
