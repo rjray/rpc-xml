@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.33 2003/01/27 01:27:49 rjray Exp $
+#   $Id: Server.pm,v 1.34 2003/01/27 11:03:14 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -86,7 +86,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.33 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.34 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -1517,6 +1517,7 @@ sub process_request
                                               'deflate()');
                             next;
                         }
+			print $resp_fh $out;
                     }
                     # Make sure we have all that's left
                     unless (defined($out = $com_engine->flush))
