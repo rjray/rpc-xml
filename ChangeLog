@@ -3,3 +3,13 @@ Revision history for Perl extension RPC::XML.
 0.25	Tue Jun 12 22:35:09 PDT 2001
 
 	This is the initial release.
+
+0.26	Mon Jun 25 22:30:18 PDT 2001
+
+	Fixed some doc errors in RPC::XML::Server. Mainly things I had
+	simplified, but not updated the docs to reflect.
+
+	Added a fair amount to the docs in Apache::RPC::Server. In particular,
+	a new section was added that illustrates using <Perl> configuration
+	sections to create the server objects in the master Apache process,
+	so that they are automatically inherited by children.
