@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.41
+Version: 0.42
 
 WHAT IS IT
 
@@ -65,15 +65,27 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-Wrapped the call to XML::Parser::parse (lib/RPC/XML/Parser.pm) in an
-eval {} so that parse failures don't kill a server or client. Reported
-by Kevin Greene.
+Changed the test in Apache::RPC::Server of the Content-type header so
+that it accepts a header that contains "text/xml", as opposed to only
+accepting a header that exactly equalled that string. Allows for
+things like SOAP::Lite's XMLRPC::Lite which include a charset in the
+header.
 
-An intended clone-operation in RPC::XML::response::new (lib/RPC/XML.pm)
-was never actually written, which allowed for a corner case that could
-result in new() return undef when it shouldn't. Related to the bug
-reported by Sergey Scherbinin.
+time2iso8601() in the RPC::XML module now allows defaulting of the
+$time argument to time() (which means no timezone specification).
 
-The RPC::XML::Procedure::call method (lib/RPC/XML/Procedure.pm) had one
-error-check loop that was returning a full RPC::XML::response object,
-instead of just a RPC::XML::fault. Reported by Sergey Scherbinin.
+Found a bug in RPC::XML::Parser where base64 data being parsed in a
+request/response message wasn't being properly passed to the c'tor
+for RPC::XML::base64. Reported by Chris Brierley.
+
+Added a line in Apache::RPC::Server to set the Content-Type header
+on HEAD responses. Apache won't take this from the usual header()
+method, it has to be explicitly set with content_type().
+
+Two of the tests in t/40_server.t could cause fatal errors since a
+return value wasn't tested for ref-ness before having a method called
+on it. Fixed.
+
+Compress::Zlib-based compression is now supported in RPC::XML::Server,
+RPC::XML::Client and Apache::RPC::Server. It should be compatible with
+the XMLRPC::Lite package's compression.
