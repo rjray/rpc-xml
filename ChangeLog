@@ -1,6 +1,11 @@
 Revision history for Perl extension RPC::XML.
 
-0.3x
+0.31
+
+	Fixed a small bug in make_method that would have caused a failure if
+	anyone used the command-line switches to specify data, rather than a
+	base-file (specifically, the handling of the --code argument). Also
+	clarified a few places in the man page.
 
 0.30	Thu Jan  3 01:57:29 PST 2002
 	- first beta release
