@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.40
+Version: 0.41
 
 WHAT IS IT
 
@@ -65,27 +65,15 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-Fixed some grammar problems in error messages, and some formatting.
+Wrapped the call to XML::Parser::parse (lib/RPC/XML/Parser.pm) in an
+eval {} so that parse failures don't kill a server or client. Reported
+by Kevin Greene.
 
-Fixed a bug in the new() method of Apache::RPC::Server where it was
-expecting the value of the "apache" key to be an object of the
-Apache::Server class, but it was actually getting an object of the
-Apache class.
+An intended clone-operation in RPC::XML::response::new (lib/RPC/XML.pm)
+was never actually written, which allowed for a corner case that could
+result in new() return undef when it shouldn't. Related to the bug
+reported by Sergey Scherbinin.
 
-Created RPC::XML::Function class, which is a type of server-side
-encapsulator that doesn't bother with signature tests of any kind.
-The DTD and make_method tool support the new type.
-
-Changed the encoding of the Perl code in etc/make_method as follows:
-If the code does not already contain either of the two sequences,
-']]>' or '__DATA__', then the code is wrapped in a <![CDATA[ ]]>
-section, with #!/usr/bin/perl (actually, $Config{startperl}) at the
-head and __DATA__ at the end. Besides leaving the Perl code readable,
-the *.xpl files can now be syntax-checked with "perl -cx". Thanks to
-the mod_perl guys for this idea, cribbed from their manual page.
-
-Abstracted some of the invocation code out of the server class and
-into the RPC::XML::Procedure class, where it really belonged. This
-aided in further eliminating redundancy in the server class in the
-same general area. I may yet want to tune this area, but I'm a good
-deal happier with the reduction in complexity and repetition.
+The RPC::XML::Procedure::call method (lib/RPC/XML/Procedure.pm) had one
+error-check loop that was returning a full RPC::XML::response object,
+instead of just a RPC::XML::fault. Reported by Sergey Scherbinin.

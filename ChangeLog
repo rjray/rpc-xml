@@ -1,5 +1,20 @@
 Revision history for Perl extension RPC::XML.
 
+0.41	Wed May 22 02:50:47 PDT 2002
+
+	Wrapped the call to XML::Parser::parse (lib/RPC/XML/Parser.pm) in an
+	eval {} so that parse failures don't kill a server or client. Reported
+	by Kevin Greene.
+
+	An intended clone-operation in RPC::XML::response::new (lib/RPC/XML.pm)
+	was never actually written, which allowed for a corner case that could
+	result in new() return undef when it shouldn't. Related to the bug
+	reported by Sergey Scherbinin.
+
+	The RPC::XML::Procedure::call method (lib/RPC/XML/Procedure.pm) had one
+	error-check loop that was returning a full RPC::XML::response object,
+	instead of just a RPC::XML::fault. Reported by Sergey Scherbinin.
+
 0.40	Sat May  4 00:42:18 PDT 2002
 
 	Fixed some grammar problems in error messages, and some formatting.
