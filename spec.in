@@ -24,14 +24,14 @@ and LWP CPAN modules for operation.
 %setup -q -n ${DISTNAME}-%{version} 
 
 %build
-CFLAGS="$RPM_OPT_FLAGS" perl Makefile.PL
+CFLAGS="$RPM_OPT_FLAGS" perl Makefile.PL PREFIX=$RPM_BUILD_ROOT/usr
 
 %clean 
 rm -rf $RPM_BUILD_ROOT
 
 %install
 rm -rf $RPM_BUILD_ROOT
-install_dir=/usr/lib/perl5/site_perl/5.005/i386-linux
+install_dir=${INSTALLSITELIB}
 mkdir -p $RPM_BUILD_ROOT/$installdir
 make PREFIX=$RPM_BUILD_ROOT/usr install
 
