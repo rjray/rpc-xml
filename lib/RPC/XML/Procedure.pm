@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.8 2003/01/12 08:36:50 rjray Exp $
+#   $Id: Procedure.pm,v 1.9 2004/04/12 10:15:34 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -918,8 +918,9 @@ sub call
     # Since there must be at least one signature with a return value (even
     # if the param list is empty), this tells us if the signature matches:
     return RPC::XML::fault->new(301,
-                                "method $name nas no matching " .
-                                'signature for the argument list')
+                                "method $name has no matching " .
+                                'signature for the argument list: ' .
+                                "[$signature]")
         unless ($resptype);
 
     # Set these in case the server object is part of the param list
