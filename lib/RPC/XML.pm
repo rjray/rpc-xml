@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.16 2002/08/29 06:50:25 rjray Exp $
+#   $Id: XML.pm,v 1.17 2002/08/31 06:42:26 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -28,19 +28,30 @@ package RPC::XML;
 use 5.005;
 use strict;
 use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR);
-use subs qw(time2iso8601 smart_encode);
+use subs qw(time2iso8601 smart_encode bytelength);
+
+# The following is cribbed from SOAP::Lite, tidied up to suit my tastes
+BEGIN
+{
+    no strict 'refs';
+
+    eval { use bytes };
+    *bytelength = $@ ?
+        sub { use bytes; length(@_ ? $_[0] : $_) } :
+        sub { length(@_ ? $_[0] : $_) };
+}
 
 require Exporter;
 
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(time2iso8601 smart_encode
+@EXPORT_OK = qw(time2iso8601 smart_encode bytelength
                 RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_DATETIME_ISO8601
                 RPC_BASE64 RPC_STRING);
 %EXPORT_TAGS = (types => [ qw(RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_STRING
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.16 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.17 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -833,7 +844,7 @@ respectively.
 
 =head1 EXPORTABLE FUNCTIONS
 
-At present, only two functions are available for import. They must be
+At present, three simple functions are available for import. They must be
 explicitly imported as part of the C<use> statement, or with a direct call to
 C<import>:
 
@@ -859,7 +870,28 @@ time value, base-64 data, etc., the program must still explicitly encode it.
 However, this routine will hopefully simplify things a little bit for a
 majority of the usage cases.
 
+=item bytelength([$string])
+
+Returns the length of the string passed in, in bytes rather than characters.
+In Perl prior to 5.6.0 when there was little or no Unicode support, this has
+no difference from the C<length> function. if the B<bytes> pragme is
+available, then the length measured is raw bytes, even when faced with
+multi-byte characters. If no argument is passed in, operates on C<$_>.
+
 =back
+
+In addition to these three, the following "helper" functions are also
+available. They may be imported explicitly, or via a tag of C<:types>:
+
+    RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_DATETIME_ISO8601
+    RPC_BASE64 RPC_STRING
+
+Each creates a data object of the appropriate type from a single value. They
+are merely short-hand for calling the constructors of the data classes
+directly.
+
+All of the above (helpers and the first three functions) may be imported via
+the tag C<:all>.
 
 =head1 CLASSES
 

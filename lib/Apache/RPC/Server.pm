@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.17 2002/08/15 09:17:08 rjray Exp $
+#   $Id: Server.pm,v 1.18 2002/08/31 06:42:26 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -40,6 +40,7 @@ use Apache;
 use Apache::File; # For ease-of-use methods like set_last_modified
 use Apache::Constants ':common';
 
+use RPC::XML 'bytelength';
 use RPC::XML::Server;
 @Apache::RPC::Server::ISA = qw(RPC::XML::Server);
 
@@ -49,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.17 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.18 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -130,7 +131,8 @@ sub handler ($$)
         $r->read($content, $r->header_in('Content-Length'));
         $content = Compress::Zlib::uncompress($content)
             if (($compress = $srv->compress) &&
-                $r->header_in('Content-Encoding') =~ $srv->compress_re);
+                ($r->header_in('Content-Encoding') || '') =~
+                $srv->compress_re);
 
         # Step 2: Process the request and encode the outgoing response
         # Dispatch will always return a RPC::XML::response object
@@ -139,13 +141,13 @@ sub handler ($$)
 
         # Step 3: Form up and send the headers and body of the response
         if ($compress and (length($respxml) > $srv->compress_thresh) and
-            ($r->header_in('Accept-Encoding') =~ $srv->compress_re))
+            (($r->header_in('Accept-Encoding') || '') =~ $srv->compress_re))
         {
             $respxml = Compress::Zlib::compress($respxml);
             $hdrs_out->{'Content-Encoding'} = $compress;
         }
         $r->content_type('text/xml');
-        $r->set_content_length(length $respxml);
+        $r->set_content_length(bytelength $respxml);
         $r->no_cache(1);
         $r->send_http_header;
         print $respxml;

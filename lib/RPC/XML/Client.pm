@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.9 2002/08/29 06:52:00 rjray Exp $
+#   $Id: Client.pm,v 1.10 2002/08/31 06:42:26 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -43,10 +43,10 @@ require LWP::UserAgent;
 require HTTP::Request;
 require URI;
 
-require RPC::XML;
+use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -211,6 +211,7 @@ sub send_request
         $reqclone->content_encoding($compress);
     }
     $reqclone->content($content);
+    $reqclone->content_length(bytelength($content));
     $reqclone->header(Host => URI->new($reqclone->uri)->host);
     $response = $self->{__useragent}->request($reqclone);
 
@@ -223,7 +224,8 @@ sub send_request
 
     # Check for compressed content, and decompress it if we can. If we can't,
     # error out.
-    if ($compress and $response->content_encoding =~ $self->compress_re)
+    if ($compress and
+        ($response->content_encoding || '') =~ $self->compress_re)
     {
         $content = Compress::Zlib::uncompress($response->content)
     }

@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.29 2002/08/29 06:52:01 rjray Exp $
+#   $Id: Server.pm,v 1.30 2002/08/31 06:42:27 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -80,11 +80,11 @@ require HTTP::Response;
 require HTTP::Status;
 require URI;
 
-require RPC::XML;
+use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.29 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.30 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -1259,7 +1259,7 @@ sub process_request
             # Is the content compressed?
             $reqxml = Compress::Zlib::uncompress($reqxml)
                 if (($compress = $self->compress) &&
-                    $req->content_encoding =~ $self->compress_re);
+                    ($req->content_encoding || '') =~ $self->compress_re);
             # Dispatch will always return a RPC::XML::response
             $resp = $self->dispatch(\$reqxml);
             $respxml = $resp->as_string;
@@ -1272,6 +1272,7 @@ sub process_request
                 $resp->content_encoding($compress);
             }
             $resp->content($respxml);
+            $resp->content_length(bytelength($respxml));
             $conn->send_response($resp);
             undef $resp;
         }
