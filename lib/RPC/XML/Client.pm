@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.14 2003/01/20 09:24:32 rjray Exp $
+#   $Id: Client.pm,v 1.15 2003/01/24 10:56:25 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.14 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.15 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -91,17 +91,25 @@ sub new
 
     # Check for compression support
     $self->{__compress} = '';
-    eval { require Compress::Zlib };
+    eval "require Compress::Zlib";
     $self->{__compress} = $@ ? '' : 'deflate';
     # It looks wasteful to keep using the hash key, but it makes it easier
     # to change the string in just one place (above) if I have to.
-    $REQ->header(Accept_Encoding  => $self->{__compress})
+    $REQ->header(Accept_Encoding => $self->{__compress})
         if $self->{__compress};
     $self->{__compress_thresh} = $attrs{compress_thresh} || 4096;
     $self->{__compress_re} = qr/$self->{__compress}/;
     # They can change this value with a method
     $self->{__compress_requests} = 0;
     delete $attrs{compress_thresh};
+
+    # Parameters to control the point at which messages are shunted to temp
+    # files due to size, and where to home the temp files. Start with a size
+    # threshhold of 1Meg and no specific dir (which will fall-through to the
+    # tmpdir() method of File::Spec).
+    $self->{__message_file_thresh} = $attrs{message_file_thresh} || 1048576;
+    $self->{__message_temp_dir}    = $attrs{message_temp_dir}    || '';
+    delete @attrs{qw(message_file_thresh message_temp_dir)};
 
     # Note and preserve any error or fault handlers. Check the combo-handler
     # first, as it is superceded by anything more specific.
@@ -122,13 +130,14 @@ sub new
         delete $attrs{error_handler};
     }
 
-    # Preserve any remaining attributes passed in
-    $self->{$_} = $attrs{$_} for (keys %attrs);
-
-    # Then, get the RPC::XML::Parser instance
+    # Get the RPC::XML::Parser instance
     $self->{__parser} = RPC::XML::Parser->new($attrs{parser} ?
                                               @{$attrs{parser}} : ()) or
         return "${class}::new: Unable to get RPC::XML::Parser object";
+    delete $attrs{parser};
+
+    # Now preserve any remaining attributes passed in
+    $self->{$_} = $attrs{$_} for (keys %attrs);
 
     bless $self, $class;
 }
@@ -188,7 +197,8 @@ sub send_request
 {
     my ($self, $req, @args) = @_;
 
-    my ($me, $message, $response, $reqclone, $content, $compress, $value);
+    my ($me, $message, $response, $reqclone, $content, $can_compress, $value,
+        $do_compress, $req_fh, $tmpfile, $com_engine);
 
     $me = ref($self) . ':send_request';
 
@@ -200,60 +210,173 @@ sub send_request
             unless ($req); # $RPC::XML::ERROR is already set
     }
 
-    $reqclone = $self->{__request}->clone;
-    $content = $req->as_string;
-    $compress = $self->compress; # Avoid making 4+ calls to the method
-    if ($self->compress_requests and $compress and
-        length($content) > $self->compress_thresh)
-    {
-        $content = Compress::Zlib::compress($content);
-        $reqclone->content_encoding($compress);
-    }
-    $reqclone->content($content);
-    $reqclone->content_length(bytelength($content));
+    # Start by setting up the request-clone for using in this instance
+    $reqclone = $self->request->clone;
     $reqclone->header(Host => URI->new($reqclone->uri)->host);
-    $response = $self->{__useragent}->request($reqclone);
-
-    unless ($response->is_success)
+    $can_compress = $self->compress; # Avoid making 4+ calls to the method
+    if ($self->compress_requests and $can_compress and
+        $req->length > $self->compress_thresh)
     {
-        $message =  "$me: HTTP server error: " . $response->message;
-        return (ref($self->{__error_cb}) eq 'CODE') ?
-            $self->{__error_cb}->($message) : $message;
+        # If this is a candidate for compression, set a flag and note it
+        # in the Content-encoding header.
+        $do_compress = 1;
+        $reqclone->content_encoding($can_compress);
     }
 
-    # Check for compressed content, and decompress it if we can. If we can't,
-    # error out.
-    if ($compress and
-        ($response->content_encoding || '') =~ $self->compress_re)
+    # Next step, determine our content's disposition. If it is above the
+    # threshhold for a requested file cut-off, send it to a temp file and use
+    # a closure on the request object to manage content.
+    if ($self->message_file_thresh and
+        $self->message_file_thresh < $req->length)
     {
-        $content = Compress::Zlib::uncompress($response->content)
+        require File::Spec;
+        # Start by creating a temp-file
+        $tmpfile = $self->message_temp_dir || File::Spec->tmpdir;
+        $tmpfile = File::Spec->catfile($tmpfile, __PACKAGE__ . $$ . time);
+        return "$me: Error opening $tmpfile: $!"
+            unless (open($req_fh, "+> $tmpfile"));
+        unlink $tmpfile;
+        # Make it auto-flush
+        my $old_fh = select($req_fh); $| = 1; select($old_fh);
+
+        # Now that we have it, spool the request to it. This is a little
+        # hairy, since we still have to allow for compression. And though the
+        # request could theoretically be HUGE, in order to compress we have to
+        # write it to a second temp-file first, so that we can compress it
+        # into the primary handle.
+        if ($do_compress)
+        {
+            my $fh2;
+            $tmpfile .= '-2';
+            return "$me: Error opening $tmpfile: $!"
+                unless (open($fh2, "+> $tmpfile"));
+            unlink $tmpfile;
+            # Make it auto-flush
+            $old_fh = select($fh2); $| = 1; select($old_fh);
+
+            # Write the request to the second FH
+            $req->serialize($fh2);
+            seek($fh2, 0, 0);
+
+            # Spin up the compression engine
+            $com_engine = Compress::Zlib::deflateInit();
+            return "$me: Unable to initialize the Compress::Zlib engine"
+                unless $com_engine;
+
+            # Spool from the second FH through the compression engine, into
+            # the intended FH.
+            my $buf = '';
+            my $out;
+            while (read($fh2, $buf, 4096))
+            {
+                $out = $com_engine->deflate(\$buf);
+                return "$me: Compression failure in deflate()"
+                    unless defined $out;
+                print $req_fh $out;
+            }
+            # Make sure we have all that's left
+            $out = $com_engine->flush;
+            return "$me: Compression flush failure in deflate()"
+                unless defined $out;
+            print $req_fh $out;
+
+            # Close the secondary FH. Rewinding the primary is done later.
+            close($fh2);
+        }
+        else
+        {
+            $req->serialize($req_fh);
+        }
+        seek($req_fh, 0, 0);
+
+        $reqclone->content_length(-s $req_fh);
+        $reqclone->content(sub {
+                               my $b = '';
+                               return undef
+                                   unless defined(read($req_fh, $b, 4096));
+                               $b;
+                           });
     }
     else
     {
-        if (($response->content_encoding || '') =~ /deflate/)
-        {
-            $message =  "$me: Compressed content encoding not supported";
-            return (ref($self->{__error_cb}) eq 'CODE') ?
-                $self->{__error_cb}->($message) : $message;
-        }
-        $content = $response->content;
+        # Treat the content strictly in-memory
+        $content = $req->as_string;
+        $content = Compress::Zlib::compress($content) if $do_compress;
+        $reqclone->content($content);
+        $reqclone->content_length(bytelength($content));
     }
-    # The return value from the parser's parse method no longer works as a
-    # direct return value for us
-    $value = $self->{__parser}->parse($content);
 
-    # Rather, we now have to check if there is a callback in the case of
+    # Content used to be handled as an in-memory string. Now, to avoid eating
+    # up huge chunks due to potentially-massive messages (thanks Tellme), we
+    # parse incrementally with the XML::Parser::ExpatNB class. What's more,
+    # to use the callback-form of request(), we can't get just the headers
+    # first. We have to check things like compression and such on the fly.
+    my $compression;
+    my $parser = $self->parser->parse(); # Gets the ExpatNB object
+    my $cb = sub {
+        my ($data, $resp) = @_;
+
+        unless (defined $compression)
+        {
+            $compression =
+                (($resp->content_encoding || '') =~
+                 $self->compress_re) ? 1 : 0;
+            die "$me: Compressed content encoding not supported"
+                if ($compression and (! $can_compress));
+            if ($compression)
+            {
+                die "$me: Unable to initialize de-compression engine"
+                    unless ($com_engine = Compress::Zlib::inflateInit());
+            }
+        }
+
+        if ($compression)
+        {
+            die "$me: Error in inflate() expanding data"
+                unless ($data = $com_engine->inflate($data));
+        }
+
+        $parser->parse_more($data);
+        1;
+    };
+
+    $response = $self->useragent->request($reqclone, $cb);
+    if ($message = $response->headers->header('X-Died'))
+    {
+        # One of the die's was triggered
+        return (ref($self->error_handler) eq 'CODE') ?
+            $self->error_handler->($@) : $@;
+    }
+    unless ($response->is_success)
+    {
+        $message =  "$me: HTTP server error: " . $response->message;
+        return (ref($self->error_handler) eq 'CODE') ?
+            $self->error_handler->($message) : $message;
+    }
+
+    # Whee. No errors from the callback or the server. Finalize the parsing
+    # process.
+    eval { $value = $parser->parse_done(); };
+    if ($@)
+    {
+        use Data::Dumper; print STDERR Dumper($response);
+        # One of the die's was triggered
+        return (ref($self->error_handler) eq 'CODE') ?
+            $self->error_handler->($@) : $@;
+    }
+
+    # Check if there is a callback to be invoked in the case of
     # errors or faults
     if (! ref($value))
     {
         $message =  "$me: parse-level error: $value";
-        return (ref($self->{__error_cb}) eq 'CODE') ?
-            $self->{__error_cb}->($message) : $message;
+        return (ref($self->error_handler) eq 'CODE') ?
+            $self->error_handler->($message) : $message;
     }
     elsif ($value->is_fault)
     {
-        return (ref($self->{__fault_cb}) eq 'CODE') ?
-            $self->{__fault_cb}->($value->value) : $value->value;
+        return (ref($self->fault_handler) eq 'CODE') ?
+            $self->fault_handler->($value->value) : $value->value;
     }
 
     $value->value;
@@ -275,7 +398,7 @@ sub send_request
 sub uri
 {
     my $self = shift;
-    $self->{__request}->uri(@_);
+    $self->request->uri(@_);
 }
 
 ###############################################################################
@@ -299,7 +422,7 @@ sub credentials
     my ($self, $realm, $user, $pass) = @_;
 
     my $uri = URI->new($self->uri);
-    $self->{__useragent}->credentials($uri->host_port, $realm, $user, $pass);
+    $self->useragent->credentials($uri->host_port, $realm, $user, $pass);
     $self;
 }
 
@@ -308,7 +431,7 @@ BEGIN
 {
     no strict 'refs';
 
-    for my $method (qw(useragent request compress_re compress))
+    for my $method (qw(useragent request compress_re compress parser))
     {
         *$method = sub { shift->{"__$method"} }
     }
@@ -365,6 +488,26 @@ sub combined_handler
     my ($self, $newval) = @_;
 
     ($self->fault_handler($newval), $self->error_handler($newval));
+}
+
+# Control whether, and at what point, messages are considered too large to
+# handle in-memory.
+sub message_file_thresh
+{
+    my $self = shift;
+
+    return $self->{__message_file_thresh} unless @_;
+
+    $self->{__message_file_thresh} = shift;
+}
+
+sub message_temp_dir
+{
+    my $self = shift;
+
+    return $self->{__message_temp_dir} unless @_;
+
+    $self->{__message_temp_dir} = shift;
 }
 
 1;
@@ -448,6 +591,24 @@ an instance of B<RPC::XML::fault> in cases of faults. This allows the
 developer to install a simple default handler, while later providing a more
 specific one by means of the methods listed below.
 
+=item message_file_thresh
+
+If this key is passed, the value associated with it is assumed to be a
+numerical limit to the size of in-memory messages. Any out-bound request that
+would be larger than this when stringified is instead written to an anonynous
+temporary file, and spooled from there instead. This is useful for cases in
+which the request includes B<RPC::XML::base64> objects that are themselves
+spooled from file-handles. This test is independent of compression, so even
+if compression of a request would drop it below this threshhold, it will be
+spooled anyway. The file itself is unlinked after the file-handle is created,
+so once it is freed the disk space is immediately freed.
+
+=item message_temp_dir
+
+If a message is to be spooled to a temporary file, this key can define a
+specific directory in which to open those files. If this is not given, then
+the C<tmpdir> method from the B<File::Spec> package is used, instead.
+
 =back
 
 See the section on the effects of callbacks on return values, below.
@@ -515,6 +676,13 @@ is protected by Basic Authentication. Note that changing the target URL of the
 client object to a different (protected) location would require calling this
 with new credentials for the new realm (even if the value of C<$realm> is
 identical at both locations).
+
+=item message_file_thresh
+
+=item message_temp_dir
+
+These methods may be used to retrieve or alter the values of the given keys
+as defined earlier for the C<new> method.
 
 =back
 
