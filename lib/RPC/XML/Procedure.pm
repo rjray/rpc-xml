@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.6 2002/08/29 06:52:00 rjray Exp $
+#   $Id: Procedure.pm,v 1.7 2002/12/30 07:24:50 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,9 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
-
-1;
+$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -130,7 +128,7 @@ sub new
                 # repeat. Of course, that's also why we can't just take @argz
                 # directly as a hash. *shrug*
                 push(@{$data->{signature}},
-                     [ ref($val) ? @$val : split(/ /, $val) ]);
+                     ref($val) ? join(' ', @$val) : $val);
             }
             elsif (exists $data->{$key})
             {
@@ -226,6 +224,8 @@ use strict;
 @RPC::XML::Method::ISA = qw(RPC::XML::Procedure);
 
 package RPC::XML::Procedure;
+
+1;
 
 =head1 NAME
 
@@ -454,18 +454,18 @@ protected, and the same care should be taken before altering any of them:
 
 =over 4
 
-=item C<file>
+=item file
 
 When the method was loaded from a file, this key contains the path to the file
 used.
 
-=item C<mtime>
+=item mtime
 
 When the method was loaded from a file, this key contains the
 modification-time of the file, as a UNIX-style C<time> value. This is used to
 check for changes to the file the code was originally read from.
 
-=item C<called>
+=item called
 
 When the method is being used by one of the server classes provided in this
 software suite, this key is incremented each time the server object dispatches

@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Status.pm,v 1.3 2002/01/03 09:33:58 rjray Exp $
+#   $Id: Status.pm,v 1.4 2002/12/30 07:22:19 rjray Exp $
 #
 #   Description:    This module is intended to provide a browser-friendly
 #                   status page on the RPC server(s) being managed by the
@@ -50,7 +50,7 @@ $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf "v%vd", $^V : $];
 
-$Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 #
 # %proto is the prototype set of screens/handlers that this class knows about.
@@ -76,8 +76,6 @@ my %IS_INSTALLED = ();
     } qw(Data::Dumper Devel::Symdump B Apache::Request Apache::Peek
          Apache::Symbol);
 }
-
-1;
 
 # Simple token-response method
 sub version { $Apache::RPC::Status::VERSION }
@@ -608,6 +606,8 @@ sub method_detail
 
     \@lines;
 }
+
+1;
 
 __END__
 

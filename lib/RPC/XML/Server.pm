@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.30 2002/08/31 06:42:27 rjray Exp $
+#   $Id: Server.pm,v 1.31 2002/12/30 07:24:50 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -84,9 +84,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.30 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
-
-1;
+$VERSION = do { my @r=(q$Revision: 1.31 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -329,6 +327,8 @@ sub add_method
 
     $self;
 }
+
+1;
 
 =pod
 

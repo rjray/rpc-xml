@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Function.pm,v 1.1 2002/05/03 21:31:33 rjray Exp $
+#   $Id: Function.pm,v 1.2 2002/12/30 07:24:50 rjray Exp $
 #
 #   Description:    This is a type of Procedure that does no signature tests
 #                   at either creation or invocation.
@@ -40,9 +40,7 @@ use AutoLoader 'AUTOLOAD';
 require RPC::XML::Procedure;
 
 @ISA = qw(RPC::XML::Procedure);
-$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
-
-1;
+$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -146,6 +144,8 @@ sub new
 #
 sub signature      { undef; }
 sub make_sig_table { $_[0]; }
+
+1;
 
 =pod
 

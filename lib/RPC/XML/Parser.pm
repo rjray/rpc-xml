@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.6 2002/10/30 05:03:14 rjray Exp $
+#   $Id: Parser.pm,v 1.7 2002/12/30 07:22:20 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -86,9 +86,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
-
-1;
+$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -497,6 +495,8 @@ sub extern_ent
         "(@_)\n";
     return '';
 }
+
+1;
 
 __END__
 
