@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.8 2001/09/10 00:23:23 rjray Exp $
+#   $Id: XML.pm,v 1.9 2001/10/07 10:32:50 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -142,10 +142,6 @@ sub type { my $class = ref($_[0]) || $_[0]; $class =~ s/.*://; $class }
 #   Description:    A base class for the simpler type-classes to inherit from,
 #                   for default constructor, stringification, etc.
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 ###############################################################################
 package RPC::XML::simple_type;
 
@@ -177,16 +173,14 @@ sub value
 sub as_string
 {
     my $self = shift;
-    my $indent = shift || 0;
 
     my $class;
     return unless ($class = ref($self));
     $class =~ s/^.*\://;
     $class =~ s/_/./g;
     substr($class, 0, 8) = 'dateTime' if (substr($class, 0, 8) eq 'datetime');
-    my $padding = '  ' x $indent;
 
-    "$padding<$class>$$self</$class>";
+    "<$class>$$self</$class>";
 }
 
 ###############################################################################
@@ -194,10 +188,6 @@ sub as_string
 #   Package:        RPC::XML::int
 #
 #   Description:    Data-type class for integers
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 ###############################################################################
 package RPC::XML::int;
@@ -213,10 +203,6 @@ use vars qw(@ISA);
 #
 #   Description:    Data-type class for i4. Forces data into an int object.
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 ###############################################################################
 package RPC::XML::i4;
 
@@ -230,10 +216,6 @@ use vars qw(@ISA);
 #   Package:        RPC::XML::double
 #
 #   Description:    The "double" type-class
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 ###############################################################################
 package RPC::XML::double;
@@ -249,10 +231,6 @@ use vars qw(@ISA);
 #
 #   Description:    The "string" type-class
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 ###############################################################################
 package RPC::XML::string;
 
@@ -265,18 +243,16 @@ use vars qw(@ISA);
 sub as_string
 {
     my $self = shift;
-    my $indent = shift || 0;
 
     my ($class, $value);
 
     return unless ($class = $self->type);
-    my $padding = '  ' x $indent;
 
     ($value = $$self) =~ s/&/&amp;/g;
     $value            =~ s/</&lt;/g;
     $value            =~ s/>/&gt;/g;
 
-    "$padding<$class>$value</$class>";
+    "<$class>$value</$class>";
 }
 
 ###############################################################################
@@ -284,10 +260,6 @@ sub as_string
 #   Package:        RPC::XML::boolean
 #
 #   Description:    The type-class for boolean data. Handles some "extra" cases
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 ###############################################################################
 package RPC::XML::boolean;
@@ -329,10 +301,6 @@ sub new
 #
 #   Description:    This is the class to manage ISO8601-style date/time values
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 ###############################################################################
 package RPC::XML::datetime_iso8601;
 
@@ -349,10 +317,6 @@ sub type { 'dateTime.iso8601' };
 #
 #   Description:    This class encapsulates the array data type. Each element
 #                   within the array should be one of the datatype classes.
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 ###############################################################################
 package RPC::XML::array;
@@ -402,29 +366,11 @@ sub value
 sub as_string
 {
     my $self = shift;
-    my $indent = shift || 0;
-    my @text;
 
-    #
-    # Since this is a reference implementation, I want the output of an array
-    # when stringified to be somewhat readable. To help with this, I allow a
-    # second parameter here that will be used in recursive calls to set a base
-    # indent level. Also, the <data> tag will be used for compatibility.
-    #
-    my $padding = '  ' x $indent;
-
-    push(@text,
-         "$padding<array>",
-         "$padding  <data>",
-         (map {
-             ("$padding    <value>",
-              $_->as_string($indent + 3),
-              "$padding    </value>")
-         } (@$self)),
-         "$padding  </data>",
-         "$padding</array>");
-
-    join("\n", @text);
+    join('',
+         '<array><data>',
+         (map { ('<value>', $_->as_string(), '</value>') } (@$self)),
+         '</data></array>');
 }
 
 ###############################################################################
@@ -434,10 +380,6 @@ sub as_string
 #   Description:    This is the "struct" data class. The struct is like Perl's
 #                   hash, with the constraint that all values are instances
 #                   of the datatype classes.
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 ###############################################################################
 package RPC::XML::struct;
@@ -487,27 +429,15 @@ sub value
 sub as_string
 {
     my $self = shift;
-    my $indent = shift || 0;
 
-    #
-    # Since this is a reference implementation, I want the output of a struct
-    # when stringified to be somewhat readable. To help with this, I allow a
-    # second parameter here that will be used in recursive calls to set a base
-    # indent level.
-    #
-    my $padding = '  ' x $indent;
-
-    join("\n",
-         "$padding<struct>",
+    join('',
+         '<struct>',
          (map {
-             ("$padding  <member>",
-              "$padding    <name>$_</name>",
-              "$padding    <value>",
-              $self->{$_}->as_string($indent + 3),
-              "$padding    </value>",
-              "$padding  </member>")
+             ("<member><name>$_</name><value>",
+              $self->{$_}->as_string,
+              '</value></member>')
          } (keys %$self)),
-         "$padding</struct>");
+         '</struct>');
 }
 
 ###############################################################################
@@ -517,10 +447,6 @@ sub as_string
 #   Description:    This is the base64-encoding type. Plain data is passed in,
 #                   plain data is returned. Plain is always returned. All the
 #                   encoding/decoding is done behind the scenes.
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 ###############################################################################
 package RPC::XML::base64;
@@ -556,11 +482,8 @@ sub new
 sub as_string
 {
     my $self = shift;
-    my $indent = shift || 0;
 
-    my $padding = '  ' x $indent;
-
-    "$padding<base64>" . MIME::Base64::encode_base64($$self) . "</base64>";
+    '<base64>' . MIME::Base64::encode_base64($$self) . '</base64>';
 }
 
 ###############################################################################
@@ -574,10 +497,6 @@ sub as_string
 #                   data type in the sense that it cannot be passed in to a
 #                   request. But it is separated so as to better generalize
 #                   responses.
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 ###############################################################################
 package RPC::XML::fault;
@@ -633,16 +552,8 @@ sub new
 sub as_string
 {
     my $self = shift;
-    my $indent = shift || 0;
 
-    my $padding = '  ' x $indent;
-
-    join("\n",
-         "$padding<fault>",
-         "$padding  <value>",
-         $self->SUPER::as_string($indent + 2),
-         "$padding  </value>",
-         "$padding</fault>");
+    '<fault><value>' . $self->SUPER::as_string . '</value></fault>';
 }
 
 # Convenience methods:
@@ -663,10 +574,6 @@ sub string { $_[0]->{faultString}->value }
 #                   This class really only needs a constructor and a method
 #                   to stringify.
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 ###############################################################################
 package RPC::XML::request;
 
@@ -686,10 +593,6 @@ use vars qw(@ISA);
 #                   @argz     in      list      The exact disposition of the
 #                                                 arguments is based on the
 #                                                 type of the various elements
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        Success:    object ref
 #                   Failure:    undef, error in $RPC::XML::ERROR
@@ -745,10 +648,6 @@ sub args       { shift->{args} || [] }
 #                   $self     in      ref       Invoking object
 #                   $indent   in      scalar    Indention level for output
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 #   Returns:        Success:    text
 #                   Failure:    undef
 #
@@ -756,28 +655,19 @@ sub args       { shift->{args} || [] }
 sub as_string
 {
     my $self   = shift;
-    my $indent = shift || 0;
 
-    my ($text, $padding, $container);
+    my $text;
 
     $RPC::XML::ERROR = '';
 
     $text = qq(<?xml version="1.0"?>\n);
-    $padding = '  ' x $indent;
 
-    $text .= "$padding<methodCall>\n";
-    $text .= "$padding  <methodName>$self->{name}</methodName>\n";
-    $text .= "$padding  <params>\n";
+    $text .= "<methodCall><methodName>$self->{name}</methodName><params>";
     for (@{$self->{args}})
     {
-        $text .= "$padding    <param>\n";
-        $text .= "$padding      <value>\n";
-        $text .= $_->as_string($indent + 4) . "\n";
-        $text .= "$padding      </value>\n";
-        $text .= "$padding    </param>\n";
+        $text .= '<param><value>' . $_->as_string . '</value></param>';
     }
-    $text .= "$padding  </params>\n";
-    $text .= "$padding</methodCall>\n";
+    $text .= '</params></methodCall>';
 
     $text;
 }
@@ -792,10 +682,6 @@ sub as_string
 #                   XML generated, encoding checked, etc. This allows for
 #                   late-selection of <methodResponse> or <methodResponseSet>
 #                   as above.
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 ###############################################################################
 package RPC::XML::response;
@@ -815,10 +701,6 @@ use vars qw(@ISA);
 #                   @argz     in      list      The exact disposition of the
 #                                                 arguments is based on the
 #                                                 type of the various elements
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        Success:    object ref
 #                   Failure:    undef, error in $RPC::XML::ERROR
@@ -875,10 +757,6 @@ sub is_fault   { ($_[0]->{value}->isa('RPC::XML::fault')) ? 1 : 0 }
 #                   $self     in      ref       Invoking object
 #                   $indent   in      scalar    Indention level for output
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 #   Returns:        Success:    text
 #                   Failure:    undef
 #
@@ -886,31 +764,24 @@ sub is_fault   { ($_[0]->{value}->isa('RPC::XML::fault')) ? 1 : 0 }
 sub as_string
 {
     my $self   = shift;
-    my $indent = shift || 0;
 
-    my ($text, $padding);
+    my $text;
 
     $RPC::XML::ERROR = '';
 
     $text = qq(<?xml version="1.0"?>\n);
-    $padding = '  ' x $indent;
 
-    $text .= "$padding<methodResponse>\n";
+    $text .= '<methodResponse>';
     if ($self->{value}->isa('RPC::XML::fault'))
     {
-        $text .= $self->{value}->as_string($indent + 1) . "\n";
+        $text .= $self->{value}->as_string;
     }
     else
     {
-        $text .= "$padding  <params>\n";
-        $text .= "$padding    <param>\n";
-        $text .= "$padding      <value>\n";
-        $text .= $self->{value}->as_string($indent + 4) . "\n";
-        $text .= "$padding      </value>\n";
-        $text .= "$padding    </param>\n";
-        $text .= "$padding  </params>\n";
+        $text .= '<params><param><value>' . $self->{value}->as_string .
+            '</value></param></params>';
     }
-    $text .= "$padding</methodResponse>\n";
+    $text .= '</methodResponse>';
 
     $text;
 }
@@ -1001,7 +872,7 @@ The C<new> methods are constructors, C<value> returns the value stored within
 the object (processed recursively for arrays and structs), and C<as_string>
 stringifies the object as a chunk of XML with relative indention for
 clarity. The C<as_string> method takes as its first argument a numeric
-indention level, which is applied as a base indention for output. Other
+indention level which is applied as a base indention for output. Other
 arguments are specified with the classes.
 
 =over 4
