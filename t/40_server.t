@@ -35,6 +35,8 @@ require File::Spec->catfile($dir, 'util.pl');
 $srv = RPC::XML::Server->new(no_http => 1, no_default => 1);
 
 ok(ref($srv) eq 'RPC::XML::Server');
+# Suppress "used only once" warning
+$_ = $RPC::XML::Server::VERSION;
 ok($srv->version eq $RPC::XML::Server::VERSION);
 ok(! $srv->started);
 ok($srv->product_tokens =~ m|/|);
