@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.5 2001/06/05 06:44:41 rjray Exp $
+#   $Id: Server.pm,v 1.6 2001/06/07 03:59:26 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -51,7 +51,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -115,7 +115,8 @@ sub new
                   # default "identity" method that may be loaded from a
                   # XPL file. But it hasn't been loaded yet, and may not
                   # be, hence we set it here (possibly from option values)
-                  RPC_Server => $self->{__version});
+                  RPC_Server   => $self->{__version},
+                  RPC_Encoding => 'XML-RPC');
     $resp->code(RC_OK);
     $resp->message('OK');
     $self->{__response} = $resp;
@@ -156,7 +157,7 @@ sub url
 
 sub product_tokens
 {
-    "RPC::XML::Server/$RPC::XML::Server::VERSION";
+    sprintf "%s/%s", (ref $_[0] || $_[0]), $_[0]->version;
 }
 
 # This fetches/sets the internal "started" timestamp
@@ -175,6 +176,7 @@ sub path     { shift->{__path} }
 sub host     { shift->{__host} }
 sub port     { shift->{__port} }
 sub requests { shift->{__requests} }
+sub response { shift->{__response} }
 sub debug    { shift->{__debug} }
 
 # Get/set the search path for XPL files
@@ -363,11 +365,33 @@ free to use this prefix only if you wish to re-introduce confusion.
 
 Returns the version string associated with this package.
 
+=item product_tokens
+
+This returns the identifying string for the server, in the format
+"C<NAME/VERSION>" consistent with other applications such as Apache and
+B<LWP>. It is provided here as part of the compatibility with B<HTTP::Daemon>
+that is required for effective integration with B<Net::Server>.
+
 =item url
 
 This returns the HTTP URL that the server will be responding to, when it is
 in the connection-accept loop. If the server object was created without a
 built-in HTTP listener, then this method returns C<undef>.
+
+=item requests
+
+Returns the number of requests this server object has marshalled. Note that in
+multi-process environments (such as Apache or Net::Server::PreFork) the value
+returned will only reflect the messages dispatched by the specific process
+itself.
+
+=item response
+
+Each instance of this class (and any subclasses that do not completely override
+the C<new> method) creates and stores an instance of B<HTTP::Response>, which
+is then used by the B<HTTP::Daemon> or B<Net::Server> processing loops in
+constructing the response to clients. The response object has all common
+headers pre-set for efficiency.
 
 =item started([BOOL])
 
@@ -762,7 +786,7 @@ sub accept_loop
 
         last if $exit_now;
         next unless $conn;
-        process_request($self, $conn);
+        $self->process_request($conn);
         $conn->close;
         undef $conn; # Free up any lingering resources
     }
@@ -1063,7 +1087,7 @@ sub load_XPL_file
 
     unless (File::Spec->file_name_is_absolute($file))
     {
-        push(@path, @{$self->{__xpl_path}}) if (ref $self);
+        push(@path, @{$self->xpl_path}) if (ref $self);
         for (@path, @XPL_PATH)
         {
             if (-e "$_/$file") { $file = "$_/$file"; last; }
@@ -1165,7 +1189,7 @@ sub add_methods_in_dir
 
     my $negate = 0;
     my $detail = 0;
-    my %details;
+    my (%details, $ret);
 
     if (@details)
     {
@@ -1180,7 +1204,7 @@ sub add_methods_in_dir
     }
 
     local(*D);
-    opendir(D, $dir) || return undef;
+    opendir(D, $dir) || return "Error opening $dir for reading: $!";
     my @files = grep($_ =~ /\.xpl$/, readdir(D));
     closedir D;
 
@@ -1190,7 +1214,8 @@ sub add_methods_in_dir
         next if ($detail and
                  $negate ? $details{$_} : ! $details{$_});
         # n.b.: Giving the full path keeps add_method from having to search
-        add_method($self, "$dir/$_");
+        $ret = $self->add_method("$dir/$_");
+        return $ret unless ref $ret;
     }
 
     $self;
