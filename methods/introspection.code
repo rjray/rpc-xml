@@ -25,11 +25,11 @@ sub introspection
     my $srv = shift;
     my $list = shift;
 
-    my (@methods, @all_methods, %all_methods, @bad, @results, $scalar);
+    my (@methods, @all_methods, %all_methods, @bad, @results, $scalar, $meth);
 
     my $name = $srv->{method_name};
     $scalar = ($list and (! ref($list))) ? 1 : 0;
-    @all_methods = sort keys %{$srv->{__method_table}};
+    @all_methods = sort $srv->list_methods;
 
     if ($list)
     {
@@ -48,17 +48,16 @@ sub introspection
         @methods = @all_methods;
     }
 
-    # Now exclude any that are hidden from introspection APIs
-    @methods = grep(! $srv->{__method_table}->{$_}->{hidden}, @methods);
+    # Convert in-place to their objects
+    for (@methods) { $_ = $srv->get_method($_); }
+    # Since that list came from the server object, we know alls calls were OK
 
     for (@methods)
     {
-        push(@results, { name => $_,
-                         help => $srv->{__method_table}->{$_}->{help},
-                         signature => $srv->{__method_table}->{$_}->{signature},
-                         version =>
-                         RPC::XML::string
-                         ->new($srv->{__method_table}->{$_}->{version}) });
+        push(@results, { name      => $_->name,
+                         help      => $_->help,
+                         signature => $_->signature,
+                         version   => RPC::XML::string->new($_->version) });
     }
 
     return $scalar ? $results[0] : \@results;

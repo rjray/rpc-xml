@@ -24,10 +24,10 @@ sub listMethods
     my $srv = shift;
     my $pat = shift;
 
-    my @list = (sort keys %{$srv->{__method_table}});
+    my @list = sort $srv->list_methods;
 
     # Exclude any that are hidden from introspection APIs
-    @list = grep(! $srv->{__method_table}->{$_}->{hidden}, @list);
+    @list = grep(! $srv->get_method($_)->hidden, @list);
     @list = grep(index($_, $pat) != -1, @list) if ($pat);
 
     \@list;

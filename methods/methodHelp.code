@@ -24,17 +24,15 @@ sub methodHelp
     my $arg = shift;
 
     my $name = $srv->{method_name};
-    my $scalar = (ref $arg) ? 0 : 1;
-    my @list = ($scalar) ? ($arg) : @$arg;
+    my @list = (ref $arg) ? @$arg : ($arg);
     my @results = ();
+    my $method;
 
-    # Exclude any that are hidden from introspection APIs
-    @list = grep(! $srv->{__method_table}->{$_}->{hidden}, @list);
     for (@list)
     {
-        if ($srv->{__method_table}->{$_})
+        if (ref($method = $srv->get_method($_)) and (! $method->hidden))
         {
-            push(@results, $srv->{__method_table}->{$_}->{help} || '');
+            push(@results, $method->help() || '');
         }
         else
         {

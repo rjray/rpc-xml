@@ -26,15 +26,13 @@ sub methodSignature
 
     my $name = $srv->{method_name};
     my @list = (ref $arg) ? @$arg : ($arg);
-    my (@results, $list);
+    my (@results, $list, $method);
 
-    # Exclude any that are hidden from introspection APIs
-    @list = grep(! $srv->{__method_table}->{$_}->{hidden}, @list);
     for (@list)
     {
-        if ($srv->{__method_table}->{$_})
+        if (ref($method = $srv->get_method($_)) and (! $method->hidden))
         {
-            $list = $srv->{__method_table}->{$_}->{signature};
+            $list = $method->signature;
             push(@results, [ @$list ]);
         }
         else
