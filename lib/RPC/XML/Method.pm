@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Method.pm,v 1.5 2001/10/08 03:39:06 rjray Exp $
+#   $Id: Method.pm,v 1.6 2001/11/30 11:54:38 rjray Exp $
 #
 #   Description:    This class abstracts out all the method-related operations
 #                   from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -121,6 +121,11 @@ sub new
         }
     }
 
+    return (ref($class) || $class) . '::new: Missing required data'
+        unless (exists $data->{signature} and
+                (ref($data->{signature}) eq 'ARRAY') and
+                scalar(@{$data->{signature}}) and
+                $data->{name} and $data->{code});
     bless $data, $class;
     # This needs to happen post-bless in case of error (for error messages)
     $data->make_sig_table;
@@ -140,7 +145,7 @@ sub code
 }
 sub signature
 {
-    if (ref $_[1] eq 'ARRAY')
+    if ($_[1] and ref $_[1] eq 'ARRAY')
     {
         my $old = $_[0]->{signature};
         $_[0]->{signature} = $_[1];
@@ -345,7 +350,7 @@ passed-in signature (which may be a list-reference or a string) B<I<does not
 include the return type>>. This method is provided so that servers may check a
 list of arguments against type when marshalling an incoming call. For example,
 a signature of C<'int int'> would be tested for by calling
-C<"$M->match_signature('int')"> and expecting the return value to be C<int>.
+C<$M-E<gt>match_signature('int')> and expecting the return value to be C<int>.
 
 =item reload
 
@@ -532,7 +537,7 @@ sub clone
     $new_self->{signature} = [];
     @{$new_self->{signature}} = @{$self->{signature}};
 
-    bless $new_self, $self;
+    bless $new_self, ref($self);
 }
 
 ###############################################################################
@@ -656,7 +661,7 @@ sub make_sig_table
     delete $self->{sig_table};
     for $sig (@{$self->{signature}})
     {
-        ($return, $rest) = split(/ /, $sig, 2);
+        ($return, $rest) = split(/ /, $sig, 2); $rest = '' unless $rest;
         # If the key $rest already exists, then this is a collision
         return ref($self) . '::make_sig_table: Cannot have two different ' .
             "return values for one set of params ($return vs. " .

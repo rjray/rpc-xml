@@ -40,5 +40,5 @@ sub methodHelp
         }
     }
 
-    return ($scalar) ? $results[0] : \@results;
+    return (ref $arg) ? $results[0] : \@results;
 }

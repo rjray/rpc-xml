@@ -9,14 +9,19 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.9 2001/10/08 04:21:39 rjray Exp $
+#   $Id: Server.pm,v 1.10 2001/11/30 11:54:39 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
 #                   handle request decoding and response encoding.
 #
 #   Functions:      handler
+#                   init_handler
 #                   new
+#                   get_server
+#                   version
+#                   INSTALL_DIR
+#                   list_servers
 #
 #   Libraries:      RPC::XML::Server
 #
@@ -44,12 +49,20 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
 sub version { $Apache::RPC::Server::VERSION }
 
+sub INSTALL_DIR { $Apache::RPC::Server::INSTALL_DIR }
+
+# Return a list (not list reference) of currently-known server objects,
+# represented as the text-keys from the hash table.
+sub list_servers { sort keys %Apache::RPC::Server::SERVER_TABLE }
+
+# This is kinda funny, since I don't actually have a debug() method in the
+# RPC::XML::Server class at the moment...
 sub debug
 {
     my $self = shift;
@@ -113,6 +126,8 @@ sub handler ($$)
     {
         # Step 1: Do we have the correct content-type?
         return DECLINED unless ($r->header_in('Content-Type') eq 'text/xml');
+        # Note that this currently binds us to the Content-Length header a lot
+        # more tightly than I like. Expect to see this change sometime soon.
         $r->read($content, $r->header_in('Content-Length'));
 
         # Step 2: Process the request and encode the outgoing response
@@ -292,10 +307,10 @@ sub child_started
 #
 #   Sub Name:       get_server
 #
-#   Description:    Retrieve the server object for the specified fully-qual'd
-#                   URL passed in as arg #2. Note that this isn't a class
-#                   method-- it's only called by handler() and the first arg
-#                   is the Apache object reference.
+#   Description:    Retrieve the server object appropriate for this Server
+#                   instance passed in right after $self. If the second arg is
+#                   not a reference, assume they are asking for an existing
+#                   server by name.
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      sc/ref    Object ref or class name
@@ -314,14 +329,31 @@ sub get_server
     my $self     = shift;
     my $r        = shift;
 
-    my $prefix = $r->dir_config('RPCOptPrefix') || '';
-    my $servid = $r->dir_config("${prefix}RpcServer") || '<default>';
+    my ($prefix, $servid);
 
-    $Apache::RPC::Server::SERVER_TABLE{$servid} ||
-        $self->new(apache    => $r,
-                   server_id => $servid,
-                   prefix    => $prefix,
-                   path      => $r->location);
+    if (ref $r)
+    {
+        # Presume $r to in fact be an Apache reference, and use it as such.
+        # If the server that matches this is already in the table, return it.
+        # If it isn't, create it from the information we have available.
+        $prefix = $r->dir_config('RPCOptPrefix') || '';
+        $servid = $r->dir_config("${prefix}RpcServer") || '<default>';
+
+        return $Apache::RPC::Server::SERVER_TABLE{$servid} ||
+            $self->new(apache    => $r,
+                       server_id => $servid,
+                       prefix    => $prefix,
+                       path      => $r->location);
+    }
+    else
+    {
+        # If $r isn't a reference, then this is likely been called as a class
+        # method to get the server object for a specific name. Thus, if it
+        # doesn't exist yet, we lack sufficient information to create it on
+        # the fly.
+        return $Apache::RPC::Server::SERVER_TABLE{$servid} ||
+            "Error: No such server object '$servid' known (yet)";
+    }
 }
 
 __END__

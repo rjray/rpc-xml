@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.18 2001/10/08 00:48:04 rjray Exp $
+#   $Id: Server.pm,v 1.19 2001/11/30 11:54:38 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -38,6 +38,10 @@
 #                   call
 #                   add_default_methods
 #                   add_methods_in_dir
+#                   delete_method
+#                   list_methods
+#                   share_methods
+#                   copy_methods
 #
 #   Libraries:      AutoLoader
 #                   HTTP::Daemon
@@ -66,16 +70,15 @@ BEGIN {
     @XPL_PATH = ($INSTALL_DIR, File::Spec->curdir);
 }
 
-require HTTP::Daemon;
 require HTTP::Response;
-use HTTP::Status; # The only one we import from
+require HTTP::Status;
 require URI;
 
 require RPC::XML;
 require RPC::XML::Parser;
 require RPC::XML::Method;
 
-$VERSION = do { my @r=(q$Revision: 1.18 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.19 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -90,10 +93,6 @@ $VERSION = do { my @r=(q$Revision: 1.18 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r 
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $class    in      scalar    Ref or string for the class
 #                   %args     in      hash      Additional arguments
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        Success:    object reference
 #                   Failure:    error string
@@ -116,10 +115,13 @@ sub new
 
     unless ($args{no_http})
     {
+        require HTTP::Daemon;
+
         $host = $args{host}   || '';
         $port = $args{port}   || '';
         $queue = $args{queue} || 5;
-        $http = HTTP::Daemon->new(($host ? (LocalHost => $host) : ()),
+        $http = HTTP::Daemon->new(Reuse => 1,
+                                  ($host ? (LocalHost => $host) : ()),
                                   ($port ? (LocalPort => $port) : ()),
                                   ($queue ? (Listen => $queue)  : ()));
         return "${class}::new: Unable to create HTTP::Daemon object"
@@ -141,7 +143,7 @@ sub new
                   # be, hence we set it here (possibly from option values)
                   RPC_Server   => $self->{__version},
                   RPC_Encoding => 'XML-RPC');
-    $resp->code(RC_OK);
+    $resp->code(&HTTP::Status::RC_OK);
     $resp->message('OK');
     $self->{__response} = $resp;
 
@@ -170,6 +172,8 @@ sub new
 # only control access to the internals, they ease sub-classing.
 
 sub version { $RPC::XML::Server::VERSION }
+
+sub INSTALL_DIR { $INSTALL_DIR }
 
 sub url
 {
@@ -223,10 +227,6 @@ sub xpl_path
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object to add to
 #                   $meth     in      scalar    Hash ref of data or file name
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        Success:    $self
 #                   Failure:    error string
@@ -345,7 +345,7 @@ are described below (see L<"The Default Methods Provided">).
 
 =item B<queue>
 
-These four are mainly relevant only to HTTP-based implementations. The last
+These four are specific to the HTTP-based nature of the server. The last
 three are not used at all if C<no_http> is set. The B<path> argument sets the
 additional URI path information that clients would use to contact the server.
 Internally, it is not used except in outgoing status and introspection
@@ -394,7 +394,7 @@ within the server class.
 
 Any other keys in the options hash not explicitly used by the constructor are
 copied over verbatim onto the object, for the benefit of sub-classing this
-class. All internal keys are prefixed with "C<__>" to avoid confusion. Feel
+class. All internal keys are prefixed with C<__> to avoid confusion. Feel
 free to use this prefix only if you wish to re-introduce confusion.
 
 =item version
@@ -404,7 +404,7 @@ Returns the version string associated with this package.
 =item product_tokens
 
 This returns the identifying string for the server, in the format
-"C<NAME/VERSION>" consistent with other applications such as Apache and
+C<NAME/VERSION> consistent with other applications such as Apache and
 B<LWP>. It is provided here as part of the compatibility with B<HTTP::Daemon>
 that is required for effective integration with B<Net::Server>.
 
@@ -499,6 +499,22 @@ reference.
 For more on the creation and manipulation of methods as objects, see
 L<RPC::XML::Method>.
 
+=item delete_method(NAME)
+
+Delete the named method from the calling object. Removes the entry from the
+internal table that the object maintains. If the method is shared across more
+than one server object (see L</share_methods>), then the underlying object for
+it will only be destroyed when the last server object releases it. On error
+(such as no method by that name known), an error string is returned.
+
+=item list_methods
+
+This returns a list of the names of methods the server current has published.
+Note that the returned values are not the method objects, but rather the names
+by which they are externally known. The "hidden" status of a method is not
+consulted when this list is created; all methods known are listed. The list is
+not sorted in any specific order.
+
 =item xpl_path([LISTREF])
 
 Get and/or set the object-specific search path for C<*.xpl> files (files that
@@ -586,8 +602,8 @@ If any names are passed as a list of arguments to this call, then only those
 methods specified are actually loaded. If the C<*.xpl> extension is absent on
 any of these names, then it is silently added for testing purposes. Note that
 the methods shipped with this package have file names without the leading
-"C<status.>" part of the method name. If the very first element of the list of
-arguments is "C<except>" (or "C<-except>"), then the rest of the list is
+C<status.> part of the method name. If the very first element of the list of
+arguments is C<except> (or C<-except>), then the rest of the list is
 treated as a set of names to I<not> load, while all others do get read. The
 B<Apache::RPC::Server> module uses this to prevent the loading of the default
 C<system.status> method while still loading all the rest of the defaults. (It
@@ -600,6 +616,41 @@ specifies which directory to scan for C<*.xpl> files. In fact, the defaults
 routine simply calls this routine with the installation directory as the
 first argument. The definition of the additional arguments is the same as
 above.
+
+=item share_methods(SERVER, NAMES)
+
+The calling server object shares the methods listed in B<NAMES> with the
+source-server passed as the first object. The source must derive from this
+package in order for this operation to be permitted. At least one method must
+be specified. All are specified by name. Both objects will reference the same
+exact B<RPC::XML::Method> (or derivative thereof) object in this case, meaning
+that call-statistics and the like will reflect the combined data. If one or
+more of the passed names are not present on the source server, and error
+message is returned and none are copied to the calling object.
+
+Alternately, one or more of the name parameters passed to this call may be
+regular-expression objects (the result of the B<qr> operator). Any of these
+detected are applied against the list of all available methods known to the
+source server. All matching ones are inserted into the list (the list is pared
+for redundancies in any case). This allows for easier addition of whole
+classes such as those in the C<system> name space (via B<C<qr/^system\./>>),
+for example. There is no substring matching provided. Names listed in the parameters to this routine must be either complete strings or regular expressions.
+
+=item copy_methods(SERVER, NAMES)
+
+This behaves like the method B<share_methods> above, with the exception that
+the calling object is given a clone of each method, rather than referencing the
+same exact method as the source server. The code reference part of the method
+is shared between the two, but all other data are copied (including a fresh
+copy of any list references used) into a completely new B<RPC::XML::Method> (or
+derivative) object, using the C<clone()> method from that class. Thus, while
+the calling object has the same methods available, and is re-using existing
+code in the Perl runtime, the method objects (and hence the statistics and
+such) are kept separate. As with the above, an error is flagged if one or more
+are not found.
+
+This routine also accepts regular-expression objects with the same behavior
+and limitations.
 
 =back
 
@@ -823,10 +874,6 @@ sub method_from_file
 #                   $name     in      scalar    Name of the method being looked
 #                                                 up
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 #   Returns:        Success:    Method-class reference
 #                   Failure:    undef
 #
@@ -854,10 +901,6 @@ sub get_method
 #                   %args     in      hash      Additional parameters to set up
 #                                                 before calling the superclass
 #                                                 Run method
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        string if error, otherwise void
 #
@@ -937,10 +980,6 @@ sub server_loop
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Class object
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 #   Returns:        $self
 #
 ###############################################################################
@@ -966,8 +1005,6 @@ sub post_configure_hook
 #
 #   Globals:       %ENV
 #
-#   Environment:    None.
-#
 #   Returns:        $self
 #
 ###############################################################################
@@ -988,10 +1025,6 @@ sub pre_loop_hook
 #                   $self     in      ref       This class object
 #                   $conn     in      ref       If present, it's a connection
 #                                                 object from HTTP::Daemon
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        void
 #
@@ -1034,7 +1067,7 @@ sub process_request
         }
         else
         {
-            $conn->send_error(RC_FORBIDDEN);
+            $conn->send_error(&HTTP::Status::RC_FORBIDDEN);
         }
     }
 
@@ -1057,12 +1090,6 @@ sub process_request
 #                   $reftable in      hashref   If present, a reference to the
 #                                                 current-running table of
 #                                                 back-references
-#
-#   Globals:        %extended_types
-#                   $RPC::XML::Server::INSTANCE
-#                   $RPC::XML::Compatible
-#
-#   Environment:    None.
 #
 #   Returns:        RPC::XML::response object
 #
@@ -1151,7 +1178,7 @@ sub dispatch
     local $self->{method_name} = $name;
     # Now take a deep breath and call the method with the arguments
     eval {
-        $response = &{$meth->{code}}($self, map { $_->value } @data);
+        $response = $meth->{code}->($self, map { $_->value } @data);
     };
     if ($@)
     {
@@ -1178,10 +1205,6 @@ sub dispatch
 #                   $self     in      ref       Object of this class
 #                   $name     in      scalar    Name of the method to call
 #                   @args     in      list      Arguments (if any) to pass
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        Success:    return value of the call
 #                   Failure:    error string
@@ -1226,7 +1249,7 @@ sub call
     # Though we have no signature, we can still tell them what name was called
     local $self->{method_name} = $name;
     eval {
-        $response = &{$meth->{code}}($self, @args);
+        $response = $meth->{code}->($self, @args);
     };
     if ($@)
     {
@@ -1251,8 +1274,6 @@ sub call
 #
 #   Globals:        $INSTALL_DIR
 #
-#   Environment:    None.
-#
 #   Returns:        $self
 #
 ###############################################################################
@@ -1273,10 +1294,6 @@ sub add_default_methods
 #                   $dir      in      scalar    Directory to scan
 #                   @details  in      list      Possible hanky-panky with the
 #                                                 list of methods to install
-#
-#   Globals:        None.
-#
-#   Environment:    None.
 #
 #   Returns:        $self
 #
@@ -1316,6 +1333,230 @@ sub add_methods_in_dir
         # n.b.: Giving the full path keeps add_method from having to search
         $ret = $self->add_method(File::Spec->catfile($dir, $_));
         return $ret unless ref $ret;
+    }
+
+    $self;
+}
+
+###############################################################################
+#
+#   Sub Name:       delete_method
+#
+#   Description:    Remove any current binding for the named method on the
+#                   calling server object. Note that if this method is shared
+#                   across other server objects, it won't be destroyed until
+#                   the last server deletes it.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $name     in      scalar    Name of method to lost
+#
+#   Returns:        Success:    $self
+#                   Failure:    error message
+#
+###############################################################################
+sub delete_method
+{
+    my $self = shift;
+    my $name = shift;
+
+    if ($name)
+    {
+        if ($self->{__method_table}->{$name})
+        {
+            delete $self->{__method_table}->{$name};
+            return $self;
+        }
+    }
+    else
+    {
+        return ref($self) . "::delete_method: No such method $name";
+    }
+}
+
+###############################################################################
+#
+#   Sub Name:       list_methods
+#
+#   Description:    Return a list of the methods this object has published.
+#                   Returns the names, not the objects.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#
+#   Returns:        List of names, possibly empty
+#
+###############################################################################
+sub list_methods
+{
+    keys %{$_[0]->{__method_table}};
+}
+
+###############################################################################
+#
+#   Sub Name:       share_methods
+#
+#   Description:    Share the named methods as found on $src_srv into the
+#                   method table of the calling object.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $src_srv  in      ref       Another object of this class
+#                   @names    in      list      One or more method names
+#
+#   Returns:        Success:    $self
+#                   Failure:    error message
+#
+###############################################################################
+sub share_methods
+{
+    my $self    = shift;
+    my $src_srv = shift;
+    my @names   = @_;
+
+    my ($me, $pkg, %tmp, @tmp, $tmp, $meth, @list, @missing);
+
+    $me = ref($self) . '::share_methods';
+    $pkg = __PACKAGE__; # So it can go inside quoted strings
+
+    return "$me: First arg not derived from $pkg, cannot share"
+        unless ((ref $src_srv) && (UNIVERSAL::isa($src_srv, $pkg)));
+    return "$me: Must specify at least one method name for sharing"
+        unless @names;
+
+    #
+    # Scan @names for any regez objects, and if found insert the matches into
+    # the list.
+    #
+    # Only do this once:
+    #
+    @tmp = keys %{$src_srv->{__method_table}};
+    for $tmp (@names)
+    {
+        if (ref($names[$tmp]) eq 'Regexp')
+        {
+            $tmp{$_}++ for (grep($_ =~ $tmp, @tmp));
+        }
+        else
+        {
+            $tmp{$tmp}++;
+        }
+    }
+    # This has the benefit of trimming any redundancies caused by regex's
+    @names = keys %tmp;
+
+    #
+    # Note that the method refs are saved until we've verified all of them.
+    # If we have to return a failure message, I don't want to leave a half-
+    # finished job or have to go back and undo (n-1) additions because of one
+    # failure.
+    #
+    for (@names)
+    {
+        $meth = $src_srv->get_method($_);
+        if (ref $meth)
+        {
+            push(@list, $meth);
+        }
+        else
+        {
+            push(@missing, $_);
+        }
+    }
+
+    if (@missing)
+    {
+        return "$me: One or more methods not found on source object: @missing";
+    }
+    else
+    {
+        $self->add_method($_) for (@list);
+    }
+
+    $self;
+}
+
+###############################################################################
+#
+#   Sub Name:       copy_methods
+#
+#   Description:    Copy the named methods as found on $src_srv into the
+#                   method table of the calling object. This differs from
+#                   share() above in that only the coderef is shared, the
+#                   rest of the method is a completely new object.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $src_srv  in      ref       Another object of this class
+#                   @names    in      list      One or more method names
+#
+#   Returns:        Success:    $self
+#                   Failure:    error message
+#
+###############################################################################
+sub copy_methods
+{
+    my $self    = shift;
+    my $src_srv = shift;
+    my @names   = shift;
+
+    my ($me, $pkg, %tmp, @tmp, $tmp, $meth, @list, @missing);
+
+    $me = ref($self) . '::copy_methods';
+    $pkg = __PACKAGE__; # So it can go inside quoted strings
+
+    return "$me: First arg not derived from $pkg, cannot copy"
+        unless ((ref $src_srv) && (UNIVERSAL::isa($src_srv, $pkg)));
+    return "$me: Must specify at least one method name/regex for copying"
+        unless @names;
+
+    #
+    # Scan @names for any regez objects, and if found insert the matches into
+    # the list.
+    #
+    # Only do this once:
+    #
+    @tmp = keys %{$src_srv->{__method_table}};
+    for $tmp (@names)
+    {
+        if (ref($names[$tmp]) eq 'Regexp')
+        {
+            $tmp{$_}++ for (grep($_ =~ $tmp, @tmp));
+        }
+        else
+        {
+            $tmp{$tmp}++;
+        }
+    }
+    # This has the benefit of trimming any redundancies caused by regex's
+    @names = keys %tmp;
+
+    #
+    # Note that the method clones are saved until we've verified all of them.
+    # If we have to return a failure message, I don't want to leave a half-
+    # finished job or have to go back and undo (n-1) additions because of one
+    # failure.
+    #
+    for (@names)
+    {
+        $meth = $src_srv->get_method($_);
+        if (ref $meth)
+        {
+            push(@list, $meth->clone);
+        }
+        else
+        {
+            push(@missing, $_);
+        }
+    }
+
+    if (@missing)
+    {
+        return "$me: One or more methods not found on source object: @missing";
+    }
+    else
+    {
+        $self->add_method($_) for (@list);
     }
 
     $self;
