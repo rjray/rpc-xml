@@ -8,7 +8,7 @@ use vars qw($val $obj $class %val_tbl @values);
 use Test;
 use RPC::XML ':all';
 
-BEGIN { plan tests => 109 }
+BEGIN { plan tests => 110 }
 
 # First, the most basic data-types
 
@@ -44,35 +44,35 @@ ok($obj->as_string,
 for (qw(0 1 yes no tRuE FaLsE))
 {
     $val = (/0|no|false/i) ? 0 : 1;
-    $obj = new RPC::XML::boolean $_;
+    $obj = RPC::XML::boolean->new($_);
     ok(ref $obj);
     ok($obj->value, $val);
     ok($obj->as_string, "<boolean>$val</boolean>");
     ok($obj->type, 'boolean');
 }
 # This should not
-$obj = new RPC::XML::boolean 'of course!';
+$obj = RPC::XML::boolean->new('of course!');
 ok(! ref $obj);
 ok($RPC::XML::ERROR =~ /::new: Value must be one of/);
 
 # The dateTime.iso8601 type shares all code save for type() with the above, so
 # only test that one here
-$obj = new RPC::XML::datetime_iso8601 time2iso8601(time);
+$obj = RPC::XML::datetime_iso8601->new(time2iso8601(time));
 ok($obj->type, 'dateTime.iso8601');
 ok(length($obj->as_string), $obj->length);
 
 # Test the base64 type
 require MIME::Base64;
 $val = MIME::Base64::encode_base64(q/one reasonable-length string/, '');
-$obj = new RPC::XML::base64(q/one reasonable-length string/);
+$obj = RPC::XML::base64->new(q/one reasonable-length string/);
 ok(ref $obj);
 ok($obj->as_string, "<base64>$val</base64>");
 # test length()
 ok(length($obj->as_string), $obj->length);
-$obj = new RPC::XML::base64 $val, 'pre-encoded';
+$obj = RPC::XML::base64->new($val, 'pre-encoded');
 ok(ref $obj);
 ok($obj->value, q/one reasonable-length string/);
-$obj = new RPC::XML::base64 ();
+$obj = RPC::XML::base64->new();
 ok(! ref($obj));
 ok($RPC::XML::ERROR =~ /::new: Must be called with non-null data/);
 
@@ -89,7 +89,7 @@ ok($values[5]->type, 'array');
 ok($values[6]->type, 'struct');
 
 # Arrays
-$obj = new RPC::XML::array 1 .. 10;
+$obj = RPC::XML::array->new(1 .. 10);
 ok(ref $obj);
 ok($obj->type, 'array');
 @values = @{ $obj->value };
@@ -100,7 +100,7 @@ ok($obj->as_string =~ m|<array>.*(<int>\d+</int>.*){10}.*</array>|sm);
 ok(length($obj->as_string), $obj->length);
 
 # Structs
-$obj = new RPC::XML::struct (key1 => 1, key2 => 2);
+$obj = RPC::XML::struct->new(key1 => 1, key2 => 2);
 ok(ref $obj);
 ok($obj->type, 'struct');
 $val = $obj->value;
@@ -110,7 +110,7 @@ ok($val->{key1} == 1);
 $val = $obj->value(1);
 ok(ref($val->{key1}) && ($val->{key1}->type eq 'int'));
 $val->{key1} = RPC::XML::string->new('hello');
-$obj = new RPC::XML::struct $val;
+$obj = RPC::XML::struct->new($val);
 ok(ref $obj);
 ok(($obj->value)->{key1} eq 'hello');
 ok(($obj->value(1))->{key1}->type eq 'string');
@@ -119,16 +119,23 @@ ok($obj->as_string =~ m|<struct>.*(<member>.*
                                    <value>.*</value>.*
                                    </member>.*){2}.*</struct>|smx);
 ok(length($obj->as_string), $obj->length);
+# Test handling of keys that contain XML special characters
+$obj = RPC::XML::struct->new('>'  => these   =>
+                             '<'  => are     =>
+                             '&'  => special =>
+                             '<>' => XML     =>
+                             '&&' => 'characters');
+ok($obj->as_string =~ tr/&/&/, 7);
 
 # Faults are a subclass of structs
-$obj = new RPC::XML::fault (faultCode => 1, faultString => 'test');
+$obj = RPC::XML::fault->new(faultCode => 1, faultString => 'test');
 ok(ref $obj);
 # Since it's a subclass, I won't waste cycles testing the similar methods
-$obj = new RPC::XML::fault (faultCode => 1, faultString => 'test',
+$obj = RPC::XML::fault->new(faultCode => 1, faultString => 'test',
                             faultFail => 'extras are not allowed');
 ok(! ref($obj));
 ok($RPC::XML::ERROR =~ /:new: Extra struct/);
-$obj = new RPC::XML::fault (1, 'test');
+$obj = RPC::XML::fault->new(1, 'test');
 ok(ref $obj);
 ok($obj->code == 1);
 ok($obj->string eq 'test');
@@ -145,14 +152,14 @@ ok($obj->as_string =~ m|<fault>.*
 ok(length($obj->as_string), $obj->length);
 
 # Requests
-$obj = new RPC::XML::request 'test.method';
+$obj = RPC::XML::request->new('test.method');
 ok(ref $obj);
 ok($obj->name eq 'test.method');
 ok($obj->args && (@{ $obj->args } == 0));
-$obj = new RPC::XML::request ();
+$obj = RPC::XML::request->new();
 ok(! ref($obj));
 ok($RPC::XML::ERROR =~ /:new: At least a method name/);
-$obj = new RPC::XML::request 'test.method', (1 .. 10);
+$obj = RPC::XML::request->new('test.method', (1 .. 10));
 ok($obj->args && (@{ $obj->args } == 10));
 # The new() method uses smart_encode on the args, which has already been
 # tested. These are just to ensure that it *does* in fact call it
@@ -168,7 +175,7 @@ ok($obj->as_string =~ m|<\?xml.*
 ok(length($obj->as_string), $obj->length);
 
 # Responses
-$obj = new RPC::XML::response 'ok';
+$obj = RPC::XML::response->new('ok');
 ok(ref $obj);
 ok($obj->value->type eq 'string');
 ok($obj->value->value eq 'ok');
@@ -181,10 +188,10 @@ ok($obj->as_string =~ m|<\?xml.*
                         </methodResponse>|smx);
 ok(length($obj->as_string), $obj->length);
 
-$obj = new RPC::XML::response ();
+$obj = RPC::XML::response->new();
 ok(! ref($obj));
 ok($RPC::XML::ERROR =~ /:new: One of a datatype, value or a fault/);
-$obj = new RPC::XML::response (RPC::XML::fault->new(1, 'test'));
+$obj = RPC::XML::response->new(RPC::XML::fault->new(1, 'test'));
 ok(ref $obj);
 # The other methods have already been tested
 ok($obj->is_fault);
