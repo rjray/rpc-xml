@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.34 2004/11/30 09:15:11 rjray Exp $
+# $Id: Makefile.PL,v 1.35 2004/12/08 09:08:24 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -12,6 +12,22 @@ use ExtUtils::MakeMaker;
 use File::Spec;
 use File::Find;
 use Cwd 'cwd';
+use LWP;
+
+if ($LWP::VERSION < 5.801)
+{
+    print STDERR <<END;
+@@@@@
+	Please note!
+
+	Due to a bug fixed in version 5.801 of LWP, using the spool-to-file
+	feature of RPC::XML::Client is broken. The relevant tests will be
+	skipped in the test suite, but unless you upgrade your LWP you
+	should not attempt to use this feature.
+@@@@@
+
+END
+}
 
 $cwd = cwd;
 
@@ -58,7 +74,7 @@ WriteMakefile(
               PM        => \%PM_FILES,
               PREREQ_PM => { XML::Parser => 2.25,
                              File::Spec  => 0.8,
-                             LWP         => 0 },
+                             LWP         => 5.801 },
               dist      => { COMPRESS => 'gzip -9f' },
               clean     => { FILES => $CLEAN },
              );
