@@ -13,3 +13,4 @@ META.yml
 .includepath
 blibdirs.ts
 pm_to_blib.ts
+blibdirs
