@@ -8,13 +8,14 @@
 #
 ###############################################################################
 #
-#   $Id: Method.pm,v 1.1 2001/10/04 06:24:40 rjray Exp $
+#   $Id: Method.pm,v 1.2 2001/10/04 07:36:00 rjray Exp $
 #
 #   Description:    This class abstracts out all the method-related operations
 #                   from the RPC::XML::Server class
 #
 #   Functions:      new
-#                   check
+#                   clone
+#                   is_valid
 #                   name        \
 #                   code         \
 #                   signature     \ These are the accessor functions for the
@@ -44,7 +45,7 @@ use subs qw(new check name code signature add_sig del_sig help version hidden
 
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -120,7 +121,38 @@ sub new
 
 ###############################################################################
 #
-#   Sub Name:       check
+#   Sub Name:       clone
+#
+#   Description:    Create a near-exact copy of the invoking object, save that
+#                   the listref in the "signature" key is a copy, not a ref
+#                   to the same list.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#
+#   Returns:        Success:    $new_self
+#                   Failure:    error message
+#
+###############################################################################
+sub clone
+{
+    my $self = shift;
+
+    my $new_self = {};
+    for (keys %$self)
+    {
+        next if $_ eq 'signature';
+        $new_self->{$_} = $self->{$_};
+    }
+    $new_self->{signature} = [];
+    @{$new_self->{signature}} = @{$self->{signature}};
+
+    bless $new_self, $self;
+}
+
+###############################################################################
+#
+#   Sub Name:       is_valid
 #
 #   Description:    Boolean test to tell if the calling object has sufficient
 #                   data to be used as a server method for RPC::XML::Server or
@@ -133,7 +165,7 @@ sub new
 #                   Failure:    0, invalid/incomplete
 #
 ###############################################################################
-sub check
+sub is_valid
 {
     my $self = shift;
 
