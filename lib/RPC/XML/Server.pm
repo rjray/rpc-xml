@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.25 2002/03/23 06:31:00 rjray Exp $
+#   $Id: Server.pm,v 1.26 2002/05/04 07:41:04 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -81,7 +81,7 @@ require RPC::XML;
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.25 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.26 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -970,7 +970,7 @@ sub proc_from_file { shift->method_from_file(@_) }
 #                                                 up
 #
 #   Returns:        Success:    Method-class reference
-#                   Failure:    undef
+#                   Failure:    error string
 #
 ###############################################################################
 sub get_method
@@ -978,9 +978,29 @@ sub get_method
     my $self = shift;
     my $name = shift;
 
-    return undef unless ($name and $self->{__method_table}->{$name});
+    my $meth = $self->{__method_table}->{$name};
+    unless (defined $meth)
+    {
+        if ($self->{__auto_methods})
+        {
+            # Try to load this dynamically on the fly, from any of the dirs
+            # that are in this object's @xpl_path
+            (my $loadname = $name) =~ s/^system\.//;
+            $self->add_method("$loadname.xpl");
+        }
+        # If method is still not in the table, we were unable to load it
+        return "Unknown method: $name"
+            unless $meth = $self->{__method_table}->{$name};
+    }
+    # Check the mod-time of the file the method came from, if the test is on
+    if ($self->{__auto_updates} && $meth->{file} &&
+        ($meth->{mtime} < (stat $meth->{file})[9]))
+    {
+        $ret = $meth->reload;
+        return "Reload of method $name failed: $ret" unless ref($ret);
+    }
 
-    $self->{__method_table}->{$name};
+    $meth;
 }
 
 # Same as above, but for name-symmetry
@@ -1043,8 +1063,7 @@ sub server_loop
             undef $conn; # Free up any lingering resources
         }
 
-        $self->{__daemon}->timeout($timeout)
-                if defined $timeout;
+        $self->{__daemon}->timeout($timeout) if defined $timeout;
     }
     else
     {
@@ -1203,11 +1222,9 @@ sub process_request
 ###############################################################################
 sub dispatch
 {
-    my $self     = shift;
-    my $xml      = shift;
+    my ($self, $xml) = @_;
 
-    my ($reqobj, @data, @params, @paramtypes, $resptype, $response, $signature,
-        $name, $meth);
+    my ($reqobj, @data, $response, $name, $meth);
 
     if (ref($xml) eq 'SCALAR')
     {
@@ -1218,8 +1235,9 @@ sub dispatch
     }
     elsif (ref($xml) eq 'ARRAY')
     {
-        # This is sort of a cheat-- we're more or less going backwards by one
-        # step, in order to allow the loop below to cover this case as well.
+        # This is sort of a cheat, to make the system.multicall API call a
+        # lot easier. The syntax isn't documented in the manual page, for good
+        # reason.
         $reqobj = RPC::XML::request->new(shift(@$xml), @$xml);
     }
     elsif (UNIVERSAL::isa($xml, 'RPC::XML::request'))
@@ -1235,70 +1253,22 @@ sub dispatch
     }
 
     @data = @{$reqobj->args};
-    # First test: do we have this method?
     $name = $reqobj->name;
-    if (! defined($meth = $self->get_method($name)))
+
+    # Get the method, call it, and bump the internal requests counter. Create
+    # a fault object if there is problem with the method object itself.
+    if (ref($meth = $self->get_method($name)))
     {
-        if ($self->{__auto_methods})
-        {
-            # Try to load this dynamically on the fly, from any of the dirs
-            # that are in this object's @xpl_path
-            (my $loadname = $name) =~ s/^system\.//;
-            $self->add_method("$loadname.xpl");
-            # If method is still not in the table, we were unable to load it
-            return RPC::XML::response
-                ->new(RPC::XML::fault->new(300, "Unknown method: $name"))
-                    unless ($meth = $self->get_method($name));
-        }
-        else
-        {
-            return RPC::XML::response
-                ->new(RPC::XML::fault->new(300, "Unknown method: $name"));
-        }
+        $response = $meth->call($self, @data);
+        $self->{__requests}++;
     }
-    # Check the mod-time of the file the method came from, if the test is on
-    if ($self->{__auto_updates} && $meth->{file} &&
-        ($meth->{mtime} < (stat $meth->{file})[9]))
+    else
     {
-        $ret = $meth->reload;
-        return RPC::XML::response
-            ->new(RPC::XML::fault
-                  ->new(302, "Reload of method $name failed: $ret"))
-                unless (ref $ret);
+        $response = RPC::XML::fault->new(300, $meth);
     }
 
-    # Create the param list.
-    # The type for the response will be derived from the matching signature
-    @paramtypes = map { $_->type  } @data;
-    @params     = map { $_->value } @data;
-    $signature = join(' ', @paramtypes);
-    $resptype = $meth->match_signature($signature);
-    # Since there must be at least one signature with a return value (even
-    # if the param list is empty), this tells us if the signature matches:
-    return RPC::XML::response
-        ->new(RPC::XML::fault->new(301,
-                                   "method $name nas no matching " .
-                                   'signature for the argument list'))
-            unless ($resptype);
-
-    # Set up these for the use of the called method
-    local $self->{signature} = [ $resptype, @paramtypes ];
-    local $self->{method_name} = $name;
-    # For RPC::XML::Method (and derivatives), pass the server object
-    unshift(@params, $self) if ($meth->isa('RPC::XML::Method'));
-
-    # Now take a deep breath and call the method with the arguments
-    eval { $response = $meth->{code}->(@params); };
-    if ($@)
-    {
-        # Report a Perl-level error/failure
-        $response =
-            RPC::XML::fault->new(302, "Method $name returned error: $@");
-    }
-    $self->{__requests}++;
-    $meth->{called}++;
-
-    return RPC::XML::response->new($response);
+    # All the eval'ing and error-trapping happened within the method class
+    RPC::XML::response->new($response);
 }
 
 ###############################################################################
@@ -1321,8 +1291,7 @@ sub dispatch
 ###############################################################################
 sub call
 {
-    my $self = shift;
-    my ($name, @args) = @_;
+    my ($self, $name, @args) = @_;
 
     my $meth;
 
@@ -1335,38 +1304,8 @@ sub call
     # then the caller may not recognize if an error occurs.
     #
 
-    my $response;
-
-    if (! defined($meth = $self->get_method($name)))
-    {
-        # Try to load this dynamically on the fly, from any of the dirs that
-        # are in this object's @xpl_path
-        (my $loadname = $name) =~ s/^system\.//;
-        $self->add_method("$loadname.xpl");
-        $meth = $self->get_method($name);
-    }
-    # If the method is still not in the table, we were unable to load it
-    return "Unknown method: $name" unless (ref $meth);
-    # Check the mod-time of the file the method came from, if the test is on
-    if ($self->{__auto_updates} && $meth->{file} &&
-        ($meth->{mtime} < (stat $meth->{file})[9]))
-    {
-        $ret = $meth->reload;
-        return "Reload of method $name failed: $ret" unless (ref $ret);
-    }
-
-    # Though we have no signature, we can still tell them what name was called
-    local $self->{method_name} = $name;
-    eval {
-        $response = $meth->{code}->($self, @args);
-    };
-    if ($@)
-    {
-        # Report a Perl-level error/failure
-        $response = $@;
-    }
-
-    $response;
+    return $meth unless ref($meth = $self->get_method($name));
+    $meth->call($self, @args);
 }
 
 ###############################################################################
