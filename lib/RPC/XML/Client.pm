@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.13 2003/01/20 06:29:52 rjray Exp $
+#   $Id: Client.pm,v 1.14 2003/01/20 09:24:32 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.14 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -298,7 +298,8 @@ sub credentials
 {
     my ($self, $realm, $user, $pass) = @_;
 
-    $self->{__useragent}->credentials($self->uri(), $realm, $user, $pass);
+    my $uri = URI->new($self->uri);
+    $self->{__useragent}->credentials($uri->host_port, $realm, $user, $pass);
     $self;
 }
 
