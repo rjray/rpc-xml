@@ -1,5 +1,5 @@
 <!--
-        $Id: rpc-method.dtd,v 1.1 2001/04/18 09:28:45 rjray Exp $
+        $Id: rpc-method.dtd,v 1.2 2001/06/07 06:48:14 rjray Exp $
 
         This is a very simple DTD for the specification of a published RPC
         method/routine. This is here as a reference, and possibly for use with
@@ -11,19 +11,14 @@
         See http://language.perl.com/misc/Artistic.html
 -->
 
-<!--                   Ampersand                                   -->
-<!ENTITY   amp         "&#38;"                                       >
-<!--                   Greater-Than                                -->
-<!ENTITY   gt          "&#62;"                                       >
-<!--                   Less-Than                                   -->
-<!ENTITY   lt          "&#60;"                                       >
-
 <!ELEMENT  methoddef     (name, version?, hidden?, signature+,
-                          help?, code)                               >
+                          help?, package?, code)                     >
 <!ELEMENT  name          (#PCDATA)                                   >
 <!ELEMENT  version       (#PCDATA)                                   >
 <!ELEMENT  hidden        EMPTY                                       >
 <!ELEMENT  signature     (#PCDATA)                                   >
 <!ELEMENT  help          (#PCDATA)                                   >
+<!ELEMENT  package       (#PCDATA)                                   >
+<!ATTLIST  package       language (#PCDATA)                          >
 <!ELEMENT  code          (#PCDATA)                                   >
 <!ATTLIST  code          language (#PCDATA)                          >
