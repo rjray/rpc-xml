@@ -4,6 +4,14 @@ Makefile.PL                    # MakeMaker skeleton
 README                         # Overview
 etc/make_method                # Tool to create *.xpl files
 etc/rpc-method.dtd             # DTD for the *.xpl file structure
+ex/linux.proc.meminfo.base     # Base/help/code files for the sample methods
+ex/linux.proc.meminfo.code     # in the ex/ directory
+ex/linux.proc.meminfo.help
+ex/linux.proc.cpuinfo.base
+ex/linux.proc.cpuinfo.code
+ex/linux.proc.cpuinfo.help
+ex/README                      # Description of the contents of the ex/ dir
+ex/Makefile                    # Makefile to generate *.xpl files in ex/
 lib/Apache/RPC/Server.pm       # Apache-centric server implementation
 lib/Apache/RPC/status.base     # Apache version of the system.status method
 lib/Apache/RPC/status.code
@@ -34,4 +42,3 @@ methods/status.base
 methods/status.code
 methods/status.help
 t/00_load.t                    # Test suites
-
