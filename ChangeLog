@@ -1,38 +1,31 @@
 Revision history for Perl extension RPC::XML.
 
-0.25	Tue Jun 12 22:35:09 PDT 2001
+0.29	Sun Dec  2 22:41:39 PST 2001
 
-	This is the initial release.
+	Added share_methods(), copy_methods() and delete_method() calls to the
+	RPC::XML::Server class (and thus to the Apache class as well). Had
+	already added an INSTALL_DIR method to retrieve the class-specific
+	installation dir to the Apache class, so mirrored it here, as well.
 
-0.26	Mon Jun 25 22:30:18 PDT 2001
+	Added list_servers() static method to Apache::RPC::Server, to allow
+	for abstract retrieval of the ID-tags of the current known servers.
+	This is mainly so Apache::RPC::Status can use it in conjunction with
+	get_server() to examine the server objects for the sake of stats and
+	such.
 
-	Fixed some doc errors in RPC::XML::Server. Mainly things I had
-	simplified, but not updated the docs to reflect.
+	Added list_methods() to RPC::XML::Server, to list the object's known
+	(published) methods by name. Mainly for use in the regression suites,
+	but worth documenting in the API in case someone else finds it
+	useful.
 
-	Added a fair amount to the docs in Apache::RPC::Server. In particular,
-	a new section was added that illustrates using <Perl> configuration
-	sections to create the server objects in the master Apache process,
-	so that they are automatically inherited by children.
+	Four of the provided methods in the introspection API
+	(system.introspection, system.listMethods, system.methodHelp and
+	system.methodSignature) needed to be updated to use the newer API for
+	the XML::RPC::Method class when retrieving information from the server.
 
-0.27	Sun Jul  8 16:25:51 PDT 2001
-
-	Removed a -w warning from RPC/XML.pm. Fixed some cases in the new()
-	method of RPC::XML::boolean that would have permitted invalid data.
-	Added two convenience methods to RPC::XML::fault, called code() and
-	string(), that fetch the faultCode and faultString member values as
-	native Perl values. The RPC::XML::base64 class was using the wrong
-	container tags in the as_string method.
-
-	Clarified and expanded some of the documentation in RPC/XML/Server.pm.
-
-	Adjusted the PREREQ_PM hash in Makefile.PL so that it correctly looks
-	for LWP, and also looks for File::Spec 0.8 or newer (needed to ensure
-	that the splitpath() method is available).
-
-	Cleaned up the load-tests (t/00_load.t) to use the Test harnessing
-	package. Added test suites for the RPC::XML data classes (t/10_data.t,
-	96 tests) and the RPC::XML::Parser container-class (t/20_parser.t,
-	7 tests).
+	Started the test suites for RPC::XML::Method and RPC::XML::Server.
+	The tests that are delivered as part of this build are not fully
+	complete, but should be a reasonable start.
 
 0.28	Sun Oct  7 21:27:39 PDT 2001
 
@@ -56,6 +49,40 @@ Revision history for Perl extension RPC::XML.
 	Apache::RPC::Server class, and also changed the calling convention.
 	It no longer treats the first few arguments in any special way at all.
 	The arguments are all consistently taken as option/value pairs, just
-	as with RPC::XML::Server. The documentation relflects this. This may
+	as with RPC::XML::Server. The documentation reflects this. This may
 	break things built on the old style, but in the long run it should
 	prove much better.
+
+0.27	Sun Jul  8 16:25:51 PDT 2001
+
+	Removed a -w warning from RPC/XML.pm. Fixed some cases in the new()
+	method of RPC::XML::boolean that would have permitted invalid data.
+	Added two convenience methods to RPC::XML::fault, called code() and
+	string(), that fetch the faultCode and faultString member values as
+	native Perl values. The RPC::XML::base64 class was using the wrong
+	container tags in the as_string method.
+
+	Clarified and expanded some of the documentation in RPC/XML/Server.pm.
+
+	Adjusted the PREREQ_PM hash in Makefile.PL so that it correctly looks
+	for LWP, and also looks for File::Spec 0.8 or newer (needed to ensure
+	that the splitpath() method is available).
+
+	Cleaned up the load-tests (t/00_load.t) to use the Test harnessing
+	package. Added test suites for the RPC::XML data classes (t/10_data.t,
+	96 tests) and the RPC::XML::Parser container-class (t/20_parser.t,
+	7 tests).
+
+0.26	Mon Jun 25 22:30:18 PDT 2001
+
+	Fixed some doc errors in RPC::XML::Server. Mainly things I had
+	simplified, but not updated the docs to reflect.
+
+	Added a fair amount to the docs in Apache::RPC::Server. In particular,
+	a new section was added that illustrates using <Perl> configuration
+	sections to create the server objects in the master Apache process,
+	so that they are automatically inherited by children.
+
+0.25	Tue Jun 12 22:35:09 PDT 2001
+
+	This is the initial release.
