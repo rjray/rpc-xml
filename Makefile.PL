@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.7 2001/06/13 06:22:01 rjray Exp $
+# $Id: Makefile.PL,v 1.8 2001/06/15 17:14:57 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -45,10 +45,10 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.25',
+              VERSION   => '0.26',
               EXE_FILES => \@scripts,
               PM        => \%PM_FILES,
-              PREREQ_PM => { XML::Parser => 2.29,
+              PREREQ_PM => { XML::Parser => 2.25,
                              LWP         => 0 },
               dist      => { COMPRESS => 'gzip -9f' },
               clean     => { FILES => $CLEAN },
