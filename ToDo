@@ -1,11 +1,4 @@
-$Id: ToDo,v 1.5 2002/08/01 07:33:44 rjray Exp $
-
-* The HEAD request should set Content-Type to text/xml.
-
-* Support compression with Compress::Zlib, a la XMLRPC::Lite. Signify it in
-  the CT header the same way (so that the two are compatible with each other)
-  and make sure that the token appears in the HEAD response, so a client can
-  compress requests as well as expect compressed responses.
+$Id: ToDo,v 1.6 2003/01/27 10:45:29 rjray Exp $
 
 * Create more examples. Of particular use would be examples of encapsulating
   an existing library with wrappers.
@@ -24,3 +17,7 @@ $Id: ToDo,v 1.5 2002/08/01 07:33:44 rjray Exp $
 
 * Fix things so that the Apache::RPC::Server class doesn't trigger loading
   of HTTP::Daemon (or anything else that isn't needed).
+
+* Support chunked encoding in both RPC::XML::Server and Apache::RPC::Server.
+
+* Write Apache-2-compatible versions of Apache::RPC::Server and ::Status.
