@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.9 2004/04/12 10:15:34 rjray Exp $
+#   $Id: Procedure.pm,v 1.10 2004/11/30 08:43:06 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -775,8 +775,15 @@ sub reload
         $self->{name} unless $self->{file};
     my $tmp = $self->load_XPL_file($self->{file});
 
-    # Re-calculate the signature table, in case that changed as well
-    return (ref $tmp) ? $self->make_sig_table : $tmp;
+    if (ref $tmp)
+    {
+	# Update the information on this actual object
+	$self->{$_} = $tmp->{$_} for (keys %$tmp);
+        # Re-calculate the signature table, in case that changed as well
+        return $self->make_sig_table;
+    }
+
+    return $tmp;
 }
 
 ###############################################################################
