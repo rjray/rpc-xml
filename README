@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.26 (second release)
+Version: 0.27 (third release)
 
 WHAT IS IT
 
@@ -65,6 +65,6 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-This is a minor update that corrects some errors in the RPC::XML::Server
-documentation, and adds to the Apache::RPC::Server documentation (in particular
-on the subject of using <Perl></Perl> configuration with this package).
+Test suites for the data classes and the RPC::XML::Parser class have been
+added. Some small buglets were fixed, and more enhancements to the
+documentation were made.
