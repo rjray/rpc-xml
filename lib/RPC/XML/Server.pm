@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.13 2001/06/26 05:27:49 rjray Exp $
+#   $Id: Server.pm,v 1.14 2001/07/08 23:25:27 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -74,7 +74,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.14 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -333,7 +333,9 @@ for dispatching requests (and possibly for the HTTP listening, as well).
 
 =head2 Methods
 
-The following methods are provided by the B<RPC::XML::Server> class:
+The following methods are provided by the B<RPC::XML::Server> class. Unless
+otherwise explicitly noted, all methods return the invoking object reference
+upon success, and a non-reference error string upon failure.
 
 =over 4
 
@@ -432,8 +434,8 @@ that is required for effective integration with B<Net::Server>.
 
 =item url
 
-This returns the HTTP URL that the server will be responding to, when it is
-in the connection-accept loop. If the server object was created without a
+This returns the HTTP URL that the server will be responding to, when it is in
+the connection-accept loop. If the server object was created without a
 built-in HTTP listener, then this method returns C<undef>.
 
 =item requests
@@ -445,11 +447,12 @@ itself.
 
 =item response
 
-Each instance of this class (and any subclasses that do not completely override
-the C<new> method) creates and stores an instance of B<HTTP::Response>, which
-is then used by the B<HTTP::Daemon> or B<Net::Server> processing loops in
-constructing the response to clients. The response object has all common
-headers pre-set for efficiency.
+Each instance of this class (and any subclasses that do not completely
+override the C<new> method) creates and stores an instance of
+B<HTTP::Response>, which is then used by the B<HTTP::Daemon> or B<Net::Server>
+processing loops in constructing the response to clients. The response object
+has all common headers pre-set for efficiency. This method returns a reference
+to that object.
 
 =item started([BOOL])
 
@@ -460,17 +463,6 @@ is returned. The clock-time is based on the internal B<time> command of Perl,
 and thus is represented as an integer number of seconds since the system
 epoch. Generally, it is suitable for passing to either B<localtime> or to the
 C<time2iso8601> routine exported by the B<RPC::XML> package.
-
-=item B<debug>
-
-If called with no arguments, it returns the current debugging value as a
-decimal value. The debugging level cannot be changed at run-time.
-
-If there are any arguments, the first one is treated as a numerical value that
-gets logically-anded with the internal debugging level. If the result is a
-true value, then the remainder is treated as an C<sprintf> format string and
-arguments. This is evaluated and written to the error log (generally the
-STDERR file descriptor).
 
 =item add_method(FILE | HASHREF)
 
@@ -484,7 +476,7 @@ If passed as a hash reference, the following keys are expected:
 
 =item B<name>
 
-The published (externally-visible) name for the method
+The published (externally-visible) name for the method.
 
 =item B<version>
 
@@ -494,7 +486,8 @@ purposes.
 =item B<hidden>
 
 If passed and evaluates to a C<true> value, then the method should be hidden
-from any introspection API implementations.
+from any introspection API implementations. This parameter is optional, the
+default behavior being to make the method publically-visible.
 
 =item B<code>
 
@@ -523,7 +516,9 @@ described later (see L<"Specifying Server-Side Remote Methods">). If the
 name passed is not an absolute pathname, then the file will be searched for
 in any directories specified when the object was instantiated, then in the
 directory into which this module was installed, and finally in the current
-working directory.
+working directory. If the operation fails, the return value will be a
+non-reference, an error message. Otherwise, the return value is the object
+reference.
 
 =item xpl_path([LISTREF])
 
@@ -847,9 +842,9 @@ these, their help files and other information.
 
 =head1 DIAGNOSTICS
 
-All methods return some type of reference on success, or an error string on
-failure. Non-reference return values should always be interpreted as errors
-unless otherwise noted.
+Unless explicitly stated otherwise, all methods return some type of reference
+on success, or an error string on failure. Non-reference return values should
+always be interpreted as errors unless otherwise noted.
 
 =head1 CAVEATS
 
@@ -867,7 +862,7 @@ specification.
 
 This module is licensed under the terms of the Artistic License that covers
 Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
-license itself.
+license.
 
 =head1 SEE ALSO
 
