@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.11 2001/12/08 22:58:24 rjray Exp $
+#   $Id: Server.pm,v 1.12 2002/01/03 02:45:15 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -49,7 +49,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -91,8 +91,6 @@ sub debug
 #
 #   Globals:        $DEF_OBJ
 #
-#   Environment:    None.
-#
 #   Returns:        Response code
 #
 ###############################################################################
@@ -131,7 +129,7 @@ sub handler ($$)
         $r->read($content, $r->header_in('Content-Length'));
 
         # Step 2: Process the request and encode the outgoing response
-        # Dispatch will always return a RPC::XML::response
+        # Dispatch will always return a RPC::XML::response object
         $resp = $srv->dispatch(\$content);
         $respxml = $resp->as_string;
 
@@ -148,7 +146,7 @@ sub handler ($$)
         return DECLINED;
     }
 
-    return OK;
+    OK;
 }
 
 ###############################################################################
@@ -166,8 +164,6 @@ sub handler ($$)
 #
 #   Globals:        %SERVER_TABLE
 #
-#   Environment:    None.
-#
 #   Returns:        1
 #
 ###############################################################################
@@ -177,7 +173,7 @@ sub init_handler ($$)
 
     $_->child_started(1) for (values %Apache::RPC::Server::SERVER_TABLE);
 
-    1;
+    OK;
 }
 
 ###############################################################################
@@ -194,8 +190,6 @@ sub init_handler ($$)
 #                                                 variable. See text.
 #
 #   Globals:        $INSTALL_DIR
-#
-#   Environment:    None.
 #
 #   Returns:        Success:    ref to new object
 #                   Failure:    error string
@@ -216,6 +210,7 @@ sub new
     $servid = $argz{server_id};                delete $argz{server_id};
     $prefix = $argz{prefix};                   delete $argz{prefiz};
     $argz{path} = $R->location unless $argz{path};
+    $servid = substr($argz{path}, 1) unless ($servid);
 
     #
     # For these Apache-conf type of settings, something explicitly passed in
@@ -250,8 +245,9 @@ sub new
 
     # Create the object, ensuring that the defaults are not yet loaded:
     $self = $class->SUPER::new(no_default => 1, no_http => 1,
-                               host => $R->hostname,
-                               port => $R->get_server_port,
+                               path => $argz{path},
+                               host => $R->server_hostname || 'localhost',
+                               port => $R->port,
                                %argz);
     return $self unless (ref $self); # Non-ref means an error message
     $self->started('set');
@@ -321,8 +317,6 @@ sub child_started
 #
 #   Globals:        %SERVER_TABLE
 #
-#   Environment:    None.
-#
 #   Returns:        object ref, either specific or the default object. Sends a
 #                   text string if new() fails
 #
@@ -365,7 +359,7 @@ __END__
 
 =head1 NAME
 
-Apache::RPC::Server - A subclass of RPC::XML::Server class tuned for mod_perl
+Apache::RPC::Server - A subclass of RPC::XML::Server tuned for mod_perl
 
 =head1 SYNOPSIS
 
@@ -656,36 +650,42 @@ environment:
     <Perl>
 
     # First, create and configure some Apache::RPC::Server objects
-    my %obj_table;
-    my $defobj = Apache::RPC::Server->new(path         => '/RPC',
-                                          auto_methods => 1,
-                                          auto_updates => 1);
-    $obj_table{'/RPC'} = $defobj;
-    $obj_table('/rpc-secured'} =
-        Apache::RPC::Server->new(no_default => 1,
-                                 path => '/rpc-secured');
+
+    # One regular one, with the standard settings:
+    $main::defobj = Apache::RPC::Server->new(path         => '/RPC',
+                                             auto_methods => 1,
+                                             auto_updates => 1);
+    # One version without the default methods, and no auto-actions
+    $main::secobj = Apache::RPC::Server->new(no_default => 1,
+                                             path => '/rpc-secured');
 
     # Imagine that add_method and/or add_methods_in_dir has been used to
-    # add to the methods tables for those objects. Maybe more objects
-    # have been allocated, as well:
-    for my $loc (keys %obj_table)
-    {
-        $Location{$loc} = {
-                           SetHandler  => 'perl-script',
-                           PerlHandler => $obj_table{$loc}
-                          };
-    }
-    $Location{'/rpc-secure'}->{AuthUserFile} = '/etc/some_file';
-    $Location{'/rpc-secure'}->{AuthType}     = 'Basic';
-    $Location{'/rpc-secure'}->{AuthName}     = 'SecuredRPC';
-    $Location{'/rpc-secure'}->{require}      = 'valid-user';
+    # add to the methods tables for those objects. Now assign them to
+    # locations managed by Apache:
+    $Location{'/RPC'} =
+        {
+            SetHandler  => 'perl-script',
+            PerlHandler => '$main::defobj'
+        };
+    $Location{'/rpc-secure'} =
+        {
+            SetHandler   => 'perl-script',
+            PerlHandler  => '$main::secobj',
+            AuthUserFile => '/etc/some_file',
+            AuthType     => 'Basic',
+            AuthName     => 'SecuredRPC',
+            'require'    => 'valid-user'
+        };
 
     </Perl>
 
-Note that the assignment of the C<PerlHandler> value was the object reference
-itself. Since this class implements itself as a I<method handler>, this
-causes the C<handler()> method for each of the locations to be handed the
-B<Apache::RPC::Server> object directly.
+Note that the assignment of the C<PerlHandler> value was a string
+representation of the object reference itself. B<mod_perl> performs a sort of
+"thaw" of this string when the location is accessed. Since this class
+implements itself as a I<method handler>, this causes the C<handler()> method
+for each of the locations to be handed the B<Apache::RPC::Server> object
+directly. Note also that the value assigned to C<PerlHandler> cannot be a
+lexical variable, or it will be out of scope when the handler is called.
 
 =head1 DIAGNOSTICS
 
