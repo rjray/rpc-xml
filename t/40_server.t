@@ -4,7 +4,8 @@
 
 use strict;
 use subs qw(start_server find_port);
-use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS);
+use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
+            $list $meth @keys %seen);
 
 use Test;
 
@@ -15,7 +16,7 @@ use HTTP::Request;
 use RPC::XML::Server;
 use RPC::XML::Parser;
 
-BEGIN { plan tests => 25 }
+BEGIN { plan tests => 40 }
 
 @API_METHODS = qw(system.identity system.introspection system.listMethods
                   system.methodHelp system.methodSignature system.multicall
@@ -59,15 +60,10 @@ ok(! ref($res));
 $parser = RPC::XML::Parser->new;
 $UA = LWP::UserAgent->new;
 $req = HTTP::Request->new(POST => "http://localhost:$port/");
-$xml = qq(<?xml version="1.0"?>
-<methodCall>
-<methodName>perl.test.suite.test1</methodName>
-<params></params>
-</methodCall>);
 $child = start_server($srv);
 
 $req->header(Content_Type => 'text/xml');
-$req->content($xml);
+$req->content(RPC::XML::request->new('perl.test.suite.test1')->as_string);
 # Use alarm() to manage a resaonable time-out on the request
 $bucket = 0;
 $SIG{ALRM} = sub { $bucket++ };
@@ -138,17 +134,12 @@ if (ref $srv)
     # Did it get all of them?
     ok($srv->list_methods() == @API_METHODS);
     $req = HTTP::Request->new(POST => "http://localhost:$port/");
-    $xml = qq(<?xml version="1.0"?>
-<methodCall>
-<methodName>system.listMethods</methodName>
-<params></params>
-</methodCall>);
 
     $child = start_server($srv);
 
     $req->header(Content_Type => 'text/xml');
-    $req->content($xml);
-    # Use alarm() to manage a resaonable time-out on the request
+    $req->content(RPC::XML::request->new('system.listMethods')->as_string);
+    # Use alarm() to manage a reasonable time-out on the request
     $bucket = 0;
     undef $res;
     $SIG{ALRM} = sub { $bucket++ };
@@ -163,9 +154,9 @@ if (ref $srv)
     }
     else
     {
-	$res = ($res->is_error) ? '' : $parser->parse($res->content);
+        $res = ($res->is_error) ? '' : $parser->parse($res->content);
         ok(ref($res) eq 'RPC::XML::response');
-        my $list = (ref $res) ? $res->value->value : [];
+        $list = (ref $res) ? $res->value->value : [];
         ok((ref($list) eq 'ARRAY') &&
            (join('', sort @$list) eq join('', sort @API_METHODS)));
     }
@@ -177,8 +168,237 @@ else
     ok(0);
     ok(0);
 }
-kill 'INT', $child;
 
+# Assume $srv is defined, for the rest of the tests (so as to avoid the
+# annoying 'ok(0)' streams like above).
+exit unless (ref $srv);
+
+# Set the ALRM handler to something more serious, since we've passed that
+# hurdle already.
+$SIG{ALRM} = sub { die "Server failed to respond within 120 seconds\n"; };
+
+#
+# Test the substring-parameter calling of system.listMethods
+#
+$req->content(RPC::XML::request->new('system.listMethods',
+                                     'method')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$list = (ref $res) ? $res->value->value : [];
+ok((ref($list) eq 'ARRAY') &&
+   (join(',', sort @$list) eq 'system.methodHelp,system.methodSignature'));
+
+#
+# Again, with a pattern that will produce no matches
+#
+$req->content(RPC::XML::request->new('system.listMethods',
+                                     'microsquirt')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$list = (ref $res) ? $res->value->value : [];
+ok((ref($list) eq 'ARRAY') && (@$list == 0));
+
+#
+# system.identity
+#
+$req->content(RPC::XML::request->new('system.identity')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+ok($res->value->value() eq $srv->product_tokens);
+
+#
+# system.status
+#
+$req->content(RPC::XML::request->new('system.status')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$res = $res->value->value;
+@keys = qw(host port name version path date date_int started started_int
+           total_requests methods_known);
+ok((ref($res) eq 'HASH') && (grep(defined $res->{$_}, @keys) == @keys) &&
+   ($res->{total_requests} == 5));
+
+#
+# system.methodHelp
+#
+$req->content(RPC::XML::request->new('system.methodHelp',
+                                     'system.identity')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$meth = $srv->get_method('system.identity');
+ok($res->value->value() eq $meth->{help});
+
+#
+# system.methodHelp with multiple arguments
+#
+$req->content(RPC::XML::request->new('system.methodHelp',
+                                     [ 'system.identity',
+                                       'system.status' ])->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+ok(join('', @{ $res->value->value }) eq
+   $srv->get_method('system.identity')->{help} .
+   $srv->get_method('system.status')->{help});
+
+#
+# system.methodHelp with an invalid argument
+#
+$req->content(RPC::XML::request->new('system.methodHelp',
+                                     'system.teaseMe')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+ok(ref($res) && $res->value->is_fault() &&
+   $res->value->string() =~ /Method.*unknown/);
+
+#
+# system.methodSignature
+#
+$req->content(RPC::XML::request->new('system.methodSignature',
+                                     'system.methodHelp')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$meth = $srv->get_method('system.methodHelp');
+ok(join('', sort @{ $res->value->value }) eq
+   join('', sort @{ $meth->{signature} }));
+
+#
+# system.methodSignature, with an invalid request
+#
+$req->content(RPC::XML::request->new('system.methodSignature',
+                                     'system.teaseMe')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+ok(ref($res) && $res->value->is_fault() &&
+   $res->value->string() =~ /Method.*unknown/);
+
+#
+# system.introspection
+#
+$req->content(RPC::XML::request->new('system.introspection')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$list = (ref $res) ? $res->value->value : [];
+$bucket = 0;
+%seen = ();
+for $res (@$list)
+{
+    if ($seen{$res->{name}}++)
+    {
+        # If we somehow get the same name twice, that's a point off
+        $bucket++;
+        next;
+    }
+
+    $meth = $srv->get_method($res->{name});
+    if ($meth)
+    {
+        $bucket++ unless
+            (($meth->{help} eq $res->{help}) &&
+             ($meth->{version} eq $res->{version}) &&
+             (join('', sort @{ $res->{signature } }) eq
+              join('', sort @{ $meth->{signature} })));
+    }
+    else
+    {
+        # That's a point
+        $bucket++;
+    }
+}
+ok(! $bucket);
+
+#
+# system.multicall
+#
+$req->content(RPC::XML::request->new('system.multicall',
+                                     [ { methodName => 'system.identity' },
+                                       { methodName => 'system.listMethods',
+                                         params => [ 'intro' ] }
+                                     ])->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$res = $res->value->value;
+ok((ref($res) eq 'ARRAY') && ($res->[0] eq $srv->product_tokens) &&
+   ($res->[1]->[0] eq 'system.introspection'));
+
+#
+# system.multicall, with an attempt at illegal recursion
+#
+$req->content(RPC::XML::request->new('system.multicall',
+                                     [ { methodName => 'system.identity' },
+                                       { methodName => 'system.multicall',
+                                         params => [ 'intro' ] }
+                                     ])->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$res = $res->value;
+ok($res->is_fault && $res->string =~ /Recursive/);
+
+#
+# system.multicall, with bad data on one of the call specifications
+#
+$req->content(RPC::XML::request->new('system.multicall',
+                                     [ { methodName => 'system.identity' },
+                                       { methodName => 'system.status',
+                                         params => 'intro' }
+                                     ])->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$res = $res->value;
+ok($res->is_fault && $res->string =~ /value for.*params.*not an array/i);
+
+#
+# system.multicall, with bad data in the request itself
+#
+$req->content(RPC::XML::request->new('system.multicall',
+                                     [ { methodName => 'system.identity' },
+                                       'This is not acceptable data'
+                                     ])->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$res = $res->value;
+ok($res->is_fault && $res->string =~ /one.*array element.*not a struct/i);
+
+#
+# system.status, once more, to check the total_requests value
+#
+$req->content(RPC::XML::request->new('system.status')->as_string);
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+$res = ($res->is_error) ? '' : $parser->parse($res->content);
+$res = $res->value->value;
+ok($res->{total_requests} == 21);
+
+# Don't leave any children laying around
+kill 'INT', $child;
 exit;
 
 sub start_server
