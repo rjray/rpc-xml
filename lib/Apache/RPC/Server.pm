@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.8 2001/07/30 00:22:53 rjray Exp $
+#   $Id: Server.pm,v 1.9 2001/10/08 04:21:39 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -44,7 +44,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -192,32 +192,54 @@ sub new
     my @argz  = @_;
 
     my ($R, $servid, $prefix, $self, @dirs, @files, $ret, $no_def, $debug,
-        $do_auto, $do_mtime);
+        $do_auto, $do_mtime, %argz);
 
-    ($R, $servid, $prefix) = splice(@argz, 0, 3);
-    push(@argz, path => $R->location) unless (grep(/^path$/, @argz));
+    # Convert @argz to a hash. As we consume arguments locally, we can delete
+    # them from the hash to avoid passing them along.
+    %argz = @argz;
+    $R      = $argz{apache} || Apache->server; delete $argz{apache};
+    $servid = $argz{server_id};                delete $argz{server_id};
+    $prefix = $argz{prefix};                   delete $argz{prefiz};
+    $argz{path} = $R->location unless $argz{path};
+
+    #
+    # For these Apache-conf type of settings, something explicitly passed in
+    # via @argz is allowed to override the config file. So after pulling the
+    # value, it is only applied if the corresponding key doesn't already exist
+    #
 
     # Is debugging requested?
     $debug = $R->dir_config("${prefix}RpcDebugLevel") || 0;
+    $argz{debug} = $debug unless exists $argz{debug};
+
     # Check for disabling of auto-loading or mtime-checking
     $do_auto  = $R->dir_config("${prefix}RpcAutoMethods");
     $do_mtime = $R->dir_config("${prefix}RpcAutoUpdates");
     foreach ($do_auto, $do_mtime) { $_ = (/yes/i) ? 1 : 0 }
+    $argz{auto_methods} = $do_auto  unless exists $argz{auto_methods};
+    $argz{auto_updates} = $do_mtime unless exists $argz{auto_updates};
+
+    # If there is already an xpl_path, ensure that ours is on the top,
+    # otherwise add it.
+    if ($argz{xpl_path})
+    {
+        push(@{$argz{xpl_path}}, $Apache::RPC::Server::INSTALL_DIR);
+    }
+    else
+    {
+        $argz{xpl_path} = [ $Apache::RPC::Server::INSTALL_DIR ];
+    }
 
     # Create the object, ensuring that the defaults are not yet loaded:
-    $self = $class->SUPER::new(no_default => 1, debug => $debug, no_http => 1,
+    $self = $class->SUPER::new(no_default => 1, no_http => 1,
                                host => $R->hostname,
                                port => $R->get_server_port,
-                               auto_methods => $do_auto,
-                               auto_updates => $do_mtime,
-                               xpl_path =>
-                               [ $Apache::RPC::Server::INSTALL_DIR ],
-                               @argz);
+                               %argz);
     return $self unless (ref $self); # Non-ref means an error message
     $self->started('set');
 
     # Check to see if we should suppress the default methods
-    $no_def = $R->dir_config("${prefix}RpcDefMethods");
+    $no_def = $R->dir_config("${prefix}RpcDefMethods") || $argz{no_default};
     $no_def = ($no_def =~ /no/i) ? 1 : 0;
     unless ($no_def)
     {
@@ -241,9 +263,14 @@ sub new
         $ret = $self->add_method($_);
         return $ret unless ref $ret;
     }
-    $ret = $self->xpl_path;
-    unshift(@$ret, @dirs);
-    $self->xpl_path($ret);
+    if (@dirs)
+    {
+        # If there were any dirs specified for wholesale inclusion, add them
+        # to the search path for later reference.
+        $ret = $self->xpl_path;
+        unshift(@$ret, @dirs);
+        $self->xpl_path($ret);
+    }
 
     $Apache::RPC::Server::SERVER_TABLE{$servid} = $self;
     $self;
@@ -291,11 +318,10 @@ sub get_server
     my $servid = $r->dir_config("${prefix}RpcServer") || '<default>';
 
     $Apache::RPC::Server::SERVER_TABLE{$servid} ||
-        $self->new($r, $servid, $prefix,
-                   # These are parameters that bubble up to the SUPER::new()
-                   xpl_path => [ $Apache::RPC::Server::INSTALL_DIR ],
-                   no_http  => 1, # We, um, have that covered
-                   path     => $r->location);
+        $self->new(apache    => $r,
+                   server_id => $servid,
+                   prefix    => $prefix,
+                   path      => $r->location);
 }
 
 __END__
@@ -388,7 +414,7 @@ beyond the default, which are likely only in child-specific memory. There are
 some configuration options described in the next section that can affect and
 alter this.
 
-=item new
+=item new(HASH)
 
 This is the class constructor. It calls the superclass C<new> method, then
 performs some additional steps. These include installing the default methods
@@ -396,14 +422,30 @@ performs some additional steps. These include installing the default methods
 installation directory of this module to the method search path, and adding any
 directories or explicitly-requested methods to the server object.
 
-This version of C<new> expects the argument list to follow one of two patterns:
-it is either a single token "C<set-default>", which creates and initializes the
-default server, or it has the following elements (in order):
+The arguments to the constructor are regarded as a hash table (not a hash
+reference), and are mostly passed unchanged to the constructor for
+B<RPC::XML::Server>. Three parameters are of concern to this class:
 
-        Apache class instance (reference)
-        Server ID string of the server being created
-        Prefix (if any) to be applied to the configuration values fetched
-        (All remaining arguments are passed unchanged to C<SUPER::new()>)
+=over 8
+
+=item apache
+
+The value associated with this key is a reference to an B<Apache> request
+object. If this is not passed, then it is assumed that this is being called in
+the start-up phase of the server and the value returned from C<Apache->server>
+(see L<Apache>) is used.
+
+=item server_id
+
+This provides the server ID string for the RPC server (not to be confused with
+the Apache server) that is being configured.
+
+=item prefix
+
+The prefix is used in retrieving certain configuration settings from the Apache
+configuration file.
+
+=back
 
 The server identification string and prefix concepts are explained in more
 detail in the next section. See L<RPC::XML::Server> for a full list of what
@@ -451,7 +493,7 @@ server being defined.
 
 Specify the name of the server to use for this location. If not passed, then
 the default server is used. This server may also be explicitly requested by the
-name "C<C<E<lt>defaultE<gt>>>". If more than one server are going to be created
+name "C<C<E<lt>defaultE<gt>>>". If more than one server is going to be created
 within the same Apache environment, this setting should always be used outside
 the default area so that the default server is not loaded down with extra
 method definitions. If a sub-location changes the default server, those changes
