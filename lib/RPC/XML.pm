@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.31 2004/12/08 09:05:07 rjray Exp $
+#   $Id: XML.pm,v 1.32 2004/12/08 09:19:30 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -66,7 +66,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.31 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.32 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -1079,7 +1079,7 @@ sub length
 {
     my $self = shift;
 
-    my $len = 88; # All the constant XML present
+    my $len = 100 + length($RPC::XML::ENCODING); # All the constant XML present
     $len += length($self->{name});
 
     for (@{$self->{args}})
@@ -1235,7 +1235,7 @@ sub length
 {
     my $self = shift;
 
-    my $len = 54; # All the constant XML present
+    my $len = 66 + length($RPC::XML::ENCODING); # All the constant XML present
 
     # This boilerplate XML is only present when it is NOT a fault
     $len += 47 unless ($self->{value}->isa('RPC::XML::fault'));
