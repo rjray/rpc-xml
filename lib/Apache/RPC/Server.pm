@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.12 2002/01/03 02:45:15 rjray Exp $
+#   $Id: Server.pm,v 1.13 2002/04/26 07:30:51 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -49,7 +49,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -211,6 +211,7 @@ sub new
     $prefix = $argz{prefix};                   delete $argz{prefiz};
     $argz{path} = $R->location unless $argz{path};
     $servid = substr($argz{path}, 1) unless ($servid);
+    $R = $R->server if (ref($R) eq 'Apache');
 
     #
     # For these Apache-conf type of settings, something explicitly passed in
