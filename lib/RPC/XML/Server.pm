@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.28 2002/08/18 11:53:21 rjray Exp $
+#   $Id: Server.pm,v 1.29 2002/08/29 06:52:01 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -84,7 +84,7 @@ require RPC::XML;
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.28 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.29 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -155,9 +155,9 @@ sub new
                   # be, hence we set it here (possibly from option values)
                   RPC_Server   => $self->{__version},
                   RPC_Encoding => 'XML-RPC',
-                  # Set the Content-Type header and others, as well
-                  Content_Type => 'text/xml',
+                  # Set any other headers as well
                   Accept       => 'text/xml');
+    $resp->content_type('text/xml');
     $resp->code(&HTTP::Status::RC_OK);
     $resp->message('OK');
     $self->{__response} = $resp;
@@ -384,10 +384,9 @@ The accepted options are:
 =item B<no_http>
 
 If passed with a C<true> value, prevents the creation and storage of the
-B<HTTP::Daemon> and the pre-configured B<HTTP::Response> objects. This allows
-for deployment of a server object in other environments. Note that if this is
-set, the B<accept_loop> method described below will silently return
-immediately.
+B<HTTP::Daemon> object. This allows for deployment of a server object in other
+environments. Note that if this is set, the B<server_loop> method described
+below will silently attempt to use the B<Net::Server> module.
 
 =item B<no_default>
 
@@ -404,14 +403,14 @@ are described below (see L<"The Default Methods Provided">).
 
 =item B<queue>
 
-These four are specific to the HTTP-based nature of the server. The last
-three are not used at all if C<no_http> is set. The B<path> argument sets the
-additional URI path information that clients would use to contact the server.
-Internally, it is not used except in outgoing status and introspection
-reports.  The B<host>, B<port> and B<queue> arguments are passed to the
-B<HTTP::Daemon> constructor if they are passed. They set the hostname, TCP/IP
-port, and socket listening queue, respectively. Again, they are not used if
-the C<no_http> argument was set.
+These four are specific to the HTTP-based nature of the server.  The B<path>
+argument sets the additional URI path information that clients would use to
+contact the server.  Internally, it is not used except in outgoing status and
+introspection reports.  The B<host>, B<port> and B<queue> arguments are passed
+to the B<HTTP::Daemon> constructor if they are passed. They set the hostname,
+TCP/IP port, and socket listening queue, respectively. They may also be used
+if the server object tries to use B<Net::Server> as an alternative server
+core.
 
 =item B<xpl_path>
 
@@ -423,10 +422,9 @@ B<add_method> and B<xpl_path>, below.
 
 =item B<timeout>
 
-You can call this method to set the timeout of new connections after
-they are received.  This function returns the old timeout value.  If
-you pass in no value then it will return the old value without
-modifying the current value.  The default value is 10 seconds.
+Specify a value (in seconds) for the B<HTTP::Daemon> server to use as a
+timeout value when reading request data from an inbound connection. The
+default value is 10 seconds. This value is not used except by B<HTTP::Daemon>.
 
 =item B<auto_methods>
 
@@ -496,6 +494,13 @@ is returned. The clock-time is based on the internal B<time> command of Perl,
 and thus is represented as an integer number of seconds since the system
 epoch. Generally, it is suitable for passing to either B<localtime> or to the
 C<time2iso8601> routine exported by the B<RPC::XML> package.
+
+=item timeout(INT)
+
+You can call this method to set the timeout of new connections after
+they are received.  This function returns the old timeout value.  If
+you pass in no value then it will return the old value without
+modifying the current value.  The default value is 10 seconds.
 
 =item add_method(FILE | HASHREF | OBJECT)
 

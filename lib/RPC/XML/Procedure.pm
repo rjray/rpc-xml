@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.5 2002/05/22 09:45:59 rjray Exp $
+#   $Id: Procedure.pm,v 1.6 2002/08/29 06:52:00 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -433,9 +433,9 @@ B<RPC::XML::Server> class. For some types of procedure objects, this becomes
 the first argument of the parameter list to simulate a method call as if it
 were on the server object itself. The return value should be a data object
 (possible a B<RPC::XML::fault>), but may not always be pre-encoded. This
-method is generally used in the C<dispatch> and C<call> methods of the server
-class, where the return value is subsequently wrapped within a
-B<RPC::XML::response> object.
+method is generally used in the C<dispatch> method of the server class, where
+the return value is subsequently wrapped within a B<RPC::XML::response>
+object.
 
 =item reload
 

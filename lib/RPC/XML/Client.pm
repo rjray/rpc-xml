@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.8 2002/08/17 09:09:04 rjray Exp $
+#   $Id: Client.pm,v 1.9 2002/08/29 06:52:00 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -522,7 +522,7 @@ are not compressed by default.
 
 =over 4
 
-=item compress_responses(BOOL)
+=item compress_requests(BOOL)
 
 If a client is communicating with a server that is known to support compressed
 messages, this method can be used to tell the client object to compress any
