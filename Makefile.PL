@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.29 2003/01/30 08:48:06 rjray Exp $
+# $Id: Makefile.PL,v 1.30 2003/01/30 09:17:06 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -23,6 +23,9 @@ $CLEAN  .= File::Spec->catfile(qw(methods *.xpl));
 @PM_FILES = ();
 
 find(sub { push(@PM_FILES, $File::Find::name) if (-f $_ and /\.pm$/) }, 'lib');
+
+# Exclude Apache2 stuff until it's ready for deployment
+@PM_FILES = grep(! /Apache2/, @PM_FILES);
 
 %PM_FILES = map { ($temp = $_) =~ s|^lib|\$\(INST_LIB\)|; $_ => $temp }
     @PM_FILES;
