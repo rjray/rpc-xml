@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.17 2002/08/31 06:42:26 rjray Exp $
+#   $Id: XML.pm,v 1.18 2002/10/30 05:04:38 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -35,10 +35,10 @@ BEGIN
 {
     no strict 'refs';
 
-    eval { use bytes };
+    eval "use bytes";
     *bytelength = $@ ?
-        sub { use bytes; length(@_ ? $_[0] : $_) } :
-        sub { length(@_ ? $_[0] : $_) };
+        sub { length(@_ ? $_[0] : $_) } :
+        sub { use bytes; length(@_ ? $_[0] : $_) };
 }
 
 require Exporter;
@@ -51,7 +51,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.17 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.18 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
