@@ -1,5 +1,36 @@
 Revision history for Perl extension RPC::XML.
 
+0.30
+	- first beta release
+
+	Apache::RPC::Server::list_servers no longer sorts the list before
+	returning it. No reason to assume it matters, or to levy that tax
+	against those who don't care.
+
+	RPC::XML::Server::url now constructs saner strings for HTTPS and for
+	HTTP on port 80.
+
+	The new() method in RPC::XML::Server wasn't quite handling the "host"
+	and "port" arguments that Apache::RPC::Server sent it correctly.
+
+	Added a patch to the RPC::XML::Server class from Christopher Blizzard
+	(blizzard@redhat.com) to allow control over the timeout interval that
+	HTTP::Daemon uses in answering new connections.
+
+	Replaced a GNU Make-centric dependancy rule for the XPL files with
+	a more portable .SUFFIXES-based one. This is unfortunate, as the %
+	syntax of GNU make is much cleaner. But GNU Make isn't universal. Yet.
+
+	This release marks the debut of Apache::RPC::Status, a monitor similar
+	in nature and design to Apache::Status, for running RPC servers under
+	Apache/mod_perl. See the manual page for details.
+
+	Documentation for Apache::RPC::Server was updated based on trials and
+	travails in trying to actually set up a configuration inside <Perl>
+	blocks. This isn't very clear in the mod_perl documentation, but at
+	least the docs for this module reflect exactly what I have configured
+	on my development box, so I know it works.
+
 0.29	Sun Dec  2 22:41:39 PST 2001
 
 	Added share_methods(), copy_methods() and delete_method() calls to the
