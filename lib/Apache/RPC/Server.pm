@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.20 2003/01/27 11:10:29 rjray Exp $
+#   $Id: Server.pm,v 1.21 2003/01/27 11:19:02 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.20 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.21 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 sub version { $Apache::RPC::Server::VERSION }
 
@@ -98,7 +98,7 @@ sub handler ($$)
     my $class = shift;
     my $r = shift;
 
-    my ($srv, $content, $resp, $respxml, $hdrs, $hdrs_out, $compress, $length,
+    my ($srv, $content, $resp, $hdrs, $hdrs_out, $compress, $length,
         $do_compress, $com_engine, $parser, $me, $resp_fh);
 
     $srv = (ref $class) ? $class : $class->get_server($r);
@@ -185,12 +185,12 @@ sub handler ($$)
         if ($compress and ($resp->length > $srv->compress_thresh) and
             (($r->header_in('Accept-Encoding') || '') =~ $srv->compress_re))
         {
-            $do_compress = 1
+            $do_compress = 1;
             $hdrs_out->{'Content-Encoding'} = $compress;
         }
         # Determine if we need to spool this to a file due to size
-        if ($self->message_file_thresh and
-            $self->message_file_thresh < $respxml->length)
+        if ($srv->message_file_thresh and
+            $srv->message_file_thresh < $resp->length)
         {
             unless ($resp_fh = Apache::File->tmpfile)
             {
