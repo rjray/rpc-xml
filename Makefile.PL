@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.25 2002/10/30 05:07:15 rjray Exp $
+# $Id: Makefile.PL,v 1.26 2002/12/05 04:17:14 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -80,7 +80,7 @@ sub MY::tools_other
 
     my $text = shift->SUPER::tools_other(@_);
 
-    "$text\nECHO=\@echo\nRPM=rpm\n";
+    "$text\nECHO=\@echo\nRPM=rpmbuild\n";
 }
 
 sub MY::post_constants
