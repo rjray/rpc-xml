@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.4 2001/06/05 06:38:14 rjray Exp $
+#   $Id: Server.pm,v 1.5 2001/06/05 06:44:41 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -40,6 +40,7 @@ BEGIN {
 }
 
 use Carp 'carp';
+use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
 require HTTP::Daemon;
@@ -50,7 +51,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -561,10 +562,9 @@ refer to the arguments themselves.
 
 =back
 
-The methods should not make (excessive) use of global variables. Each method
-will be evaluated in the same package space, so methods may call each other
-without difficulty. Likewise, methods should not change their package space
-within the definition. Bad Things Could Happen.
+The methods should not make (excessive) use of global variables. Likewise,
+methods should not change their package space within the definition. Bad
+Things Could Happen.
 
 =head2 Specifying Server-Side Remote Methods
 
@@ -670,7 +670,7 @@ Randy J. Ray <rjray@blackperl.com>
 
 =cut
 
-#__END__
+__END__
 
 ###############################################################################
 #
