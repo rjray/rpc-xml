@@ -38,6 +38,7 @@ sub status
     $status->{date_int} = $time;
     $status->{started_int} = $srv->started;
     $status->{total_requests} = $srv->requests() + 1;
+    $status->{methods_known} = scalar($srv->list_methods);
 
     $status;
 }

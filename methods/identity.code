@@ -15,5 +15,5 @@ sub identity
 {
     use strict;
 
-    sprintf('%s/%s', ref($_[0]), $_[0]->version);
+    $_[0]->product_tokens;
 }

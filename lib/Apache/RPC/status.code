@@ -42,6 +42,7 @@ sub status
     $status->{started_int} = $srv->started;
     $status->{child_started_int} = $srv->child_started;
     $status->{total_requests} = $srv->requests + 1;
+    $status->{methods_known} = scalar($srv->list_methods);
 
     $status;
 }
