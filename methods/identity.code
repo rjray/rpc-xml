@@ -15,5 +15,5 @@ sub identity__CRIS
 {
     use strict;
 
-    sprintf('%s/%s, CRIS/1.0', ref($_[0]), $_[0]->version);
+    sprintf('%s/%s', ref($_[0]), $_[0]->version);
 }
