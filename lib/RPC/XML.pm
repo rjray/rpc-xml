@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.7 2001/09/08 09:13:32 rjray Exp $
+#   $Id: XML.pm,v 1.8 2001/09/10 00:23:23 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -259,32 +259,7 @@ package RPC::XML::string;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(RPC::XML::datatype);
-
-sub new
-{
-    my $class = shift;
-    my $value = shift;
-
-    $value =~ s/&/&amp;/g;
-    $value =~ s/</&lt;/g;
-    $value =~ s/>/&gt;/g;
-
-    bless \$value, $class;
-}
-
-# value - a generic accessor
-sub value
-{
-    my $self = shift;
-
-    my $text = $$self;
-    $text =~ s/&lt;/</g;
-    $text =~ s/&gt;/>/g;
-    $text =~ s/&amp;/&/g;
-
-    $text;
-}
+@ISA = qw(RPC::XML::simple_type);
 
 # as_string - return the value as an XML snippet
 sub as_string
@@ -292,13 +267,16 @@ sub as_string
     my $self = shift;
     my $indent = shift || 0;
 
-    my $class;
+    my ($class, $value);
 
-    return unless ($class = ref($self));
-    $class =~ s/^.*\://;
+    return unless ($class = $self->type);
     my $padding = '  ' x $indent;
 
-    "$padding<$class>$$self</$class>";
+    ($value = $$self) =~ s/&/&amp;/g;
+    $value            =~ s/</&lt;/g;
+    $value            =~ s/>/&gt;/g;
+
+    "$padding<$class>$value</$class>";
 }
 
 ###############################################################################
