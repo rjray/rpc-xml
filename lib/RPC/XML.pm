@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.33 2004/12/09 08:50:17 rjray Exp $
+#   $Id: XML.pm,v 1.34 2004/12/17 09:42:37 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -66,7 +66,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.33 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.34 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -114,24 +114,31 @@ sub smart_encode
         {
             $type = RPC::XML::string->new('');
         }
-        elsif ($type = ref($_))
+        elsif (ref $_)
         {
             # Skip any that have already been encoded
             if (UNIVERSAL::isa($_, 'RPC::XML::datatype'))
             {
                 $type = $_;
             }
-            elsif ($type eq 'HASH')
+            elsif (UNIVERSAL::isa($_, 'HASH'))
             {
                 $type = RPC::XML::struct->new($_);
             }
-            elsif ($type eq 'ARRAY')
+            elsif (UNIVERSAL::isa($_, 'ARRAY'))
             {
                 $type = RPC::XML::array->new($_);
             }
+            elsif (UNIVERSAL::isa($_, 'SCALAR'))
+            {
+                # This is a rare excursion into recursion, since the scalar
+                # nature (de-refed from the object, so no longer magic) will
+                # prevent further recursing.
+                $type = smart_encode($$_);
+            }
             else
             {
-                # ??? Don't know what else to do
+                # ??? Don't know what else to do, so skip it for now
                 next;
             }
         }
@@ -188,6 +195,20 @@ sub new
 
     $RPC::XML::ERROR = '';
     $class = ref($class) || $class;
+    if (ref $value)
+    {
+        # If it is a scalar reference, just deref
+        if (UNIVERSAL::isa($value, 'SCALAR'))
+        {
+            $value = $$value;
+        }
+        else
+        {
+            # We can only manage scalar references (or blessed scalar refs)
+            $RPC::XML::ERROR = "${class}::new: Cannot instantiate from a " .
+                'reference not derived from scalar';
+        }
+    }
     bless \$value, $class;
 }
 
@@ -383,7 +404,7 @@ use vars qw(@ISA);
 sub new
 {
     my $class = shift;
-    my @args = (ref($_[0]) eq 'ARRAY') ? @{$_[0]} : @_;
+    my @args = (UNIVERSAL::isa($_[0], 'ARRAY')) ? @{$_[0]} : @_;
 
     # First ensure that each argument passed in is itself one of the data-type
     # class instances.
@@ -477,7 +498,7 @@ use vars qw(@ISA);
 sub new
 {
     my $class = shift;
-    my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
+    my %args = (UNIVERSAL::isa($_[0], 'HASH')) ? %{$_[0]} : @_;
 
     # First ensure that each argument passed in is itself one of the data-type
     # class instances.
