@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.10 2003/02/18 08:59:02 rjray Exp $
+#   $Id: Parser.pm,v 1.11 2003/05/19 07:43:27 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -87,7 +87,7 @@ require File::Spec;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -283,7 +283,9 @@ sub tag_end
     if (VALIDTYPES->{$elem})
     {
         # This is the closing tag of one of the data-types.
-        ($class = lc $elem) =~ s/\./_/;
+        $class = $elem;
+        # Cheaper than the regex that was here, and more locale-portable
+        $class = 'datetime_iso8601' if ($class eq 'dateTime.iso8601');
         # Some minimal data-integrity checking
         if ($class eq 'int' or $class eq 'i4')
         {
