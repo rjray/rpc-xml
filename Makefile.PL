@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.10 2001/07/08 23:32:12 rjray Exp $
+# $Id: Makefile.PL,v 1.11 2001/08/10 08:29:34 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -11,8 +11,11 @@
 use ExtUtils::MakeMaker;
 use File::Spec;
 use File::Find;
+use Cwd 'cwd';
 
-$CLEAN = 'pod2html-* *.html ';
+$cwd = cwd;
+
+$CLEAN = 'pod2html-* *.html RPC-XML.spec *.rpm rpmrc rpmmacro ';
 
 @scripts = (File::Spec->catfile(qw(etc make_method)));
 $CLEAN  .= File::Spec->catfile(qw(methods *.xpl));
@@ -69,3 +72,94 @@ sub MY::post_initialize
     join("\n", @text);
 }
 
+sub MY::tools_other
+{
+    package MY;
+
+    my $text = shift->SUPER::tools_other(@_);
+
+    "$text\nECHO=\@echo\nRPM=rpm\n";
+}
+
+sub MY::post_constants
+{
+    my $self = shift;
+
+    "SPECFILE=$self->{DISTNAME}.spec";
+}
+
+sub MY::postamble
+{
+    my $self = shift;
+
+    my @text;
+
+    #
+    # Generate the spec file from <DATA> with substitutions
+    #
+    print "Generating $self->{DISTNAME}.spec...\n";
+    $self->{RELEASE} = 1 unless $self->{RELEASE};
+    $self->{INSTALLDIR} = $Config{installsitelib} unless $self->{INSTALLDIR};
+    open(SPECI, "< $self->{DISTNAME}.spec.in");
+    if ($?)
+    {
+        die "Error opening template spec file: $!, stopped";
+    }
+    open(SPECO, "> $self->{DISTNAME}.spec");
+    if ($?)
+    {
+        die "Error creating output spec file: $!, stopped";
+    }
+
+    for (<SPECI>)
+    {
+        s/(\$\{(\w+)\})/$self->{$2}/eg;
+        print SPECO $_;
+    }
+    close(SPECO); close(SPECI);
+
+    print "Generating rpmrc...\n";
+    open(RPMRC, "> rpmrc");
+    if ($?)
+    {
+        die "Error creating rpmrc file: $!, stopped";
+    }
+    else
+    {
+        print RPMRC <<END_rpmrc;
+include: /usr/lib/rpm/rpmrc
+macrofiles: /usr/lib/rpm/macros:rpmmacro
+END_rpmrc
+        close(RPMRC);
+    }
+    print "Generating rpmmacros...\n";
+    open(MACRO, "> rpmmacro");
+    if ($?)
+    {
+        die "Error creating macro file: $!, stopped";
+    }
+    else
+    {
+        print MACRO <<END_macro;
+%_rpmfilename           %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
+%_builddir              %{_topdir}
+%_sourcedir             %{_topdir}
+%_specdir               %{_topdir}
+%_srcrpmdir             %{_topdir}
+%_rpmdir                %{_topdir}
+%_topdir                $cwd
+END_macro
+        close(MACRO);
+    }
+
+    # Create the rules that create RPM and SRPM files
+    push(@text, qq{
+rpm: \$(SPECFILE) \$(DISTVNAME).tar\$(SUFFIX)
+\t\$(RPM) -bb --clean --rcfile rpmrc \$(SPECFILE)
+
+srpm: \$(SPECFILE) \$(DISTVNAME).tar\$(SUFFIX)
+\t\$(RPM) -bs --clean --rcfile rpmrc \$(SPECFILE)
+});
+
+    join("\n", @text);
+}
