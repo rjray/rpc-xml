@@ -173,7 +173,7 @@ ok($obj->as_string =~ m|<\?xml.*
                         </methodResponse>|smx);
 $obj = new RPC::XML::response ();
 ok(! ref($obj));
-ok($RPC::XML::ERROR =~ /:new: One of a datatype value or a fault/);
+ok($RPC::XML::ERROR =~ /:new: One of a datatype, value or a fault/);
 $obj = new RPC::XML::response (RPC::XML::fault->new(1, 'test'));
 ok(ref $obj);
 # The other methods have already been tested
