@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.7 2002/08/01 07:32:08 rjray Exp $
+#   $Id: Client.pm,v 1.8 2002/08/17 09:09:04 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -276,6 +276,30 @@ sub uri
     $_[0]->{__request}->uri($_[1]);
 }
 
+###############################################################################
+#
+#   Sub Name:       credentials
+#
+#   Description:    Set basic-auth credentials on the underlying user-agent
+#                   object
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $realm    in      scalar    Realm to authenticate for
+#                   $user     in      scalar    User name to authenticate
+#                   $pass     in      scalar    Password for $user
+#
+#   Returns:        $self
+#
+###############################################################################
+sub credentials
+{
+    my ($self, $realm, $user, $pass) = @_;
+
+    $self->{__useragent}->credentials($self->uri(), $realm, $user, $pass);
+    $self;
+}
+
 # Immutable accessor methods
 BEGIN
 {
@@ -460,15 +484,24 @@ called C<is_fault> that may be easily used to determine if the "successful"
 return value is actually a C<RPC::XML::fault> without the need to use
 C<UNIVERSAL::ISA>.
 
-=item error_handler([CODEREF])
+=item error_handler ([CODEREF])
 
-=item fault_handler([CODEREF])
+=item fault_handler ([CODEREF])
 
-=item combined_handler([CODEREF])
+=item combined_handler ([CODEREF])
 
 These accessor methods get (and possibly set, if CODEREF is passed) the
 specified callback/handler. The return value is always the current handler,
 even when setting a new one (allowing for later restoration, if desired).
+
+=item credentials (REALM, USERNAME, PASSWORD)
+
+This sets the username and password for a given authentication realm at the
+location associated with the current request URL. Needed if the RPC location
+is protected by Basic Authentication. Note that changing the target URL of the
+client object to a different (protected) location would require calling this
+with new credentials for the new realm (even if the value of C<$realm> is
+identical at both locations).
 
 =back
 
