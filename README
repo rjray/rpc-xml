@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.29 (fifth release)
+Version: 0.30 (sixth release, first beta)
 
 WHAT IS IT
 
@@ -65,8 +65,6 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-See the ChangeLog file for the full details. Primarily, this release fixes
-some bugs in the introsepction API methods arising from the abstraction of
-RPC::XML::Method in the last release. Also, there are some new methods
-available to the RPC::XML::Server class, and the start of test suites for
-the RPC::XML::Method and RPC::XML::Server classes.
+See the ChangeLog file for the full details. This is the first beta release,
+and the introduction of the Apache::RPC::Status module, a status monitor for
+RPC servers running under Apache::RPC::Server.
