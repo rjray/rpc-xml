@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.1 2001/04/18 09:28:45 rjray Exp $
+#   $Id: Client.pm,v 1.2 2001/05/08 08:44:51 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -45,7 +45,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -90,9 +90,7 @@ sub new
     $REQ = HTTP::Request->new(POST => $location) or
         return "${class}::new: Unable to get HTTP::Request object";
     $self->{__request} = $REQ;
-    $REQ->header(Content_Type   => 'text/xml',
-                 PI_RPC_Version => '1.0',
-                 Host           => URI->new($location)->host);
+    $REQ->header(Content_Type   => 'text/xml');
 
     # Preserve any attributes passed in
     $self->{lc $_} = $attrs{$_} for (keys %attrs);
@@ -179,10 +177,11 @@ sub send_request
     return ref($self) . '::request: Parameter in must be a RPC::XML::request'
         unless (UNIVERSAL::isa($req, 'RPC::XML::request'));
 
-    my ($respxml, $response);
+    my ($respxml, $response, $reqclone);
 
-    $self->{__request}->content($req->as_string);
-    $response = $self->{__useragent}->request($self->{__request});
+    ($reqclone = $self->{__request}->clone)->content($req->as_string);
+    $reqclone->header(Host => URI->new($reqclone->uri)->host);
+    $response = $self->{__useragent}->request($reqclone);
 
     return ref($self) . '::request: HTTP server error: ' . $response->message
         unless ($response->is_success);
@@ -214,7 +213,7 @@ sub uri
     my $self = shift;
     my $uri  = shift;
 
-    $self->{request}->uri($uri);
+    $self->{__request}->uri($uri);
 }
 
 # Accessor methods for the LWP::UserAgent and HTTP::Request objects
