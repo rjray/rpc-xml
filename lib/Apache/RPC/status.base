@@ -1,0 +1,7 @@
+Name:      system.status
+Version:   1.0
+Hidden:    no
+Signature: struct
+Helpfile:  status.help
+Package:   RPC::XML::Server::__methods__
+Code:      status.code
