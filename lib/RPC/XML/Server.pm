@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.16 2001/08/18 01:07:15 rjray Exp $
+#   $Id: Server.pm,v 1.17 2001/10/06 10:19:27 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -26,18 +26,16 @@
 #                   port
 #                   requests
 #                   response
-#                   debug
 #                   xpl_path
 #                   add_method
+#                   method_from_file
 #                   get_method
-#                   method_to_ref
 #                   server_loop
 #                   post_configure_hook
 #                   pre_loop_hook
 #                   process_request
 #                   dispatch
 #                   call
-#                   load_XPL_file
 #                   add_default_methods
 #                   add_methods_in_dir
 #
@@ -75,9 +73,9 @@ require URI;
 
 require RPC::XML;
 require RPC::XML::Parser;
-require RPC::XML::ServerMethod;
+require RPC::XML::Method;
 
-$VERSION = do { my @r=(q$Revision: 1.16 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.17 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -165,7 +163,6 @@ sub new
     # Copy the rest over untouched
     $self->{$_} = $args{$_} for (keys %args);
 
-    $self->debug("New %s created, path = %s", ref($self), $self->{__path});
     $self;
 }
 
@@ -207,18 +204,6 @@ sub port     { shift->{__port} }
 sub requests { shift->{__requests} }
 sub response { shift->{__response} }
 
-sub debug
-{
-    my $self = shift;
-    my $fmt  = shift;
-
-    my $debug = ref($self) ? $self->{__debug} : 1;
-
-    $fmt && $debug && printf STDERR "%p: $fmt\n", (ref $self) ? $self : 0, @_;
-
-    $debug;
-}
-
 # Get/set the search path for XPL files
 sub xpl_path
 {
@@ -252,14 +237,13 @@ sub add_method
     my $self = shift;
     my $meth = shift;
 
-    my ($new_meth, $name, $val, $sig, @sig);
+    my ($name, $val);
 
     my $me = ref($self) . '::add_method';
-    $self->debug("Entering add_method for %s", $meth);
 
     if (! ref($meth))
     {
-        $val = load_XPL_file($self, $meth);
+        $val = $self->method_from_file($meth);
         if (! ref($val))
         {
             return "$me: Error loading from file $meth: $val";
@@ -269,39 +253,23 @@ sub add_method
             $meth = $val;
         }
     }
-    elsif (! (ref($meth) eq 'HASH'))
+    elsif (ref($meth) eq 'HASH')
     {
-        return "$me: Method argument must be hash ref or file name";
+        $meth = RPC::XML::Method->new($meth);
+    }
+    elsif (! UNIVERSAL::isa($meth, 'RPC::XML::Method'))
+    {
+        return "$me: Method argument must be a RPC::XML::Method object, a " .
+            'hash reference or a file name';
     }
 
     # Do some sanity-checks
-    return "$me: 'NAME' cannot be a null string" unless $meth->{name};
-    return "$me: 'CODE' argument must be a code reference (not a name)"
-        unless (ref($meth->{code}) eq 'CODE');
-    return "$me: 'SIGNATURE' argument must specify at least one signature"
-        unless (ref($meth->{signature}) eq 'ARRAY' and
-                (@{$meth->{signature}}));
+    return "$me: Method missing required data; check name, code and/or " .
+        'signature' unless $meth->is_valid;
 
-    # Convert any space-separated signature specifications to array refs
-    @sig = @{$meth->{signature}};
-    @sig = map { (ref $_) ? [ @$_ ] : [ split(/ /, $_) ] } @sig;
-    # Copy the hash contents over
-    $new_meth = { map { $_ => $meth->{$_} } (keys %$meth) };
-    $new_meth->{signature} = \@sig;
+    $name = $meth->name;
+    $self->{__method_table}->{$name} = $meth;
 
-    $name = $new_meth->{name};
-    $self->{__method_table}->{$name} = $new_meth;
-
-    # Create an easily-indexed table of valid method signatures for tests
-    $self->{__signature_table}->{$name} = {};
-    for $sig (@sig)
-    {
-        # The first element of the array is the type of the return value
-        $val = join('|', '+', @$sig[1 .. $#$sig]);
-        $self->{__signature_table}->{$name}->{$val} = $sig->[0];
-    }
-
-    $self->debug("Exiting add_method");
     $self;
 }
 
@@ -535,19 +503,14 @@ installation directory or the current working directory are searched.
 
 =item get_method(NAME)
 
-Returns a hash reference containing the current binding for the published
-method NAME. If there is no such method known to the server, then C<undef> is
-returned. The hash has the same key and value pairs as for C<add_method>,
-above. Thus, the hash reference returned is suitable for passing back to
-C<add_method>. This facilitates temporary changes in what a published name
-maps to.
-
-=item method_to_ref(NAME)
-
-This is a shorter implementation of the above, that only returns the code
-reference associated with the named method. It returns C<undef> if no such
-method exists. Since the methods are stored internally as closures, this is
-the only reliable way of calling one method from within another.
+Returns a reference to an object of the class B<RPC::XML::Method>, which is
+the current binding for the published method NAME. If there is no such method
+known to the server, then C<undef> is returned. The object is implemented as a
+hash, and has the same key and value pairs as for C<add_method>, above. Thus,
+the reference returned is suitable for passing back to C<add_method>. This
+facilitates temporary changes in what a published name maps to. Note that this
+is a referent to the object as stored on the server object itself, and thus
+changes to it could affect the behavior of the server.
 
 =item server_loop(HASH)
 
@@ -882,6 +845,41 @@ __END__
 
 ###############################################################################
 #
+#   Sub Name:       method_from_file
+#
+#   Description:    Create a RPC::XML::Method object from the passed-in file
+#                   name, using the object's search path if the name is not
+#                   already absolute.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $file     in      scalar    Name of file to load
+#
+#   Returns:        Success:    RPC::XML::Method reference
+#                   Failure:    error message
+#
+###############################################################################
+sub method_from_file
+{
+    my $self = shift;
+    my $file = shift;
+
+    unless (File::Spec->file_name_is_absolute($file))
+    {
+        my ($path, @path);
+        push(@path, @{$self->xpl_path}) if (ref $self);
+        for (@path, @XPL_PATH)
+        {
+            $path = File::Spec->catfile($_, $file);
+            if (-e $path) { $file = $path; last; }
+        }
+    }
+
+    RPC::XML::Method->new($file);
+}
+
+###############################################################################
+#
 #   Sub Name:       get_method
 #
 #   Description:    Get the current binding for the remote-side method $name.
@@ -897,7 +895,7 @@ __END__
 #
 #   Environment:    None.
 #
-#   Returns:        Success:    hashref
+#   Returns:        Success:    RPC::XML::Method reference
 #                   Failure:    undef
 #
 ###############################################################################
@@ -908,21 +906,7 @@ sub get_method
 
     return undef unless ($name and $self->{__method_table}->{$name});
 
-    my $meth = {};
-
-    map { $meth->{$_} = $self->{__method_table}->{$name}->{$_} }
-        (keys %{$self->{__method_table}->{$name}});
-
-    $meth;
-}
-
-# Much plainer version of the above
-sub method_to_ref
-{
-    my $self = shift;
-    my $name = shift;
-
-    $self->{__method_table}->{$name}->{code};
+    $self->{__method_table}->{$name};
 }
 
 ###############################################################################
@@ -951,7 +935,6 @@ sub server_loop
     my $self = shift;
     my %args = @_;
 
-    $self->debug("Entering server_loop");
     if ($self->{__daemon})
     {
         my ($conn, $req, $resp, $reqxml, $return, $respxml, $exit_now,
@@ -1009,7 +992,6 @@ sub server_loop
         $self->run(%args);
     }
 
-    $self->debug("Exiting server_loop");
     return;
 }
 
@@ -1089,7 +1071,6 @@ sub process_request
 
     my ($req, $reqxml, $resp, $respxml);
 
-    $self->debug("Entering process_request");
     unless ($conn and ref($conn))
     {
         $conn = $self->{server}->{client};
@@ -1125,7 +1106,6 @@ sub process_request
         }
     }
 
-    $self->debug("Entering process_request");
     return;
 }
 
@@ -1160,9 +1140,9 @@ sub dispatch
     my $self     = shift;
     my $xml      = shift;
 
-    my ($reqobj, @data, @paramtypes, $resptype, $response, $signature, $name);
+    my ($reqobj, @data, @paramtypes, $resptype, $response, $signature, $name,
+        $meth);
 
-    $self->debug("Entering dispatch");
     if (ref($xml) eq 'SCALAR')
     {
         $reqobj = $self->{__parser}->parse($$xml);
@@ -1191,7 +1171,7 @@ sub dispatch
     @data = @{$reqobj->args};
     # First test: do we have this method?
     $name = $reqobj->name;
-    if (! $self->{__method_table}->{$name})
+    if (! defined($meth = $self->get_method($name)))
     {
         if ($self->{__auto_methods})
         {
@@ -1202,7 +1182,7 @@ sub dispatch
             # If method is still not in the table, we were unable to load it
             return RPC::XML::response
                 ->new(RPC::XML::fault->new(300, "Unknown method: $name"))
-                    unless ($self->{__method_table}->{$name});
+                    unless ($meth = $self->get_method($name));
         }
         else
         {
@@ -1211,12 +1191,10 @@ sub dispatch
         }
     }
     # Check the mod-time of the file the method came from, if the test is on
-    if ($self->{__auto_updates} && $self->{__method_table}->{$name}->{file} &&
-        ($self->{__method_table}->{$name}->{mtime} <
-         (stat $self->{__method_table}->{$name}->{file})[9]))
+    if ($self->{__auto_updates} && $meth->{file} &&
+        ($meth->{mtime} < (stat $meth->{file})[9]))
     {
-        my $ret = $self->add_method($self->{__method_table}->{$name}->{file});
-
+        $ret = $meth->reload;
         return RPC::XML::response
             ->new(RPC::XML::fault
                   ->new(302, "Reload of method $name failed: $ret"))
@@ -1226,8 +1204,8 @@ sub dispatch
     # Create the param list.
     # The type for the response will be derived from the matching signature
     @paramtypes = map { $_->type } @data;
-    $signature = join('|', '+', @paramtypes);
-    $resptype = $self->{__signature_table}->{$name}->{$signature};
+    $signature = join(' ', @paramtypes);
+    $resptype = $meth->match_signature($signature);
     # Since there must be at least one signature with a return value (even
     # if the param list is empty), this tells us if the signature matches:
     return RPC::XML::response
@@ -1241,8 +1219,7 @@ sub dispatch
     local $self->{method_name} = $name;
     # Now take a deep breath and call the method with the arguments
     eval {
-        $response = &{$self->{__method_table}->{$name}->{code}}
-            ($self, map { $_->value } @data);
+        $response = &{$meth->{code}}($self, map { $_->value } @data);
     };
     if ($@)
     {
@@ -1251,8 +1228,8 @@ sub dispatch
                                          "Method $name returned error: $@");
     }
     $self->{__requests}++;
+    $meth->{called}++;
 
-    $self->debug("Exiting dispatch");
     return RPC::XML::response->new($response);
 }
 
@@ -1283,6 +1260,8 @@ sub call
     my $self = shift;
     my ($name, @args) = @_;
 
+    my $meth;
+
     #
     # Two VERY important notes here: The values in @args are not pre-treated
     # in any way, so not only should the receiver understand what they're
@@ -1294,19 +1273,28 @@ sub call
 
     my $response;
 
-    if (! $self->{__method_table}->{$name})
+    if (! defined($meth = $self->get_method($name)))
     {
         # Try to load this dynamically on the fly, from any of the dirs that
         # are in this object's @xpl_path
         (my $loadname = $name) =~ s/^system\.//;
         $self->add_method("$loadname.xpl");
+        $meth = $self->get_method($name);
     }
     # If the method is still not in the table, we were unable to load it
-    return "Unknown method: $name" unless ($self->{__method_table}->{$name});
+    return "Unknown method: $name" unless (ref $meth);
+    # Check the mod-time of the file the method came from, if the test is on
+    if ($self->{__auto_updates} && $meth->{file} &&
+        ($meth->{mtime} < (stat $meth->{file})[9]))
+    {
+        $ret = $meth->reload;
+        return "Reload of method $name failed: $ret" unless (ref $ret);
+    }
+
     # Though we have no signature, we can still tell them what name was called
     local $self->{method_name} = $name;
     eval {
-        $response = &{$self->{__method_table}->{$name}->{code}}($self, @args);
+        $response = &{$meth->{code}}($self, @args);
     };
     if ($@)
     {
@@ -1316,7 +1304,6 @@ sub call
 
     $response;
 }
-
 
 ###############################################################################
 #
@@ -1339,7 +1326,7 @@ sub call
 ###############################################################################
 sub add_default_methods
 {
-    add_methods_in_dir(shift, $INSTALL_DIR, @_);
+    shift->add_methods_in_dir($INSTALL_DIR, @_);
 }
 
 ###############################################################################
@@ -1372,7 +1359,6 @@ sub add_methods_in_dir
     my $detail = 0;
     my (%details, $ret);
 
-    $self->debug("Entering add_methods_in_dir for %s", $dir);
     if (@details)
     {
         $detail = 1;
@@ -1400,6 +1386,5 @@ sub add_methods_in_dir
         return $ret unless ref $ret;
     }
 
-    $self->debug("Exiting add_methods_in_dir");
     $self;
 }
