@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.5 2001/06/13 05:02:45 rjray Exp $
+#   $Id: Server.pm,v 1.6 2001/06/15 17:16:58 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -44,7 +44,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -88,7 +88,7 @@ sub handler ($$)
     my $class = shift;
     my $r = shift;
 
-    my ($self, $srv, $content, $resp, $respxml);
+    my ($self, $srv, $content, $resp, $respxml, $hdrs, $hdrs_out);
 
     $srv = (ref $class) ? $class : $class->get_server($r);
     unless (ref $srv)
@@ -98,8 +98,9 @@ sub handler ($$)
     }
 
     # Set the relevant headers
-    my $hdrs = $srv->response->headers;
-    for (keys %$hdrs) { $r->header_out($_ => $hdrs->{$_}) }
+    $hdrs_out = $r->headers_out;
+    $hdrs = $srv->response->headers;
+    for (keys %$hdrs) { $hdrs_out->{$_} = $hdrs->{$_} }
     # We're essentially done if this was a HEAD request
     if ($r->header_only)
     {
@@ -124,7 +125,7 @@ sub handler ($$)
         $r->set_content_length(length $respxml);
         $r->no_cache(1);
         $r->send_http_header;
-        $r->print(\$respxml);
+        print $respxml;
     }
     else
     {
