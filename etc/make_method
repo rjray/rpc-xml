@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: make_method,v 1.9 2002/05/03 20:32:50 rjray Exp $
+#   $Id: make_method,v 1.10 2004/12/08 08:45:07 rjray Exp $
 #
 #   Description:    Simple tool to turn a Perl routine and the support data
 #                   into the simple XML representation that RPC::XML::Server
@@ -40,7 +40,7 @@ use Getopt::Long;
 use IO::File;
 use File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 ($cmd = $0) =~ s|.*/||;
 $USAGE = "$cmd [ --options ]
 
@@ -294,7 +294,7 @@ sub write_file
     }
 
     print $ofh <<"EO_HDR";
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="iso-8859-1"?>
 <!DOCTYPE $tag SYSTEM "rpc-method.dtd">
 <!--
     Generated automatically by $cmd v$VERSION, $date
