@@ -96,6 +96,7 @@ kill 'INT', $child;
 ok(ref $srv->delete_method('perl.test.suite.test1'));
 
 # Start the server again
+sleep 1; # To allow the old sockets time enough to go away
 $child = start_server($srv);
 $bucket = 0;
 $SIG{ALRM} = sub { $bucket++ };
