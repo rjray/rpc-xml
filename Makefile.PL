@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.14 2001/12/03 06:47:09 rjray Exp $
+# $Id: Makefile.PL,v 1.15 2002/01/03 02:41:59 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -48,7 +48,7 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.29',
+              VERSION   => '0.30',
               EXE_FILES => \@scripts,
               PM        => \%PM_FILES,
               PREREQ_PM => { XML::Parser => 2.25,
@@ -66,7 +66,9 @@ sub MY::post_initialize
     my $makemeth = File::Spec->catfile(qw(etc make_method));
 
     push(@text,
-         "%.xpl : %.code %.help %.base $makemeth",
+         '.SUFFIXES: .xpl .base',
+         '',
+         '.base.xpl:',
          "\t\$(PERL) $makemeth --base=\$*",
          '');
     join("\n", @text);
@@ -160,6 +162,13 @@ rpm: \$(SPECFILE) \$(DISTVNAME).tar\$(SUFFIX)
 srpm: \$(SPECFILE) \$(DISTVNAME).tar\$(SUFFIX)
 \t\$(RPM) -bs --clean --rcfile rpmrc \$(SPECFILE)
 });
+
+    # Create the dependancy rules for the methods/XPL files
+    for (sort grep(/\.xpl$/, keys %::PM_FILES))
+    {
+        s/\.xpl$//;
+        push(@text, "$_.xpl: $_.base $_.help $_.code");
+    }
 
     join("\n", @text);
 }
