@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.3 2001/06/07 03:56:49 rjray Exp $
+# $Id: Makefile.PL,v 1.4 2001/06/07 07:59:18 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -16,19 +16,30 @@ use File::Find;
 $CLEAN   = File::Spec->catfile(qw(methods *.xpl));
 
 @PM_FILES = ();
-@XPL_FILES = ();
 
 find(sub { push(@PM_FILES, $File::Find::name) if (-f $_ and /\.pm$/) }, 'lib');
-find(sub { push(@XPL_FILES, $_) if (-f $_ and /\.code$/) }, 'methods');
 
 %PM_FILES = map { ($temp = $_) =~ s|^lib|\$\(INST_LIB\)|; $_ => $temp }
     @PM_FILES;
-for (@XPL_FILES)
-{
-    s/\.code$//;
-    $PM_FILES{File::Spec->catfile('methods', "$_.xpl")} =
-        File::Spec->catfile('$(INST_LIB)', 'RPC', 'XML', "$_.xpl");
-}
+# Handle the method code in "methods" specially:
+find(sub {
+         if (-f $_ and /\.base$/)
+         {
+             s/\.base$//;
+             $PM_FILES{File::Spec->catfile('methods', "$_.xpl")} =
+                 File::Spec->catfile('$(INST_LIB)', 'RPC', 'XML', "$_.xpl");
+         }
+     }, 'methods');
+# Anything stuck under "lib" is more generic
+find(sub {
+         if (-f $_ and /\.base$/)
+         {
+             $File::Find::name =~ s/base$/xpl/;
+             ($tmp = $File::Find::name) =~ s|^lib|\$(INST_LIB)|;
+             $PM_FILES{$File::Find::name} = $tmp;
+             $CLEAN .= " $File::Find::name";
+         }
+     }, 'lib');
 
 WriteMakefile(
               NAME      => 'RPC::XML',
@@ -49,7 +60,7 @@ sub MY::post_initialize
     my $makemeth = File::Spec->catfile(qw(etc make_method));
 
     push(@text,
-         "%.xpl : %.code %.help %.text $makemeth",
+         "%.xpl : %.code %.help %.base $makemeth",
          "\t\$(PERL) $makemeth --base=\$*",
          '');
     join("\n", @text);
