@@ -4,11 +4,11 @@
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License as distributed with Perl versions 5.005 and later. See
-# http://language.perl.com/misc/Artistic.html
+# http://www.opensource.org/licenses/artistic-license.php
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.10 2004/11/30 08:43:06 rjray Exp $
+#   $Id: Procedure.pm,v 1.11 2004/12/09 08:50:18 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -586,7 +586,7 @@ maintainability should offset this.
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://language.perl.com/misc/Artistic.html> for the
+Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
 license.
 
 =head1 SEE ALSO

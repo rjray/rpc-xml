@@ -5,11 +5,11 @@
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License as distributed with Perl versions 5.002 and later. See
-# http://language.perl.com/misc/Artistic.html
+# http://www.opensource.org/licenses/artistic-license.php
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.21 2004/12/08 09:10:43 rjray Exp $
+#   $Id: Client.pm,v 1.22 2004/12/09 08:50:17 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.21 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.22 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -764,8 +764,8 @@ specification.
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://language.perl.com/misc/Artistic.html> for the license
-itself.
+Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
+license itself.
 
 =head1 SEE ALSO
 

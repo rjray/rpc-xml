@@ -4,11 +4,11 @@
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License as distributed with Perl versions 5.005 and later. See
-# http://language.perl.com/misc/Artistic.html
+# http://www.opensource.org/licenses/artistic-license.php
 #
 ###############################################################################
 #
-#   $Id: Status.pm,v 1.4 2002/12/30 07:22:19 rjray Exp $
+#   $Id: Status.pm,v 1.5 2004/12/09 08:50:17 rjray Exp $
 #
 #   Description:    This module is intended to provide a browser-friendly
 #                   status page on the RPC server(s) being managed by the
@@ -50,7 +50,7 @@ $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf "v%vd", $^V : $];
 
-$Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 #
 # %proto is the prototype set of screens/handlers that this class knows about.
@@ -892,6 +892,12 @@ This is the newest part of the RPC-XML package. While the package as a whole
 is now considered beta, this piece may yet undergo some alpha-like
 enhancements to the interface and such. However, the design and planning of
 this were carefully considered, so any such changes should be minimal.
+
+=head1 LICENSE
+
+This module is licensed under the terms of the Artistic License that covers
+Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
+license itself.
 
 =head1 SEE ALSO
 

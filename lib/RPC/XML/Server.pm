@@ -5,11 +5,11 @@
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License as distributed with Perl versions 5.002 and later. See
-# http://language.perl.com/misc/Artistic.html
+# http://www.opensource.org/licenses/artistic-license.php
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.40 2004/11/30 08:40:54 rjray Exp $
+#   $Id: Server.pm,v 1.41 2004/12/09 08:50:18 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -86,7 +86,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.40 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.41 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -1040,7 +1040,7 @@ in the signal-setting and signal-catching code in server_loop().
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://language.perl.com/misc/Artistic.html> for the
+Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
 license.
 
 =head1 SEE ALSO

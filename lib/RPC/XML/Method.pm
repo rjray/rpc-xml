@@ -4,11 +4,11 @@
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License as distributed with Perl versions 5.005 and later. See
-# http://language.perl.com/misc/Artistic.html
+# http://www.opensource.org/licenses/artistic-license.php
 #
 ###############################################################################
 #
-#   $Id: Method.pm,v 1.7 2002/01/19 09:46:41 rjray Exp $
+#   $Id: Method.pm,v 1.8 2004/12/09 08:50:17 rjray Exp $
 #
 #   Description:    This is now an empty sub-class of RPC::XML::Procedure.
 #                   It is given its own file to allow for a minimal manual
@@ -33,7 +33,7 @@ use vars qw($VERSION);
 require RPC::XML::Procedure;
 
 @RPC::XML::Method::ISA = qw(RPC::XML::Procedure);
-$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -65,7 +65,7 @@ completely.
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://language.perl.com/misc/Artistic.html> for the
+Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
 license.
 
 =head1 SEE ALSO

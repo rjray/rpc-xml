@@ -1,5 +1,5 @@
 <!--
-        $Id: rpc-method.dtd,v 1.6 2003/08/13 07:06:01 rjray Exp $
+        $Id: rpc-method.dtd,v 1.7 2004/12/09 08:50:17 rjray Exp $
 
         This is a very simple DTD for the specification of a published RPC
         method/procedure. This is here as a reference, and possibly for use
@@ -8,7 +8,7 @@
         Copyright (c) 2001, Randy J. Ray (rjray@blackperl.com)
         Freely usable and redistributable under the terms of the
         Artistic License as applied to the Perl Programming Language.
-        See http://language.perl.com/misc/Artistic.html
+        See http://www.opensource.org/licenses/artistic-license.php
 -->
 
 <!ENTITY % container    '(name, version?, hidden?, signature+,

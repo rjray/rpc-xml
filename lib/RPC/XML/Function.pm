@@ -4,11 +4,11 @@
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License as distributed with Perl versions 5.005 and later. See
-# http://language.perl.com/misc/Artistic.html
+# http://www.opensource.org/licenses/artistic-license.php
 #
 ###############################################################################
 #
-#   $Id: Function.pm,v 1.2 2002/12/30 07:24:50 rjray Exp $
+#   $Id: Function.pm,v 1.3 2004/12/09 08:50:17 rjray Exp $
 #
 #   Description:    This is a type of Procedure that does no signature tests
 #                   at either creation or invocation.
@@ -40,7 +40,7 @@ use AutoLoader 'AUTOLOAD';
 require RPC::XML::Procedure;
 
 @ISA = qw(RPC::XML::Procedure);
-$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -220,6 +220,12 @@ Always returns the string, C<scalar>.
 Unless otherwises specified, routines return the object reference itself upon
 a successful operation, and an error string (which is not a blessed reference)
 upon error.
+
+=head1 LICENSE
+
+This module is licensed under the terms of the Artistic License that covers
+Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
+license itself.
 
 =head1 SEE ALSO
 
