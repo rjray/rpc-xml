@@ -6,4 +6,7 @@ installs of those two packages. If you encounter problems with child processes
 immediately exiting when trying to handle RPC requests, check your version of
 XML::Parser. Downgrading to 2.29 should work.
 
+Addendum: XML::Parser 2.31 seems to work with no problems, under a stock
+install of Apache and mod_perl on Red Hat systems.
+
 Randy
