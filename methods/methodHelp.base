@@ -1,7 +1,7 @@
-Name:      system.methodHelp
-Version:   1.0
-Hidden:    no
-Signature: string string
-Signature: array array
-Helpfile:  methodHelp.help
-Code:      methodHelp.code
+Name:		system.methodHelp
+Version:	1.0
+Hidden:		no
+Signature:	string string
+Signature:	array array
+Helpfile:	methodHelp.help
+Codefile:	methodHelp.code

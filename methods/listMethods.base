@@ -1,7 +1,7 @@
-Name:      system.listMethods
-Version:   1.0
-Hidden:    no
-Signature: array
-Signature: array string
-Helpfile:  listMethods.help
-Code:      listMethods.code
+Name:		system.listMethods
+Version:	1.0
+Hidden:		no
+Signature:	array
+Signature:	array string
+Helpfile:	listMethods.help
+Codefile:	listMethods.code

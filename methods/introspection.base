@@ -1,8 +1,8 @@
-Name:      system.introspection
-Version:   1.0
-Hidden:    no
-Signature: array
-Signature: array array
-Signature: struct string
-Helpfile:  introspection.help
-Code:      introspection.code
+Name:		system.introspection
+Version:	1.0
+Hidden:		no
+Signature:	array
+Signature:	array array
+Signature:	struct string
+Helpfile:	introspection.help
+Codefile:	introspection.code

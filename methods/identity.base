@@ -1,6 +1,6 @@
-Name:      system.identity
-Version:   1.0
-Hidden:    no
-Signature: string
-Helpfile:  identity.help
-Code:      identity.code
+Name:		system.identity
+Version:	1.0
+Hidden:		no
+Signature:	string
+Helpfile:	identity.help
+Codefile:	identity.code
