@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-
 ###############################################################################
 #
 # This file copyright (c) 2001 by Randy J. Ray, all rights reserved
@@ -10,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: make_method,v 1.1 2001/04/18 09:28:45 rjray Exp $
+#   $Id: make_method,v 1.2 2001/06/07 07:57:54 rjray Exp $
 #
 #   Description:    Simple tool to turn a Perl routine and the support data
 #                   into the simple XML representation that RPC::XML::Server
@@ -29,14 +28,15 @@
 
 use 5.005;
 use strict;
-use vars qw($cmd $USAGE $VERSION $revision %opts $ifh $ofh
-            $helptxt $codetxt @siglist $name $version $hidden);
-use subs qw(write_file);
+use vars qw($cmd $USAGE $VERSION $revision %opts $ifh $ofh $path
+            $helptxt $codetxt @siglist $name $version $hidden $package $lang);
+use subs qw(read_external write_file);
 
 use Getopt::Long;
 use IO::File;
+use File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 ($cmd = $0) =~ s|.*/||;
 $USAGE = "$cmd [ --options ]
 
@@ -50,14 +50,14 @@ Where:
 --signature   Specifies one method signature. May be specified more than once.
 --helptext    Provides the help string.
 --helpfile    Gives the name of a file from which the help-text is read.
+--package     Optionally specify a package namespace for the method to be in.
 --code        Gives the name of the file from which to read the code.
 --output      Name of the file to write the resulting XML to.
 
 --base        If passed, this is used as a base-name from which to derive all
-              the other information. If <base>.help exists, is read for
-              the help text. If <base>.text exists, the signatures, name,
-              version and hidden status are read from there. Lastly, if
-              <base>.code exists, the code is read from there. When done, the
+              the other information. The file <base>.base must exist and be
+              readable. That file will provide the information for the method,
+              some of which may point to other files to be read. When done, the
               output is written to <base>.xpl.
 
               If --base is specified, all other options are ignored, and any
@@ -68,7 +68,8 @@ Where:
 GetOptions(\%opts,
            qw(help
               base=s
-              name=s version=s hidden signature=s@ helptext=s helpfile=s code=s
+              name=s version=s hidden signature=s@ helptext=s helpfile=s
+              package=s code=s
               output=s))
     or die "$USAGE\n\nStopped";
 
@@ -85,16 +86,13 @@ if ($opts{help})
 if ($opts{base})
 {
     # This simplifies a lot of it
-    # Cut some slack on this, and skip up to the last /
-    ($name = $opts{base}) =~ s|.*/||;
 
-    $ifh = new IO::File "< $opts{base}.code";
-    die "Error opening $opts{base}.code for reading: $!\nStopped"
-        unless ($ifh);
-    $codetxt = join('', <$ifh>);
+    (undef, $path, $name) = File::Spec->splitpath($opts{base});
+    $package = {};
+    $codetxt = {};
 
-    $ifh = new IO::File "< $opts{base}.text";
-    die "Error opening $opts{base}.text for reading: $!\nStopped"
+    $ifh = new IO::File "< $opts{base}.base";
+    die "Error opening $opts{base}.base for reading: $!\nStopped"
         unless ($ifh);
     while (defined($_ = <$ifh>))
     {
@@ -116,13 +114,25 @@ if ($opts{base})
         {
             $hidden = ($1 eq 'yes') ? 1 : 0;
         }
+        elsif (/^package(\[(.*)\])?:\s+(.*)/i)
+        {
+            $lang = $2 || 'perl';
+            $package->{$lang} = $3;
+        }
+        elsif (/^helpfile:\s+(.*)/i)
+        {
+            $helptxt = read_external "$path/$1";
+        }
+        elsif (/^code(\[(.*)\])?:\s+(.*)/i)
+        {
+            $lang = $2 || 'perl';
+            $codetxt->{$lang} = read_external "$path/$3";
+        }
     }
-    die "Error: no signatures found in $opts{base}.text, stopped"
+    die "Error: no code specified in $opts{base}.base, stopped"
+        unless (keys %$codetxt);
+    die "Error: no signatures found in $opts{base}.base, stopped"
         unless (@siglist);
-
-    $ifh = new IO::File "< $opts{base}.help";
-    # This is optional, so an error is not important
-    $helptxt = join('', <$ifh>) if ($ifh);
 
     $ofh = new IO::File "> $opts{base}.xpl";
     die "Error opening $opts{base}.xpl for writing: $!\nStopped"
@@ -139,9 +149,9 @@ else
         die 'No name was specified for the published routine, stopped';
     }
 
-    $hidden = $opts{hidden} || 0;
-
+    $hidden = $opts{hidden}   || 0;
     $version = $opts{version} || '';
+    $package = $opts{package} || '';
 
     if ($opts{signature})
     {
@@ -154,31 +164,25 @@ else
 
     if ($opts{helptext})
     {
-        $helptxt = "$opts{helptext}\n";
+        $$helptxt = "$opts{helptext}\n";
     }
     elsif ($opts{helpfile})
     {
-        $ifh = new IO::File "< $opts{helpfile}";
-        die "Unable to open $opts{helpfile} for reading: $!\nStopped"
-            unless ($ifh);
-        $helptxt = join('', <$ifh>);
+        $helptxt = read_external($opts{helpfile});
     }
     else
     {
-        $helptxt = '';
+        $$helptxt = '';
     }
 
     if ($opts{code})
     {
-        $ifh = new IO::File "< $opts{code}";
-        die "Unable to open $opts{code} for reading: $!\nStopped"
-            unless ($ifh);
+        $$codetxt = read_external($opts{code});
     }
     else
     {
-        $ifh = \*STDIN;
+        $$codetxt = join('', <STDIN>);
     }
-    $codetxt = join('', <$ifh>);
 
     if ($opts{output})
     {
@@ -192,9 +196,39 @@ else
     }
 }
 
-write_file($ofh, $name, $version, $hidden, \$codetxt, \$helptxt, \@siglist);
+write_file($ofh, $name, $version, $hidden, $package, $codetxt, $helptxt,
+           \@siglist);
 
 exit;
+
+###############################################################################
+#
+#   Sub Name:       read_external
+#
+#   Description:    Simple snippet to read in an external file and return the
+#                   results as a ref-to-scalar
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $file     in      scalar    File to open and read
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        Success:    scalar ref
+#                   Failure:    dies
+#
+###############################################################################
+sub read_external
+{
+    my $file = shift;
+
+    my $fh = new IO::File "< $file";
+    die "Cannot open file $file for reading: $!, stopped" unless ($fh);
+
+    my $tmp = join('', <$fh>);
+    \$tmp;
+}
 
 ###############################################################################
 #
@@ -207,6 +241,7 @@ exit;
 #                   $name     in      scalar    Name (external) of method
 #                   $version  in      scalar    Version string (if any)
 #                   $hidden   in      scalar    Boolean whether to hide it
+#                   $package  in      scalar    Package to put it in, if set
 #                   $code     in      sc ref    Actual Perl code
 #                   $help     in      sc ref    Help text for the method
 #                   $sigs     in      listref   List of one or more signatures
@@ -222,15 +257,12 @@ exit;
 ###############################################################################
 sub write_file
 {
-    my ($fh, $name, $version, $hidden, $code, $help, $sigs) = @_;
+    my ($fh, $name, $version, $hidden, $package, $code, $help, $sigs) = @_;
 
     my $date = scalar localtime;
-    # De-reference the larger bits
-    $code = $$code;
-    $help = $$help;
 
     # Armor against XML confusion
-    foreach ($name, $code, $help)
+    foreach ($name, $$help, (values %$code))
     {
         s/&/&amp;/g;
         s/</&lt;/g;
@@ -249,11 +281,18 @@ sub write_file
 EO_HDR
 
     print $ofh "<name>$name</name>\n";
-    print $ofh "<version>$version</version>\n" if ($version);
-    print $ofh "<hidden />\n" if ($hidden);
+    print $ofh "<version>$version</version>\n" if $version;
+    print $ofh "<hidden />\n" if $hidden;
+    for (sort keys %$package)
+    {
+        print $ofh qq{<package language="$_">$package->{$_}</package>\n};
+    }
     print $ofh map { "<signature>$_</signature>\n" } @$sigs;
-    print $ofh "<help>\n$help</help>\n" if ($help);
-    print $ofh qq{<code language="perl">\n$code</code>\n};
+    print $ofh "<help>\n$$help</help>\n" if ($$help);
+    for (sort keys %$code)
+    {
+        print $ofh qq{<code language="perl">\n$ {$code->{$_}}</code>\n};
+    }
 
     print $ofh "</methoddef>\n";
 
@@ -314,6 +353,11 @@ Specify a version stamp for the code routine.
 If this is passe, the resulting file will include a tag that tells the server
 daemon to not make the routine visible through any introspection interfaces.
 
+=item --package=STRING
+
+If given, the routine will be compiled so that it executes in the given
+package, which allows for easier cross-calling of methods.
+
 =item --signature=STRING [ --signature=STRING ... ]
 
 Specify one or more signatures for the method. Signatures should be the type
@@ -347,11 +391,9 @@ This is a special, "all-in-one" option. If passed, all other options are
 ignored.
 
 The value is used as the base element for reading information from a file
-named B<BASE>.text and help text from B<BASE>.help. If the help file does not
-exist, it is ignored. However, the lack of a B<BASE>.text file will raise an
-error. This file will contain specification of the name, version, hidden
-status and signatures. Each line of the file should look like one of the
-following:
+named B<BASE>.base. This file will contain specification of the name, version,
+hidden status, signatures and other method information. Each line of the file
+should look like one of the following:
 
 =over 4
 
@@ -380,12 +422,25 @@ following the C<Signature:> part is taken to be a published signature for the
 method, with elements separated by whitespace. Each method must have at least
 one signature, so a lack of any will cause an error.
 
+=item B<Helpfile: I<STRING>>
+
+Specifies the file from which to read the help text. It is not an error if
+no help text is specified.
+
+=item B<Package: I<STRING>>
+
+Define the package namespace that the method should be compiled into. If none
+is provided, the B<RPC::XML::Server> routines will create the method as
+free-floating in terms of package.
+
+=item B<Code: I<STRING>>
+
+Specifies the file from which to read the code. If no code has been read, then
+the tool will exit with an error message.
+
 =back
 
 Any other lines than the above patterns are ignored.
-
-The code is read from a file called B<BASE>.code, again raising an
-error if it does not exist.
 
 The output is written to B<BASE>.xpl, preserving the path information so that
 the resulting file is right alongside the source files. This allows constructs
@@ -405,9 +460,6 @@ anything.
 
 The Document Type Declaration for the format can be summarized by:
 
-    <!ENTITY amp  "&#38;">
-    <!ENTITY gt   "&#62;">
-    <!ENTITY lt   "&#60;">
     <!ELEMENT  methoddef  (name, version?, hidden?, signature+,
                            help?, code)>
     <!ELEMENT  name       (#PCDATA)>
@@ -415,6 +467,8 @@ The Document Type Declaration for the format can be summarized by:
     <!ELEMENT  hidden     EMPTY>
     <!ELEMENT  signature  (#PCDATA)>
     <!ELEMENT  help       (#PCDATA)>
+    <!ELEMENT  package    (#PCDATA)>
+    <!ATTLIST  package    language (#PCDATA)>
     <!ELEMENT  code       (#PCDATA)>
     <!ATTLIST  code       language (#PCDATA)>
 
@@ -433,7 +487,9 @@ text should use entity encoding for the symbols:
     E<lt> C<&lt;>  (less-than)
     E<gt> C<&gt;>  (greater-than)
 
-The parsing process within the server class will decode the entities.
+The parsing process within the server class will decode the entities. To make
+things easier, the tool scans all text elements and encodes the above entities
+before writing the file.
 
 =head2 The Specification of Code
 
@@ -446,11 +502,11 @@ responsibility on the part of the developer to ensure that the code is tested
 and safe.
 
 That being said, the block of code will undergo one minor edit (aside from the
-entity expansion. The server looks for a pattern of C<sub NAME {>, which it
+entity expansion). The server looks for a pattern of C<sub NAME {>, which it
 assumes delinates the start of the declaration. The text is edited to remove
-the name, and the result is an anonymous subroutine definition, which is
-assigned to a lexically-scoped variable within the server. If there is no
-name, no editing is done. If something other than the subroutine declaration
+the name and add the package declaration if there is one, the result being an
+anonymous subroutine definition, which is assigned to a lexically-scoped
+variable within the server. If something other than the subroutine declaration
 matches the pattern, then likely the declaration itself will generate an error
 in the C<eval>. Again, this is not I<"Teach Yourself Perl with only 24 Brain
 Cells">.
@@ -459,7 +515,7 @@ Cells">.
 
 The B<RPC::XML> distribution comes with a number of default methods in a
 subdirectory called (cryptically enough) C<methods>. Each of these is
-expressed as a set of (C<*.code>, C<*.help>, C<*.text>) files. The MakeMaker
+expressed as a set of (C<*.base>, C<*.code>, C<*.help>) files. The Makefile.PL
 file configures the resulting Makefile such that these are used to create
 C<*.xpl> files using this tool, and then install them.
 
