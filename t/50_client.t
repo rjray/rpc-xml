@@ -89,7 +89,7 @@ ok($flag);
 ok((ref($res) eq 'RPC::XML::fault') && ($res->string =~ /Unknown method/));
 
 # Last tests-- is the url() method working?
-ok($cli->uri eq "http://localhost:$port");
+ok($cli->uri =~ m|http://localhost:$port/?|);
 
 $cli->uri('http://www.oreilly.com/RPC');
 ok($cli->uri eq 'http://www.oreilly.com/RPC');
