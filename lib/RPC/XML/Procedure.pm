@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.3 2002/03/23 06:21:25 rjray Exp $
+#   $Id: Procedure.pm,v 1.4 2002/05/03 21:07:38 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -424,6 +424,18 @@ include the return type>>. This method is provided so that servers may check a
 list of arguments against type when marshalling an incoming call. For example,
 a signature of C<'int int'> would be tested for by calling
 C<$M-E<gt>match_signature('int')> and expecting the return value to be C<int>.
+
+=item call(SERVER, PARAMLIST)
+
+Execute the code that this object encapsulates, using the list of parameters
+passed in PARAMLIST. The SERVER argument should be an object derived from the
+B<RPC::XML::Server> class. For some types of procedure objects, this becomes
+the first argument of the parameter list to simulate a method call as if it
+were on the server object itself. The return value should be a data object
+(possible a B<RPC::XML::fault>), but may not always be pre-encoded. This
+method is generally used in the C<dispatch> and C<call> methods of the server
+class, where the return value is subsequently wrapped within a
+B<RPC::XML::response> object.
 
 =item reload
 
@@ -805,8 +817,7 @@ sub load_XPL_file
     $data = {};
     # So these don't end up undef, since they're optional elements
     $data->{hidden} = 0; $data->{version} = ''; $data->{help} = '';
-    $data->{called} = 0; $data->{signature} = [];
-    $seen = 0; # Used to ensure we see the proper container-tag
+    $data->{called} = 0;
     open(F, "< $file");
     return "$me: Error opening $file for reading: $!" if ($?);
     $P = XML::Parser
@@ -820,6 +831,7 @@ sub load_XPL_file
                                $accum =~ s/[\s\n]+$//;
                                if ($elem eq 'signature')
                                {
+                                   $data->{signature} ||= [];
                                    push(@{$data->{signature}}, $accum);
                                }
                                elsif ($elem eq 'code')
@@ -850,7 +862,7 @@ sub load_XPL_file
     return "$me: Error parsing $file: $@" if $@;
 
     # Try to normalize $codetext before passing it to eval
-    $class = __PACKAGE__; # token won't expand in the s/// below
+    my $class = __PACKAGE__; # token won't expand in the s/// below
     ($codetext = $data->{code}) =~
         s/sub[\s\n]+([\w:]+)?[\s\n]*\{/sub \{ package $class; /;
     $code = eval $codetext;
@@ -862,4 +874,70 @@ sub load_XPL_file
     $data->{file} = $file;
 
     $data;
+}
+
+###############################################################################
+#
+#   Sub Name:       call
+#
+#   Description:    
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $srv      in      ref       An object derived from the
+#                                                 RPC::XML::Server class
+#                   @dafa     in      list      The params for the call itself
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        Success:    value
+#                   Failure:    dies with RPC::XML::Fault object as message
+#
+###############################################################################
+sub call
+{
+    my ($self, $srv, @data) = @_;
+
+    my (@paramtypes, @params, $signature, $resptype, $response, $name);
+
+    $name = $self->name;
+    # Create the param list.
+    # The type for the response will be derived from the matching signature
+    @paramtypes = map { $_->type  } @data;
+    @params     = map { $_->value } @data;
+    $signature = join(' ', @paramtypes);
+    $resptype = $self->match_signature($signature);
+    # Since there must be at least one signature with a return value (even
+    # if the param list is empty), this tells us if the signature matches:
+    return RPC::XML::response
+        ->new(RPC::XML::fault->new(301,
+                                   "method $name nas no matching " .
+                                   'signature for the argument list'))
+            unless ($resptype);
+
+    # Set these in case the server object is part of the param list
+    local $srv->{signature} = [ $resptype, @paramtypes ];
+    local $srv->{method_name} = $name;
+    # For RPC::XML::Method (and derivatives), pass the server object
+    if ($self->isa('RPC::XML::Method'))
+    {
+        unshift(@params, $srv);
+    }
+
+    # Now take a deep breath and call the method with the arguments
+    eval { $response = $self->{code}->(@params); };
+    # Report a Perl-level error/failure if it occurs
+    return RPC::XML::fault->new(302, "Method $name returned error: $@") if $@;
+
+    $self->{called}++;
+    # Create a suitable return value
+    if ((! ref($response)) && UNIVERSAL::can("RPC::XML::$resptype", 'new'))
+    {
+        my $class = "RPC::XML::$resptype";
+        $response = $class->new($response);
+    }
+
+    $response;
 }
