@@ -115,8 +115,8 @@ else
     ok(! $res->is_error);
     $res = $parser->parse($res->content);
     ok(ref($res) eq 'RPC::XML::response');
-    ok($res->is_fault);
-    ok($res->value->value->{faultString} =~ /Unknown method/);
+    ok(ref($res) and $res->is_fault);
+    ok(ref($res) and ($res->value->value->{faultString} =~ /Unknown method/));
 }
 kill 'INT', $child;
 
