@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.27 2002/08/01 07:30:11 rjray Exp $
+#   $Id: Server.pm,v 1.28 2002/08/18 11:53:21 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -84,7 +84,7 @@ require RPC::XML;
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.27 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.28 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -590,7 +590,7 @@ rather the names by which they are externally known. The "hidden" status of a
 method is not consulted when this list is created; all methods and procedures
 known are listed. The list is not sorted in any specific order.
 
-The <list_procs> call is provided for symmetry. Both calls list all published
+The B<list_procs> call is provided for symmetry. Both calls list all published
 routines on the calling server object, regardless of underlying type.
 
 =item xpl_path([LISTREF])
