@@ -1,6 +1,8 @@
 Revision history for Perl extension RPC::XML.
 
-0.30
+0.3x
+
+0.30	Thu Jan  3 01:57:29 PST 2002
 	- first beta release
 
 	Apache::RPC::Server::list_servers no longer sorts the list before
