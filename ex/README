@@ -1,0 +1,4 @@
+These are some samples of methods that a server might offer. They are only
+meant for illustrative purposes. Create the *.xpl files by running "make"
+in this directory. The resulting *.xpl files may then be copied to a directory
+that the server knows to read from.

@@ -1,0 +1,18 @@
+Read the system's "/proc/meminfo" special file and return the information in
+the form of a STRUCT with the following members:
+
+        Key         Type     Value
+
+        mem_total   INT      Total memory available, in bytes
+        mem_used    INT      Total memory currently used, in bytes
+        mem_free    INT      Memory remaining, in bytes
+        mem_shared  INT      Memory being shared between processes, in bytes
+        mem_buffers INT      Number of memory buffers
+        mem_cached  INT      Cached memory
+        MemTotal    STRING   Total memory, in kB
+        MemFree     STRING   Free memory, in kB
+        MemShared   STRING   Shared memort, in kB
+        Buffers     STRING   Memory buffers, in kB
+        Cached      STRING   Cached memory, in kB
+        SwapTotal   STRING   Total swap memory, in kB
+        SwapFree    STRING   Available swap memory, in kB

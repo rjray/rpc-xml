@@ -1,0 +1,42 @@
+###############################################################################
+#
+#   Sub Name:       linux_proc_cpuinfo
+#
+#   Description:    Read the /proc/cpuinfo on a Linux server and return a
+#                   STRUCT with the information.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $srv      in      ref       Server object reference
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        hashref
+#
+###############################################################################
+sub linux_proc_sysinfo
+{
+    use strict;
+
+    my $srv = shift;
+
+    my (%cpuinfo, $line, $key, $value);
+    local *F;
+
+    open(F, '/proc/cpuinfo') or
+        return RPC::XML::fault->new(501, "Cannot open /proc/cpuinfo: $!");
+
+    while (defined($line = <F>))
+    {
+        chomp $line;
+        next if ($line =~ /^\s*$/);
+
+        ($key, $value) = split(/\s+:\s+/, $line, 2);
+        $key =~ s/ /_/g;
+        $cpuinfo{$key} = ($key eq 'flags') ? [ split(/ /, $value) ] : $value;
+    }
+    close(F);
+
+    \%cpuinfo;
+}

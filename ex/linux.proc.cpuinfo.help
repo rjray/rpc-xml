@@ -1,0 +1,5 @@
+Read the system's "/proc/cpuinfo" special file and return the information in
+the form of a STRUCT with the members based on the lines returned from the
+"file". All values are either INT or STRING, based on the disposition of the
+data itself. The exception to this is the key "flags", which is an ARRAY of
+STRING.

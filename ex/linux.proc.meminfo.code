@@ -1,0 +1,55 @@
+###############################################################################
+#
+#   Sub Name:       linux_proc_meminfo
+#
+#   Description:    Read the /proc/meminfo on a Linux server and return a
+#                   STRUCT with the information.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $srv      in      ref       Server object reference
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        hashref
+#
+###############################################################################
+sub linux_proc_meminfo
+{
+    use strict;
+
+    my $srv = shift;
+
+    my (%meminfo, $line, $key, @parts);
+    local *F;
+
+    open(F, '/proc/meminfo') or
+        return RPC::XML::fault->new(501, "Cannot open /proc/meminfo: $!");
+
+    while (defined($line = <F>))
+    {
+        next if ($line =~ /^\s+/);
+        chomp $line;
+
+        @parts = split(/\s+/, $line);
+        $key = shift(@parts);
+        if ($key eq 'Mem:')
+        {
+            @meminfo{qw(mem_total mem_used mem_free mem_shared mem_buffers
+                        mem_cached)} = @parts;
+        }
+        elsif ($key eq 'Swap:')
+        {
+            @meminfo{qw(swap_total swap_used swap_free)} = @parts;
+        }
+        else
+        {
+            chop $key; # Lose the trailing ':'
+            $meminfo{$key} = join(' ', @parts);
+        }
+    }
+    close(F);
+
+    \%meminfo;
+}
