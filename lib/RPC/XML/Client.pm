@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.6 2002/01/27 23:16:13 rjray Exp $
+#   $Id: Client.pm,v 1.7 2002/08/01 07:32:08 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -46,7 +46,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -90,6 +90,20 @@ sub new
         return "${class}::new: Unable to get HTTP::Request object";
     $self->{__request} = $REQ;
     $REQ->header(Content_Type => 'text/xml');
+
+    # Check for compression support
+    $self->{__compress} = '';
+    eval { require Compress::Zlib };
+    $self->{__compress} = $@ ? '' : 'deflate';
+    # It looks wasteful to keep using the hash key, but it makes it easier
+    # to change the string in just one place (above) if I have to.
+    $REQ->header(Accept_Encoding  => $self->{__compress})
+        if $self->{__compress};
+    $self->{__compress_thresh} = $attrs{compress_thresh} || 4096;
+    $self->{__compress_re} = qr/$self->{__compress}/;
+    # They can change this value with a method
+    $self->{__compress_requests} = 0;
+    delete $attrs{compress_thresh};
 
     # Note and preserve any error or fault handlers. Check the combo-handler
     # first, as it is superceded by anything more specific.
@@ -176,7 +190,7 @@ sub send_request
 {
     my ($self, $req, @args) = @_;
 
-    my ($me, $message, $response, $reqclone, $value);
+    my ($me, $message, $response, $reqclone, $content, $compress, $value);
 
     $me = ref($self) . ':send_request';
 
@@ -188,7 +202,15 @@ sub send_request
             unless ($req); # $RPC::XML::ERROR is already set
     }
 
-    ($reqclone = $self->{__request}->clone)->content($req->as_string);
+    $reqclone = $self->{__request}->clone;
+    $content = $req->as_string;
+    if ($self->compress_requests and ($compress = $self->compress) and
+        length($content) > $self->compress_thresh)
+    {
+        $content = Compress::Zlib::compress($content);
+        $reqclone->content_encoding($compress);
+    }
+    $reqclone->content($content);
     $reqclone->header(Host => URI->new($reqclone->uri)->host);
     $response = $self->{__useragent}->request($reqclone);
 
@@ -199,9 +221,25 @@ sub send_request
             $self->{__error_cb}->($message) : $message;
     }
 
+    # Check for compressed content, and decompress it if we can. If we can't,
+    # error out.
+    if ($compress and $response->content_encoding =~ $self->compress_re)
+    {
+        $content = Compress::Zlib::uncompress($response->content)
+    }
+    else
+    {
+        if ($response->content_encoding =~ /deflate/)
+        {
+            $message =  "$me: Compressed content encoding not supported";
+            return (ref($self->{__error_cb}) eq 'CODE') ?
+                $self->{__error_cb}->($message) : $message;
+        }
+        $content = $response->content;
+    }
     # The return value from the parser's parse method no longer works as a
     # direct return value for us
-    $value = $self->{__parser}->parse($response->content);
+    $value = $self->{__parser}->parse($content);
 
     # Rather, we now have to check if there is a callback in the case of
     # errors or faults
@@ -238,9 +276,38 @@ sub uri
     $_[0]->{__request}->uri($_[1]);
 }
 
-# Accessor methods for the LWP::UserAgent and HTTP::Request objects
-sub useragent { $_[0]->{__useragent} }
-sub request   { $_[0]->{__request}   }
+# Immutable accessor methods
+BEGIN
+{
+    no strict 'refs';
+
+    for my $method (qw(useragent request compress_re compress))
+    {
+        *$method = sub { shift->{"__$method"} }
+    }
+}
+
+# Fetch/set the compression threshhold
+sub compress_thresh
+{
+    my $self = shift;
+    my $set = shift || 0;
+
+    my $old = $self->{__compress_thresh};
+    $self->{__compress_thresh} = $set if ($set);
+
+    $old;
+}
+
+# This doesn't actually *get* the original value, it only sets the value
+sub compress_requests
+{
+    my $self = shift;
+
+    return $self->{__compress_requests} unless @_;
+
+    $self->{__compress_requests} = $_[0] ? 1 : 0;
+}
 
 # These are get/set accessors for the fault-handler, error-handler and the
 # combined fault/error handler.
@@ -402,6 +469,38 @@ C<UNIVERSAL::ISA>.
 These accessor methods get (and possibly set, if CODEREF is passed) the
 specified callback/handler. The return value is always the current handler,
 even when setting a new one (allowing for later restoration, if desired).
+
+=back
+
+=head2 Support for Content Compression
+
+The B<RPC::XML::Server> class supports compression of requests and responses
+via the B<Compress::Zlib> module available from CPAN. Accordingly, this class
+also supports compression. The methods used for communicating compression
+support should be compatible with the server and client classes from the
+B<XMLRPC::Lite> class that is a part of the B<SOAP::Lite> package (also
+available from CPAN).
+
+Compression support is enabled (or not) behind the scenes; if the Perl
+installation has B<Compress::Zlib>, then B<RPC::XML::Client> can deal with
+compressed responses. However, since outgoing messages are sent before a
+client generally has the chance to see if a server supports compression, these
+are not compressed by default.
+
+=over 4
+
+=item compress_responses(BOOL)
+
+If a client is communicating with a server that is known to support compressed
+messages, this method can be used to tell the client object to compress any
+outgoing messages that are longer than the threshhold setting in bytes.
+
+=item compress_thresh([MIN_LIMIT])
+
+With no arguments, returns the current compression threshhold; messages
+smaller than this number of bytes will not be compressed, regardless of the
+above method setting. If a number is passed, this is set to the new
+lower-limit. The default value is 4096.
 
 =back
 
