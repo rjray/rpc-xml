@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.36 (eighth release)
+Version: 0.37
 
 WHAT IS IT
 
@@ -65,6 +65,11 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-The 0.35 release was sent out missing a new file that was meant as part of the
-regression test suite. 0.36 is issued only for the sake of providing a complete
-distribution.
+Applied a patch to RPC::XML::Server from Tino Wuensche
+(<tino_wuensche@yahoo.com>) that fixed some of the signal-handling and
+exit-case-handling in server_loop().
+
+Fixed a bug in RPC::XML::Procedure found by a user (a former co-worker
+from my Denver days, coincidentally enough) that would trigger when
+auto_methods was set to 1 on a server object, but the request had no
+matching file anywhere in the search path.
