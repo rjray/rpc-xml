@@ -30,7 +30,7 @@ $ret = $p->parse($req->as_string);
 ok(ref($ret) && $ret->isa('RPC::XML::request'));
 ok($ret->name, 'test.method');
 
-$res = RPC::XML::response->new(new RPC::XML::string 'test response');
+$res = RPC::XML::response->new(RPC::XML::string->new('test response'));
 $ret = $p->parse($res->as_string);
 ok(ref($ret) && $ret->isa('RPC::XML::response'));
 ok($ret->value->value, 'test response');
