@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.11 2002/01/24 06:34:51 rjray Exp $
+#   $Id: XML.pm,v 1.12 2002/05/02 04:38:06 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -722,7 +722,7 @@ sub new
     $RPC::XML::ERROR = '';
     if (! @argz)
     {
-        $RPC::XML::ERROR = 'RPC::XML::response::new: One of a datatype ' .
+        $RPC::XML::ERROR = 'RPC::XML::response::new: One of a datatype, ' .
             'value or a fault object must be specified';
     }
     elsif (UNIVERSAL::isa($argz[0], 'RPC::XML::response'))
