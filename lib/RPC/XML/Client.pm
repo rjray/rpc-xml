@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Client.pm,v 1.4 2001/07/30 00:22:53 rjray Exp $
+#   $Id: Client.pm,v 1.5 2002/01/24 06:52:51 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -36,7 +36,8 @@ package RPC::XML::Client;
 use 5.005;
 use strict;
 use vars qw($VERSION);
-use subs qw(new send_request uri useragent request);
+use subs qw(new simple_request send_request uri useragent request
+            fault_handler error_handler combined_handler);
 
 require LWP::UserAgent;
 require HTTP::Request;
@@ -45,7 +46,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -62,8 +63,6 @@ $VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r }
 #                   %attrs    in      hash      Extra info
 #
 #   Globals:        $VERSION
-#
-#   Environment:    None.
 #
 #   Returns:        Success:    object reference
 #                   Failure:    error string
@@ -90,12 +89,31 @@ sub new
     $REQ = HTTP::Request->new(POST => $location) or
         return "${class}::new: Unable to get HTTP::Request object";
     $self->{__request} = $REQ;
-    $REQ->header(Content_Type   => 'text/xml');
+    $REQ->header(Content_Type => 'text/xml');
 
-    # Preserve any attributes passed in
-    $self->{lc $_} = $attrs{$_} for (keys %attrs);
+    # Note and preserve any error or fault handlers. Check the combo-handler
+    # first, as it is superceded by anything more specific.
+    if (ref $attrs{combined_handler})
+    {
+        $self->{__error_cb} = $attrs{combined_handler};
+        $self->{__fault_cb} = $attrs{combined_handler};
+        delete $attrs{combined_handler};
+    }
+    if (ref $attrs{fault_handler})
+    {
+        $self->{__fault_cb} = $attrs{fault_handler};
+        delete $attrs{fault_handler};
+    }
+    if (ref $attrs{error_handler})
+    {
+        $self->{__error_cb} = $attrs{error_handler};
+        delete $attrs{error_handler};
+    }
 
-    # Then, get the RPC::XML::Parser instance (so that we have washed attrs)
+    # Preserve any remaining attributes passed in
+    $self->{$_} = $attrs{$_} for (keys %attrs);
+
+    # Then, get the RPC::XML::Parser instance
     $PARSER = RPC::XML::Parser->new() or
         return "${class}::new: Unable to get RPC::XML::Parser object";
     $self->{__parser} = $PARSER;
@@ -117,36 +135,25 @@ sub new
 #
 #   Globals:        $RPC::XML::ERROR
 #
-#   Environment:    None.
-#
 #   Returns:        Success:    value
-#                   Failure:    void return, error in $RPC::XML::ERROR
+#                   Failure:    undef, error in $RPC::XML::ERROR
 #
 ###############################################################################
 sub simple_request
 {
-    my $self = shift;
-    my @args = @_;
+    my ($self, @args) = @_;
 
     my ($return, $value);
 
     $RPC::XML::ERROR = '';
-    unless (@args == 1 and UNIVERSAL::isa($args[0], 'RPC::XML::request'))
-    {
-        # Assume that this is either data for a new request object or a set
-        # of objects meant to be a composite request.
-        $value = RPC::XML::request->new(@args);
-        return unless ($value); # $RPC::XML::ERROR is already set
-        $args[0] = $value;
-    }
 
     $return = $self->send_request($args[0]);
     unless (ref $return)
     {
         $RPC::XML::ERROR = ref($self) . "::simple_request: $return";
-        return;
+        return undef;
     }
-    $return->value->value;
+    $return->value;
 }
 
 ###############################################################################
@@ -161,34 +168,56 @@ sub simple_request
 #                   $self     in      ref       Class instance
 #                   $req      in      ref       RPC::XML::request object
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 #   Returns:        Success:    RPC::XML::response object instance
 #                   Failure:    error string
 #
 ###############################################################################
 sub send_request
 {
-    my $self = shift;
-    my $req = shift;
+    my ($self, $req, @args) = @_;
 
-    return ref($self) . '::request: Parameter in must be a RPC::XML::request'
-        unless (UNIVERSAL::isa($req, 'RPC::XML::request'));
+    my ($me, $message, $response, $reqclone, $value);
 
-    my ($respxml, $response, $reqclone);
+    $me = ref($self) . ':send_request';
+
+    if (! UNIVERSAL::isa($req, 'RPC::XML::request'))
+    {
+        # Assume that $req is the name of the routine to be called
+        $req = RPC::XML::request->new($req, @args);
+        return "$me: Error creating RPC::XML::request object: $RPC::XML::ERROR"
+            unless ($req); # $RPC::XML::ERROR is already set
+    }
 
     ($reqclone = $self->{__request}->clone)->content($req->as_string);
     $reqclone->header(Host => URI->new($reqclone->uri)->host);
     $response = $self->{__useragent}->request($reqclone);
 
-    return ref($self) . '::request: HTTP server error: ' . $response->message
-        unless ($response->is_success);
-    $respxml = $response->content;
+    unless ($response->is_success)
+    {
+        $message =  "$me: HTTP server error: " . $response->message;
+        return (exists $self->{__error_cb}) ?
+            $self->{__error_cb}->($message) : $message;
+    }
 
-    # The return value from the parser's parse method works for us
-    $self->{__parser}->parse($respxml);
+    # The return value from the parser's parse method no longer works as a
+    # direct return value for us
+    $value = $self->{__parser}->parse($response->content);
+
+    # Rather, we now have to check if there is a callback in the case of
+    # errors or faults
+    if (! ref($value))
+    {
+        $message =  "$me: parse-level error: $value";
+        return (exists $self->{__error_cb}) ?
+            $self->{__error_cb}->($message) : $message;
+    }
+    elsif ($value->is_fault)
+    {
+        return (exists $self->{__fault_cb}) ?
+            $self->{__fault_cb}->($value->value) : $value->value;
+    }
+
+    $value->value;
 }
 
 ###############################################################################
@@ -201,24 +230,44 @@ sub send_request
 #                   $self     in      ref       Object of this class
 #                   $uri      in      scalar    New URI, if passed
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 #   Returns:        Current URI, undef if trying to set an invalid URI
 #
 ###############################################################################
 sub uri
 {
-    my $self = shift;
-    my $uri  = shift;
-
-    $self->{__request}->uri($uri);
+    $_[0]->{__request}->uri($_[1]);
 }
 
 # Accessor methods for the LWP::UserAgent and HTTP::Request objects
-sub useragent { shift->{__useragent} }
-sub request   { shift->{__request}   }
+sub useragent { $_[0]->{__useragent} }
+sub request   { $_[0]->{__request}   }
+
+# These are get/set accessors for the fault-handler, error-handler and the
+# combined fault/error handler.
+sub fault_handler
+{
+    my ($self, $newval) = @_;
+
+    my $val = $self->{__fault_cb};
+    $self->{__fault_cb} = $newval if ($newval and ref($newval));
+
+    $val;
+}
+sub error_handler
+{
+    my ($self, $newval) = @_;
+
+    my $val = $self->{__error_cb};
+    $self->{__error_cb} = $newval if ($newval and ref($newval));
+
+    $val;
+}
+sub combined_handler
+{
+    my ($self, $newval) = @_;
+
+    ($self->fault_handler($newval), $self->error_handler($newval));
+}
 
 __END__
 
@@ -234,10 +283,9 @@ RPC::XML::Client - An XML-RPC client class
     require RPC::XML::Client;
 
     $cli = RPC::XML::Client->new('http://www.localhost.net/RPCSERV');
-    $resp = $cli->send_request(RPC::XML::request->new('system.listMethods');
+    $resp = $cli->send_request('system.listMethods');
 
-    # Assuming a successful return, should produce a well-formed XML doc
-    print (ref $resp) ? $resp->as_string : "Error: $resp";
+    print (ref $resp) ? join(', ', @{$resp->value}) : "Error: $resp";
 
 =head1 DESCRIPTION
 
@@ -249,9 +297,9 @@ client supports the full XML-RPC specification.
 
 The following methods are available:
 
-=over
+=over 4
 
-=item new (URI)
+=item new (URI [, ARGS])
 
 Creates a new client object that will route its requests to the URL provided.
 The constructor creates a B<HTTP::Request> object and a B<LWP::UserAgent>
@@ -259,6 +307,42 @@ object, which are stored on the client object. When requests are made, these
 objects are ready to go, with the headers set appropriately. The return value
 of this method is a reference to the new object. The C<URI> argument may be a
 string or an object from the B<URI> class from CPAN.
+
+Any additional arguments are treated as key-value pairs. Most are attached to
+the object itself without change. The following are recognized by C<new> and
+treated specially:
+
+=over 8
+
+=item error_handler
+
+If passed, the value must be a code reference that will be invoked when a
+request results in a transport-level error. The closure will receive a
+single argument, the text of the error message from the failed communication
+attempt. It is expected to return a single value (assuming it returns at all).
+
+=item fault_handler
+
+If passed, the value must be a code reference. This one is invoked when a
+request results in a fault response from the server. The closure will receive
+a single argument, a B<RPC::XML::fault> instance that can be used to retrieve
+the code and text-string of the fault. It is expected to return a single
+value (if it returns at all).
+
+=item combined_handler
+
+If this parameter is specified, it too must have a code reference as a value.
+It is installed as the handler for both faults and errors. Should either of
+the other parameters be passed in addition to this one, they will take
+precedence over this (more-specific wins out over less). As a combined
+handler, the closure will get a string (non-reference) in cases of errors, and
+an instance of B<RPC::XML::fault> in cases of faults. This allows the
+developer to install a simple default handler, while later providing a more
+specific one by means of the methods listed below.
+
+=back
+
+See the section on the effects of callbacks on return values, below.
 
 =item uri ([URI])
 
@@ -281,33 +365,59 @@ operations.
 
 =item simple_request (ARGS)
 
-This is a somewhat friendlier wrapper around the next routine
-(C<send_request>) that allows for more flexibility on the input side, and
-returns Perl-level data rather than an object reference. The arguments may be
-the same as one would pass to the B<RPC::XML::request> constructor, or there
+This is a somewhat friendlier wrapper around the next routine (C<send_request>)
+that returns Perl-level data rather than an object reference. The arguments may
+be the same as one would pass to the B<RPC::XML::request> constructor, or there
 may be a single request object as an argument. The return value will be a
-native Perl value. If the return value is C<undef>, this could be due to
-either an actual return value from the request, or an error. C<simple_request>
-clears the global error variable B<C<$RPC::XML::ERROR>> before the call, and
-as such the developer may assume that if this variable has data upon return,
-then the empty return value is due to an error.
+native Perl value. If the return value is C<undef>, an error has occurred and
+C<simple_request> has placed the error message in the global variable
+C<B<$RPC::XML::ERROR>>.
 
-=item send_request (REQ)
+=item send_request (ARGS)
 
 Sends a request to the server and attempts to parse the returned data. The
-argument is an object of the B<RPC::XML::request> class, and the return value
-will be either an error string or a response object. See L<RPC::XML> for
-more on the response class and its methods. If the error encountered was a
-run-time error within the RPC request itself, then the client will return a
-response object that encapsulates a C<RPC::XML::fault> value rather than an
-error string.
+argument may be an object of the B<RPC::XML::request> class, or it may be the
+arguments to the constructor for the request class. The return value will be
+either an error string or a data-type object. If the error encountered was a
+run-time error within the RPC request itself, then the call will return a
+C<RPC::XML::fault> value rather than an error string.
+
+If the return value from C<send_request> is not a reference, then it can only
+mean an error on the client-side (a local problem with the arguments and/or
+syntax, or a transport problem). All data-type classes now support a method
+called C<is_fault> that may be easily used to determine if the "successful"
+return value is actually a C<RPC::XML::fault> without the need to use
+C<UNIVERSAL::ISA>.
+
+=item error_handler([CODEREF])
+
+=item fault_handler([CODEREF])
+
+=item combined_handler([CODEREF])
+
+These accessor methods get (and possibly set, if CODEREF is passed) the
+specified callback/handler. The return value is always the current handler,
+even when setting a new one (allowing for later restoration, if desired).
 
 =back
+
+=head2 Callbacks and Return Values
+
+If a callback is installed for errors or faults, it will be called before
+either of C<send_request> or C<simple_request> return. If the callback calls
+B<die> or otherwise interrupts execution, then there is no need to worry about
+the effect on return values. Otherwise, the return value of the callback
+becomes the return value of the original method (C<send_request> or
+C<simple_request>). Thus, all callbacks are expected, if they return at all,
+to return exactly one value. It is recommended that any callback return values
+conform to the expected return values. That is, an error callback would
+return a string, a fault callback would return the fault object.
 
 =head1 DIAGNOSTICS
 
 All methods return some type of reference on success, or an error string on
-failure. Non-reference return values should always be interpreted as errors.
+failure. Non-reference return values should always be interpreted as errors,
+except in the case of C<simple_request>.
 
 =head1 CAVEATS
 
