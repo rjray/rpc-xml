@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.19 2002/12/30 07:22:20 rjray Exp $
+#   $Id: XML.pm,v 1.20 2003/01/13 07:24:20 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -51,7 +51,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.19 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.20 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -192,6 +192,14 @@ sub as_string
     substr($class, 0, 8) = 'dateTime' if (substr($class, 0, 8) eq 'datetime');
 
     "<$class>$$self</$class>";
+}
+
+# Serialization for simple types is just a matter of sending as_string over
+sub serialize
+{
+    my ($self, $fh) = @_;
+
+    print $fh $self->as_string;
 }
 
 ###############################################################################
@@ -384,6 +392,25 @@ sub as_string
          '</data></array>');
 }
 
+# Serialization for arrays is not as straight-forward as it is for simple
+# types. One or more of the elements may be a base64 object, which has a
+# non-trivial serialize() method. Thus, rather than just sending the data from
+# as_string down the pipe, instead call serialize() recursively on all of the
+# elements.
+sub serialize
+{
+    my ($self, $fh) = @_;
+
+    print $fh '<array><data>';
+    for (@$self)
+    {
+	print $fh '<value>';
+        $_->serialize($fh);
+	print $fh '</value>';
+    }
+    print $fh '</data></array>';
+}
+
 ###############################################################################
 #
 #   Package:        RPC::XML::struct
@@ -451,6 +478,22 @@ sub as_string
          '</struct>');
 }
 
+# As with the array type, serialization here isn't cut and dried, since one or
+# more values may be base64.
+sub serialize
+{
+    my ($self, $fh) = @_;
+
+    print $fh '<struct>';
+    for (keys %$self)
+    {
+        print $fh "<member><name>$_</name><value>";
+        $self->{$_}->serialize($fh);
+        print $fh '</value></member>';
+    }
+    print $fh '</struct>';
+}
+
 ###############################################################################
 #
 #   Package:        RPC::XML::base64
@@ -465,28 +508,122 @@ package RPC::XML::base64;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(RPC::XML::simple_type);
-
-use MIME::Base64;
+@ISA = qw(RPC::XML::datatype);
 
 sub new
 {
+    require MIME::Base64;
     my ($class, $value, $encoded) = @_;
 
+    my $self = {};
+
     $RPC::XML::ERROR = '';
-    $value = $$value if (ref $value);
-    unless (defined $value and length $value)
+
+    $self->{encoded} = $encoded ? 1 : 0; # Is this already Base-64?
+    $self->{inmem}   = 0;                # To signal in-memory vs. filehandle
+
+    # First, determine if the call sent actual data, a reference to actual
+    # data, or an open filehandle.
+    if (ref($value) and UNIVERSAL::isa($value, 'GLOB'))
     {
-        $class = ref($class) || $class;
-        $RPC::XML::ERROR = "${class}::new: Must be called with non-null data";
-        return undef;
+        # This is a seekable filehandle (or acceptable substitute thereof).
+        # This assignment increments the ref-count, and prevents destruction
+        # in other scopes.
+        binmode $value;
+        $self->{value_fh} = $value;
+        $self->{fh_pos}   = tell($value);
     }
-    if ($encoded)
+    else
     {
-        $value = MIME::Base64::decode_base64 $value;
+        # Not a filehandle. Might be a scalar ref, but other than that it's
+        # in-memory data.
+        $self->{inmem}++;
+        $self->{value} = ref($value) ? $$value : $value;
+        unless (defined $value and length $value)
+        {
+            $class = ref($class) || $class;
+            $RPC::XML::ERROR = "${class}::new: Must be called with non-null " .
+                'data or an open, seekable filehandle';
+            return undef;
+        }
+        # We want in-memory data to always be in the clear, to reduce the tests
+        # needed in value(), below.
+        if ($self->{encoded})
+        {
+            local($^W) = 0; # Disable warnings in case the data is underpadded
+            $self->{value} = MIME::Base64::decode_base64($self->{value});
+            $self->{encoded} = 0;
+        }
     }
 
-    bless \$value, $class;
+    bless $self, $class;
+}
+
+sub value
+{
+    my $self      = shift;
+    my $as_base64 = (defined $_[0] and $_[0]) ? 1 : 0;
+
+    # There are six cases here, based on whether or not the data exists in
+    # Base-64 or clear form, and whether the data is in-memory or needs to be
+    # read from a filehandle.
+    if ($self->{inmem})
+    {
+        # This is simplified into two cases (rather than four) since we always
+        # keep in-memory data as cleartext
+        return $as_base64 ?
+            MIME::Base64::encode_base64($self->{value}) : $self->{value};
+    }
+    else
+    {
+        # This is trickier with filehandle-based data, since we chose not to
+        # change the state of the data. Thus, the behavior is dependant not
+        # only on $as_base64, but also on $self->{encoded}. This is why we
+        # took pains to explicitly set $as_base64 to either 0 or 1, rather than
+        # just accept whatever non-false value the caller sent. It makes this
+        # first test possible.
+        my ($accum, $pos, $res);
+        $accum = '';
+
+        seek($self->{value_fh}, 0, 0);
+        if ($as_base64 == $self->{encoded})
+        {
+            $pos = 0;
+            while ($res = read($self->{value_fh}, $accum, 1024, $pos))
+            {
+                $pos += $res;
+            }
+        }
+        else
+        {
+            if ($as_base64)
+            {
+                # We're reading cleartext and converting it to Base-64. Read in
+                # multiples of 57 bytes for best Base-64 calculation. The
+                # choice of 60 for the multiple is purely arbitrary.
+                $res = '';
+                while (read($self->{value_fh}, $res, 60*57))
+                {
+                    $accum .= MIME::Base64::encode_base64($res);
+                }
+            }
+            else
+            {
+                # Reading Base-64 and converting it back to cleartext. If the
+                # Base-64 data doesn't have any line-breaks, no telling how
+                # much memory this will eat up.
+                local($^W) = 0; # Disable padding-length warnings
+                $pos = $self->{value_fh};
+                while (defined($res = <$pos>))
+                {
+                    $accum .= MIME::Base64::decode_base64($res);
+                }
+            }
+        }
+        seek($self->{value_fh}, $self->{fh_pos}, 0);
+
+        return $accum;
+    }
 }
 
 # The value needs to be encoded before being output
@@ -494,7 +631,114 @@ sub as_string
 {
     my $self = shift;
 
-    '<base64>' . MIME::Base64::encode_base64($$self) . '</base64>';
+    '<base64>' . $self->value('encoded') . '</base64>';
+}
+
+# If it weren't for Tellme and their damnable WAV files, and ViAir and their
+# half-baked XML-RPC server, I wouldn't have to do any of this...
+sub serialize
+{
+    my ($self, $fh) = @_;
+
+    # If the data is in-memory, just call as_string and pass it down the pipe
+    if ($self->{inmem})
+    {
+        print $fh $self->as_string;
+    }
+    else
+    {
+        # If it's a filehandle, at least we take comfort in knowing that we
+        # always want Base-64 at this level.
+        my $buf = '';
+        seek($self->{value_fh}, 0, 0);
+        print $fh '<base64>';
+        if ($self->{encoded})
+        {
+            # Easy-- just use read() to send it down in palatably-sized chunks
+            while (read($self->{value_fh}, $buf, 4096))
+            {
+                print $fh $buf;
+            }
+        }
+        else
+        {
+            # This actually requires work. As with value(), the 60*57 is based
+            # on ideal Base-64 chunks, with the 60 part being arbitrary.
+            while (read($self->{value_fh}, $buf, 60*57))
+            {
+                print $fh &MIME::Base64::encode_base64($buf);
+            }
+        }
+        print $fh '</base64>';
+        seek($self->{value_fh}, $self->{fh_pos}, 0);
+    }
+}
+
+# This allows writing the decoded data to an arbitrary file. It's useful when
+# an application has gotten a RPC::XML::base64 object back from a request, and
+# knows that it needs to go straight to a file without being completely read
+# into memory, first.
+sub to_file
+{
+    my ($self, $file) = @_;
+
+    my ($fh, $buf, $do_close, $count) = (undef, '', 0, 0);
+
+    if (ref $file and UNIVERSAL::isa($file, 'GLOB'))
+    {
+        $fh = $file;
+    }
+    else
+    {
+        unless (open($fh, "> $file"))
+        {
+            $RPC::XML::ERROR = $!;
+            return -1;
+        }
+        $do_close++;
+    }
+
+    # If all the data is in-memory, then we know that it's clear, and we
+    # don't have to jump through hoops in moving it to the filehandle.
+    if ($self->{inmem})
+    {
+        print $fh $self->{value};
+        $count =  length($self->{value});
+    }
+    else
+    {
+        # Filehandle-to-filehandle transfer.
+
+        # Now determine if the data can be copied over directly, or if we have
+        # to decode it along the way.
+        seek($self->{value_fh}, 0, 0);
+        if ($self->{encoded})
+        {
+            # As with the caveat in value(), if the base-64 data doesn't have
+            # any line-breaks, no telling how much memory this will eat up.
+            local($^W) = 0; # Disable padding-length warnings
+            my $tmp_fh = $self->{value_fh};
+            while (defined($_ = <$tmp_fh>))
+            {
+                $buf = MIME::Base64::decode_base64($_);
+                print $fh $buf;
+                $count += length($buf);
+            }
+        }
+        else
+        {
+            my $size;
+            while ($size = read($self->{value_fh}, $buf, 4096))
+            {
+                print $fh $buf;
+                $count += $size;
+            }
+        }
+        seek($self->{value_fh}, $self->{fh_pos}, 0);
+    }
+
+    close($fh) if $do_close;
+    return $count;
 }
 
 ###############################################################################
@@ -686,6 +930,25 @@ sub as_string
     $text;
 }
 
+# The difference between stringifying and serializing a request is much like
+# the difference was for structs and arrays. The boilerplate is the same, but
+# the destination is different in a sensitive way.
+sub serialize
+{
+    my ($self, $fh) = @_;
+
+    print $fh qq(<?xml version="1.0"?>\n);
+
+    print $fh "<methodCall><methodName>$self->{name}</methodName><params>";
+    for (@{$self->{args}})
+    {
+        print $fh '<param><value>';
+        $_->serialize($fh);
+        print $fh '</value></param>';
+    }
+    print $fh '</params></methodCall>';
+}
+
 ###############################################################################
 #
 #   Package:        RPC::XML::response
@@ -799,6 +1062,30 @@ sub as_string
     $text .= '</methodResponse>';
 
     $text;
+}
+
+# See the comment for serialize() above in RPC::XML::request
+sub serialize
+{
+    my ($self, $fh) = @_;
+
+    print $fh qq(<?xml version="1.0"?>\n);
+
+    print $fh '<methodResponse>';
+    if ($self->{value}->isa('RPC::XML::fault'))
+    {
+        # This also bypasses a un-needed call to serialize in the struct
+        # package, since we know by definition that there is no base64 data
+        # in a fault.
+        print $fh $self->{value}->as_string;
+    }
+    else
+    {
+        print $fh '<params><param><value>';
+        $self->{value}->serialize($fh);
+        print $fh '</value></param></params>';
+    }
+    print $fh '</methodResponse>';
 }
 
 1;
@@ -924,6 +1211,12 @@ C<struct> objects.
 
 Returns the value as a XML-RPC fragment, with the proper tags, etc.
 
+=item serialize($filehandle)
+
+Send the stringified rendition of the data to the given file handle. This
+allows messages with arbitrarily-large Base-64 data within them to be sent
+without having to hold the entire message within process memory.
+
 =item type
 
 Returns the type of data being stored in an object. The type matches the
@@ -983,6 +1276,27 @@ or as a scalar reference. Additionally, a second (optional) parameter may be
 passed, that if true identifies the data as already base-64 encoded. If so,
 the data is decoded before storage. The C<value> method returns decoded data,
 and the C<as_string> method encodes it before stringification.
+
+Alternately, the constructor may be given an open filehandle argument instead
+of direct data. When this is the case, the data is never read into memory in
+its entirety, unless the C<value> or C<as_string> methods are called. This
+allows the manipulation of arbitrarily-large Base-64-encoded data chunks. In
+these cases, the flag (optional second argument) is still relevant, but the
+data is not pre-decoded if it currently exists in an encoded form. It is only
+decoded as needed. Note that the filehandle passed must be open for reading,
+at least. It will not be written to, but it will be read from. The position
+within the file will be preserved between operations.
+
+Because of this, this class supports a special method called C<to_file>, that
+takes one argument. The argument may be either an open, writable filehandle or
+a string. If it is a string, C<to_file> will attempt to open it as a file and
+write the I<decoded> data to it. If the argument is a an open filehandle, the
+data will be written to it without any pre- or post-adjustment of the handle
+position (nor will it be closed upon completion). This differs from the
+C<serialize> method in that it always writes the decoded data (where the other
+always writes encoded data), and in that the XML opening and closing tags are
+not written. The return value of C<to_file> is the size of the data written
+in bytes.
 
 =item RPC::XML::array
 
@@ -1052,6 +1366,12 @@ described earlier.
 Returns the message object expressed as an XML document. The document will be
 lacking in linebreaks and indention, as it is not targeted for human reading.
 
+=item serialize($filehandle)
+
+Serialize the message to the given file-handle. This avoids creating the entire
+XML message within memory, which may be relevant if there is especially-large
+Base-64 data within the message.
+
 =back
 
 The two message-object classes are:
@@ -1080,7 +1400,7 @@ will result in a reference to an empty list.
 
 =item RPC::XML::response
 
-The response object is much like the request object in most ways. They may
+The response object is much like the request object in most ways. It may
 take only one argument, as that is all the specification allows for in a
 response. Responses have the following methods (in addition to C<new> and
 C<as_string>):
