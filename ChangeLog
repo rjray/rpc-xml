@@ -1,5 +1,49 @@
 Revision history for Perl extension RPC::XML.
 
+0.50	Mon Jan 27 03:24:45 PST 2003
+
+	Changed the usage of =head3 directives in the manual page for
+	RPC::XML::Procedure to a =over/=back block instead. The =head3
+	directive requires a newer set of pod utilities, and would mean the
+	package had trouble building on 5.005 installations.
+
+	Extended the RPC::XML::base64 class to allow for and handle being
+	given a filehandle object instead of straight data. The object is
+	kept as an open filehandle, and the buffer position is always noted
+	and reset when operated on, so that other parts of the process using
+	the handle don't get surprised. Added tests in t/11_base64_fh.t to
+	exercise this.
+
+	Added a serialize() method to all the data classes in preparation for
+	changing the client and server modules to stream XML over the line
+	rather than print it using in-memory strings. Added test suite
+	t/15_serialize.t to exercise this.
+
+	Modified RPC::XML::Parser to accept arguments to new() that instruct
+	it to spool Base64 data to a filehandle, using the new capabilities
+	of the base64 class described previously. Added tests to t/20_parser.t
+	and support for the parameters to the constructors of the client and
+	base server classes. Documented all around.
+
+	Re-engineered the test for the "bytes" pragma in RPC::XML, so that
+	it now works with Perl 5.005.
+
+	Fixed the credentials() method in RPC::XML::Client.
+
+	All the internal use of object attributes in RPC::XML::Client now use
+	accessors instead of the hash keys directly, to make it easier to
+	sub-class the package. The same was done in RPC::XML::Server and to
+	some degree in Apache::RPC::Server. The server classes are more likely
+	to have problems, though.
+
+	The parsing of incoming data in the client and both server classes is
+	now done to a streaming XML parser, eliminating the need for the
+	full message to ever be in memory at once. Likewise, the client and
+	server classes have new attributes and accessor methods to allow
+	them to spool outgoing messages to files if the messages threaten to
+	be too large to keep in memory (this is best used when dealing with a
+	lot of Base64 data that is being dealt with directly on disk as well).
+
 0.46	Sun Dec 29 23:39:05 PST 2002
 
 	Applied a patch from Andrew Langmead to fix a bug in the uri() method
