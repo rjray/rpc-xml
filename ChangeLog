@@ -1,5 +1,28 @@
 Revision history for Perl extension RPC::XML.
 
+0.43	Sun Aug 18 22:19:30 PDT 2002
+
+	Changed methods/methodSignature.code, t/40_server.t and
+	t/60_net_server.t so that the provided system.methodSignature follows
+	the accepted API (returns a list of lists, rather than list of
+	strings). Pointed out by Bjoern Stierand.
+
+	Added a missing helper (RPC_I4) to RPC::XML.pm.
+
+	Fixed a bad bug with the newly-added compression support in
+	Apache::RPC::Server::handler. Because $self was defined earlier,
+	strict failed to point out that my object in that scope was called
+	$srv, rather than $self. And $self->compress didn't work, amazingly
+	enough. Found and reported by Scott Fagg.
+
+	Added a credentials() method to the RPC::XML::Client class to set
+	Basic Authentication credentials on the underlying LWP::UserAgent
+	object. Per suggestion and sample implementation from Stuart Clark.
+
+	Fixed a docs-nit in RPC::XML::Server, and did some major clean-up in
+	the docs for RPC::XML. In particular, added documentation for one
+	of the data class methods that had been overlooked ("type").
+
 0.42	Thu Aug  1 00:51:12 PDT 2002
 
 	Changed the test in Apache::RPC::Server of the Content-type header so
