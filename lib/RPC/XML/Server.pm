@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.3 2001/06/05 05:28:08 rjray Exp $
+#   $Id: Server.pm,v 1.4 2001/06/05 06:38:14 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -40,20 +40,17 @@ BEGIN {
 }
 
 use Carp 'carp';
-require DirHandle;
-require IO::File;
 require File::Spec;
 
 require HTTP::Daemon;
 require HTTP::Response;
 use HTTP::Status; # The only one we import from
 require URI;
-require XML::Parser;
 
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -129,6 +126,7 @@ sub new
     $self->{__requests}        = 0;
     $self->{__debug}           = $args{debug} || 0;
     $self->{__parser}          = new RPC::XML::Parser;
+    $self->{__xpl_path}        = $args{xpl_path} || [];
 
     $self->add_default_methods unless ($args{no_default});
 
@@ -177,6 +175,16 @@ sub host     { shift->{__host} }
 sub port     { shift->{__port} }
 sub requests { shift->{__requests} }
 sub debug    { shift->{__debug} }
+
+# Get/set the search path for XPL files
+sub xpl_path
+{
+    my $self = shift;
+    my $ret = $self->{__xpl_path};
+
+    $self->{__xpl_path} = $_[0] if ($_[0] and ref($_[0]) eq 'ARRAY');
+    $ret;
+}
 
 ###############################################################################
 #
@@ -252,6 +260,418 @@ sub add_method
     $self;
 }
 
+=pod
+
+=head1 NAME
+
+RPC::XML::Server - A sample server implementation based on RPC::XML
+
+=head1 SYNOPSIS
+
+    use RPC::XML::Server;
+
+    ...
+    $srv = new RPC::XML::Server (port => 9000);
+    # Several of these, most likely:
+    $srv->add_method(...);
+    ...
+    $srv->accept_loop; # Never returns
+
+=head1 DESCRIPTION
+
+This is a sample XML-RPC server built upon the B<RPC::XML> data classes, and
+using B<HTTP::Daemon> and B<HTTP::Response> for the communication layer.
+
+=head1 USAGE
+
+Use of the B<RPC::XML::Server> is based on an object model. A server is
+instantiated from the class, methods (subroutines) are made public by adding
+them through the object interface, and then the server object is responsible
+for dispatching requests (and possibly for the HTTP listening, as well).
+
+=head2 Methods
+
+The following methods are provided by the B<RPC::XML::Server> class:
+
+=over 4
+
+=item new(OPTIONS)
+
+Creates a new object of the class and returns the blessed reference. Depending
+on the options, the object will contain some combination of an HTTP listener,
+a pre-populated B<HTTP::Response> object, a B<RPC::XML::Parser> object, and
+a dispatch table with the set of default methods pre-loaded. The options that
+B<new> accepts are passed as a hash of key/value pairs (not a hash reference).
+The accepted options are:
+
+=over 4
+
+=item B<no_http>
+
+If passed with a C<true> value, prevents the creation and storage of the
+B<HTTP::Daemon> and the pre-configured B<HTTP::Response> objects. This allows
+for deployment of a server object in other environments. Note that if this is
+set, the B<accept_loop> method described below will silently return
+immediately.
+
+=item B<no_default>
+
+If passed with a C<true> value, prevents the loading of the default methods
+provided with the B<RPC::XML> distribution. These may be later loaded using
+the B<add_default_methods> interface described later. The methods themselves
+are described below (see L<"The Default Methods Provided">).
+
+=item B<path>
+
+=item B<host>
+
+=item B<port>
+
+=item B<queue>
+
+These four are mainly relevant only to HTTP-based implementations. The last
+three are not used at all if C<no_http> is set. The B<path> argument sets the
+additional URI path information that clients would use to contact the server.
+Internally, it is not used except in outgoing status and introspection
+reports.  The B<host>, B<port> and B<queue> arguments are passed to the
+B<HTTP::Daemon> constructor if they are passed. They set the hostname, TCP/IP
+port, and socket listening queue, respectively. Again, they are not used if
+the C<no_http> argument was set.
+
+=item B<xpl_path>
+
+If you plan to add methods to the server object by passing filenames to the
+C<add_method> call, this argument may be used to specify one or more
+additional directories to be searched when the passed-in filename is a
+relative path. The value for this must be an array reference. See also
+B<add_method> and B<xpl_path>, below.
+
+=item B<debug>
+
+If passed with a C<true> value, sets an internal debugging flag. Right now,
+this does not do anything.
+
+=back
+
+Any other keys in the options hash not explicitly used by the constructor are
+copied over verbatim onto the object, for the benefit of sub-classing this
+class. All internal keys are prefixed with "C<__>" to avoid confusion. Feel
+free to use this prefix only if you wish to re-introduce confusion.
+
+=item version
+
+Returns the version string associated with this package.
+
+=item url
+
+This returns the HTTP URL that the server will be responding to, when it is
+in the connection-accept loop. If the server object was created without a
+built-in HTTP listener, then this method returns C<undef>.
+
+=item started([BOOL])
+
+Gets and possibly sets the clock-time when the server starts accepting
+connections. If a value is passed that evaluates to true, then the current
+clock time is marked as the starting time. In either case, the current value
+is returned. The clock-time is based on the internal B<time> command of Perl,
+and thus is represented as an integer number of seconds since the system
+epoch. Generally, it is suitable for passing to either B<localtime> or to the
+C<time2iso8601> routine exported by the B<RPC::XML> package.
+
+=item add_method(FILE | HASHREF)
+
+This adds a new published method to the server object that invokes it. The
+new method may be specified in one of two ways: as a filename or as a hash
+reference.
+
+If passed as a hash reference, the following keys are expected:
+
+=over 4
+
+=item B<name>
+
+The published (externally-visible) name for the method
+
+=item B<version>
+
+An optional version stamp. Not used internally, kept mainly for informative
+purposes.
+
+=item B<hidden>
+
+If passed and evaluates to a C<true> value, then the method should be hidden
+from any introspection API implementations.
+
+=item B<code>
+
+A code reference to the actual Perl subroutine that handles this method. A
+symbolic reference is not accepted. The value can be passed either as a
+reference to an existing routine, or possibly as a closure. See
+L</"How Methods are Called"> for the semantics the referenced subroutine must
+follow.
+
+=item B<signature>
+
+A list reference of the signatures by which this routine may be invoked. Every
+method has at least one signature. Though less efficient for cases of exactly
+one signature, a list reference is always used for sake of consistency.
+
+=item B<help>
+
+Optional documentation text for the method. This is the text that would be
+returned, for example, by a B<system.methodHelp> call (providing the server
+has such an externally-visible method).
+
+=back
+
+If a file is passed, then it is expected to be in the XML-based format,
+described later (see L<"Specifying Server-Side Remote Methods">). If the
+name passed is not an absolute pathname, then the file will be searched for
+in any directories specified when the object was instantiated, then in the
+directory into which this module was installed, and finally in the current
+working directory.
+
+=item xpl_path([LISTREF])
+
+Get and/or set the object-specific search path for C<*.xpl> files (files that
+specify methods) that are specified in calls to B<add_method>, above. If a
+list reference is passed, it is installed as the new path (each element of the
+list being one directory name to search). Regardless of argument, the current
+path is returned as a list reference. When a file is passed to B<add_method>,
+the elements of this path are searched first, in order, before the
+installation directory or the current working directory are searched.
+
+=item get_method(NAME)
+
+Returns a hash reference containing the current binding for the published
+method NAME. If there is no such method known to the server, then C<undef> is
+returned. The hash has the same key and value pairs as for C<add_method>,
+above. Thus, hash reference returned is suitable for passing back to
+C<add_method>. This facilitates temporary changes in what a published name
+maps to.
+
+=item method_to_ref(NAME)
+
+This is a shorter implementation of the above, that only returns the code
+reference associated with the named method. It returns C<undef> if no such
+method exists. Since the methods are stored internally as closures, this is
+the only reliable way of calling one method from within another.
+
+=item accept_loop(HASH)
+
+Enters the connection-accept loop, which generally does not return. This is
+only useful if the server object was created with a HTTP listener. It uses
+the C<accept> method of B<HTTP::Daemon> to listen for requests, and marshalls
+them out via the C<dispatch> method described below. It answers HTTP-HEAD
+requests immediately (without counting them on the server statistics) and
+efficiently by using a cached B<HTTP::Response> object.
+
+Because infinite loops requiring a C<HUP> or C<KILL> signal to terminate are
+generally in poor taste, C<accept_loop> sets up a localized signal handler
+which causes an exit when triggered. By default, this is attached to the
+C<INT> signal.
+
+The arguments, if passed, are interpreted as a hash of key/value options (not
+a hash reference, please note). Currently, only one is recognized:
+
+=over 4
+
+=item B<signal>
+
+If passed, should be the traditional name for the signal that should be bound
+to the exit function. The user is responsible for not passing the name of a
+non-existent signal, or one that cannot be caught. If the value of this
+argument is 0 (a C<false> value) or the string C<B<NONE>>, then the signal
+handler will I<not> be installed, and the loop may only be broken out of by
+killing the running process (unless other arrangements are made within the
+application).
+
+=back
+
+=item dispatch(REQUEST)
+
+This is the server method that actually manages the marshalling of an incoming
+request into an invocation of a Perl subroutine. The parameter passed in may
+be one of: a scalar containing the full XML text of the request, a scalar
+reference to such a string, or a pre-constructed B<RPC::XML::request> object.
+Unless an object is passed, the text is parsed with any errors triggering an
+early exit. Once the object representation of the request is on hand, the
+parameter data is extracted, as is the method name itself. The call is sent
+along to the appropriate subroutine, and the results are collated into an
+object of the B<RPC::XML::response> class, which is returned. Any non-reference
+return value should be presumed to be an error string. If the dispatched
+method encountered some sort of error, it will not be propagated upward here,
+but rather encoded as an object of the B<RPC::XML::fault> class, and returned
+as the result of the dispatch. This distinguishes between server-centric
+errors, and general run-time errors.
+
+=item add_default_methods([DETAILS])
+
+This method adds all the default methods (those that are shipped with this
+extension) to the calling server object. The files are denoted by their
+C<*.xpl> extension, and are installed into the same directory as this
+B<Server.pm> file. The set of default methods are described below (see
+L<"The Default Methods Provided">).
+
+If any names are passed as a list of arguments to this call, then only those
+methods specified are actually loaded. If the C<*.xpl> extension is absent on
+any of these names, then it is silently added for testing purposes. Note that
+the methods shipped with this package have file names without the leading
+"C<status.>" part of the method name. If the very first element of the list of
+arguments is "C<except>" (or "C<-except>"), then the rest of the list is
+treated as a set of names to I<not> load, while all others do get read. The
+B<Apache::RPC::Server> module uses this to prevent the loading of the default
+C<system.status> method while still loading all the rest of the defaults. (It
+then provides a more Apache-centric status method.)
+
+=item add_methods_in_dir(DIR, [DETAILS])
+
+This is exactly like B<add_default_methods> above, save that the caller
+specifies which directory to scan for C<*.xpl> files. In fact, the defaults
+routine simply calls this routine with the installation directory as the
+first argument. The definition of the additional arguments is the same as
+above.
+
+=back
+
+=head2 How Methods Are Called
+
+When a routine is called via the server dispatcher, it is called with the
+arguments that the client request passed, plus one. The extra argument is the
+first one passed, a reference to a B<RPC::XML::Server> object (or a subclass
+thereof). This is derived from a hash reference, and will include two
+special keys:
+
+=over 4
+
+=item method_name
+
+This is the name by which the method was called in the client. Most of the
+time, this will probably be consistent for all calls to the server-side
+method. But it does not have to be, hence the passing of the value.
+
+=item signature
+
+This is the signature that was used, when dispatching. Perl has a liberal
+view of lists and scalars, so it is not always clear what arguments the client
+specifically has in mind when calling the method. The signature is an array
+reference containing one or more datatypes, each a simple string. The first
+of the datatypes specifies the expected return type. The remainder (if any)
+refer to the arguments themselves.
+
+=back
+
+The methods should not make (excessive) use of global variables. Each method
+will be evaluated in the same package space, so methods may call each other
+without difficulty. Likewise, methods should not change their package space
+within the definition. Bad Things Could Happen.
+
+=head2 Specifying Server-Side Remote Methods
+
+=head2 The Default Methods Provided
+
+The following methods are provided with this package, and are the ones
+installed on newly-created server objects unless told not to. These are
+identified by their published names, as they are compiled internally as
+anonymous subroutines and thus cannot be called directly:
+
+=over 4
+
+=item B<system.identity>
+
+Returns a B<string> value identifying the server name, version, and possibly a
+capability level. Takes no arguments.
+
+=item B<system.introspection>
+
+Returns a series of B<struct> objects that give overview documentation of one
+or more of the published methods. It may be called with a B<string>
+identifying a single routine, in which case the return value is a
+B<struct>. It may be called with an B<array> of B<string> values, in which
+case an B<array> of B<struct> values, one per element in, is returned. Lastly,
+it may be called with no input parameters, in which case all published
+routines are documented.  Note that routines may be configured to be hidden
+from such introspection queries.
+
+=item B<system.listMethods>
+
+Returns a list of the published methods or a subset of them as an B<array> of
+B<string> values. If called with no parameters, returns all (non-hidden)
+method names. If called with a single B<string> pattern, returns only those
+names that contain the string as a substring of their name (case-sensitive,
+and this is I<not> a regular expression evaluation).
+
+=item B<system.methodHelp>
+
+Takes either a single method name as a B<string>, or a series of them as an
+B<array> of B<string>. The return value is the help text for the method, as
+either a B<string> or B<array> of B<string> value. If the method(s) have no
+help text, the string will be null.
+
+=item B<system.methodSignature>
+
+As above, but returns the signatures that the method accepts, as B<array> of
+B<string> representations. If only one method is requests via a B<string>
+parameter, then the return value is the corresponding array. If the parameter
+in is an B<array>, then the returned value will be an B<array> of B<array> of
+B<string>.
+
+=item B<system.multicall>
+
+This is a simple implementation of composite function calls in a single
+request. It takes an B<array> of B<struct> values. Each B<struct> has at least
+a C<methodName> member, which provides the name of the method to call. If
+there is also a C<params> member, it refers to an B<array> of the parameters
+that should be passed to the call.
+
+=item B<system.status>
+
+Takes no arguments and returns a B<struct> containing a number of system
+status values including (but not limited to) the current time on the server,
+the time the server was started (both of these are returned in both ISO 8601
+and UNIX-style integer formats), number of requests dispatched, and some
+identifying information (hostname, port, etc.).
+
+=back
+
+In addition, each of these has an accompanying help file in the C<methods>
+sub-directory of the distribution.
+
+These methods are installed as C<*.xpl> files, which are generated from files
+in the C<methods> directory of the distribution using the B<make_method> tool
+(see L<make_method>). The files there provide the Perl code that implements
+these, their help files and other information.
+
+=head1 DIAGNOSTICS
+
+All methods return some type of reference on success, or an error string on
+failure. Non-reference return values should always be interpreted as errors
+unless otherwise noted.
+
+=head1 CAVEATS
+
+This is a reference implementation in which clarity of process and readability
+of the code took precedence over general efficiency. Much, if not all, of this
+can be written more compactly and/or efficiently.
+
+=head1 CREDITS
+
+The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
+See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
+specification.
+
+=head1 SEE ALSO
+
+L<RPC::XML>, L<RPC::XML::Client>, L<RPC::XML::Parser>
+
+=head1 AUTHOR
+
+Randy J. Ray <rjray@blackperl.com>
+
+=cut
+
+#__END__
+
 ###############################################################################
 #
 #   Sub Name:       get_method
@@ -323,15 +743,14 @@ sub accept_loop
 
     return unless $self->{__daemon};
     # Localize and set the signal handler as an exit route
-    local %SIG;
     if (exists $args{signal})
     {
-        $SIG{$args{signal}} = sub { $exit_now++; }
+        local $SIG{$args{signal}} = sub { $exit_now++; }
             unless ($args{signal} eq 'NONE');
     }
     else
     {
-        $SIG{QUIT} = sub { $exit_now++; };
+        local $SIG{INT} = sub { $exit_now++; };
     }
 
     $self->started('set');
@@ -617,7 +1036,7 @@ sub dispatch
 #                   by a *.xpl suffix) and return the relevant information.
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $srv      in      ref       Object of this class
+#                   $self     in      ref       Object of this class
 #                   $file     in      scalar    File to load
 #
 #   Globals:        @XPL_PATH
@@ -630,18 +1049,22 @@ sub dispatch
 ###############################################################################
 sub load_XPL_file
 {
-    my $srv = shift;
+    my $self = shift;
     my $file = shift;
 
-    # We don't actually use the value $srv, but this makes the routine callable
+    require XML::Parser;
+
+    # We only barely use the value $self, but this makes the routine callable
     # as a class method, which is easier for sub-classes than having them have
     # to import the function, or hard-code the class.
 
-    my ($fh, $signature, $code, $codetext, $return, $accum, $P);
+    my ($signature, $code, $codetext, $return, $accum, $P, @path);
+    local *F;
 
     unless (File::Spec->file_name_is_absolute($file))
     {
-        for (@XPL_PATH)
+        push(@path, @{$self->{__xpl_path}}) if (ref $self);
+        for (@path, @XPL_PATH)
         {
             if (-e "$_/$file") { $file = "$_/$file"; last; }
         }
@@ -651,8 +1074,8 @@ sub load_XPL_file
     # So these don't end up undef, since they're optional elements
     $return->{hidden} = 0; $return->{version} = ''; $return->{help} = '';
     $return->{signature} = [];
-    $fh = new IO::File "< $file";
-    return "Error opening $file for reading: $!" unless $fh;
+    open(F, "< $file");
+    return "Error opening $file for reading: $!" if ($?);
     $P = XML::Parser
         ->new(Handlers => {Char => sub { $accum .= $_[1] },
                            End  =>
@@ -675,7 +1098,7 @@ sub load_XPL_file
                            }});
     return "Error creating XML::Parser object" unless $P;
     # Trap any errors
-    eval { $P->parse($fh) };
+    eval { $P->parse(*F) };
     return "Error parsing $file: $@" if $@;
 
     # Try to normalize $codetext before passing it to eval
@@ -694,14 +1117,13 @@ sub load_XPL_file
 #
 #   Sub Name:       add_default_methods
 #
-#   Description:    This adds all methods that were shipped with the server
-#                   core. These are expressed as *.xpl files in the same
-#                   install directory as this file.
+#   Description:    This adds all the methods that were shipped with this
+#                   package, by threading through to add_methods_in_dir()
+#                   with the global constant $INSTALL_DIR.
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $self     in      ref       Class instance
-#                   @details  in      list      Possible hanky-panky with the
-#                                                 list of methods to install
+#                   $self     in      ref       Object reference/static class
+#                   @details  in      ref       Details of names to add or skip
 #
 #   Globals:        $INSTALL_DIR
 #
@@ -712,7 +1134,33 @@ sub load_XPL_file
 ###############################################################################
 sub add_default_methods
 {
+    add_methods_in_dir(shift, $INSTALL_DIR, @_);
+}
+
+###############################################################################
+#
+#   Sub Name:       add_methods_in_dir
+#
+#   Description:    This adds all methods specified in the directory passed,
+#                   in accordance with the details specified.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Class instance
+#                   $dir      in      scalar    Directory to scan
+#                   @details  in      list      Possible hanky-panky with the
+#                                                 list of methods to install
+#
+#   Globals:        None.
+#
+#   Environment:    None.
+#
+#   Returns:        $self
+#
+###############################################################################
+sub add_methods_in_dir
+{
     my $self = shift;
+    my $dir = shift;
     my @details = @_;
 
     my $negate = 0;
@@ -731,399 +1179,19 @@ sub add_default_methods
         @details{@details} = (1) x @details;
     }
 
-    my $d = new DirHandle $INSTALL_DIR;
-    my @files = grep($_ =~ /\.xpl$/, $d->read);
-    $d->close;
+    local(*D);
+    opendir(D, $dir) || return undef;
+    my @files = grep($_ =~ /\.xpl$/, readdir(D));
+    closedir D;
 
     for (@files)
     {
         # Use $detail as a short-circuit to avoid the other tests when we can
         next if ($detail and
                  $negate ? $details{$_} : ! $details{$_});
-        add_method($self, "$INSTALL_DIR/$_");
+        # n.b.: Giving the full path keeps add_method from having to search
+        add_method($self, "$dir/$_");
     }
 
     $self;
 }
-
-__END__
-
-=pod
-
-=head1 NAME
-
-RPC::XML::Server - A sample server implementation based on RPC::XML
-
-=head1 SYNOPSIS
-
-    use RPC::XML::Server;
-
-    ...
-    $srv = new RPC::XML::Server (port => 9000);
-    # Several of these, most likely:
-    $srv->add_method(...);
-    ...
-    $srv->accept_loop; # Never returns
-
-=head1 DESCRIPTION
-
-This is a sample XML-RPC server built upon the B<RPC::XML> data classes, and
-using B<HTTP::Daemon> and B<HTTP::Response> for the communication layer.
-
-=head1 USAGE
-
-Use of the B<RPC::XML::Server> is based on an object model. A server is
-instantiated from the class, methods (subroutines) are made public by adding
-them through the object interface, and then the server object is responsible
-for dispatching requests (and possibly for the HTTP listening, as well).
-
-=head2 Methods
-
-The following methods are provided by the B<RPC::XML::Server> class:
-
-=over 4
-
-=item new(OPTIONS)
-
-Creates a new object of the class and returns the blessed reference. Depending
-on the options, the object will contain some combination of an HTTP listener,
-a pre-populated B<HTTP::Response> object, a B<RPC::XML::Parser> object, and
-a dispatch table with the set of default methods pre-loaded. The options that
-B<new> accepts are passed as a hash of key/value pairs (not a hash reference).
-The accepted options are:
-
-=over 4
-
-=item B<no_http>
-
-If passed with a C<true> value, prevents the creation and storage of the
-B<HTTP::Daemon> and the pre-configured B<HTTP::Response> objects. This allows
-for deployment of a server object in other environments. Note that if this is
-set, the B<accept_loop> method described below will silently return
-immediately.
-
-=item B<no_default>
-
-If passed with a C<true> value, prevents the loading of the default methods
-provided with the B<RPC::XML> distribution. These may be later loaded using
-the B<add_default_methods> interface described later. The methods themselves
-are described below (see L<"The Default Methods Provided">).
-
-=item B<path>
-
-=item B<host>
-
-=item B<port>
-
-=item B<queue>
-
-These four are mainly relevant only to HTTP-based implementations. The last
-three are not used at all if C<no_http> is set. The B<path> argument sets the
-additional URI path information that clients would use to contact the server.
-Internally, it is not used except in outgoing status and introspection reports.
-The B<host>, B<port> and B<queue> arguments are passed to the B<HTTP::Daemon>
-constructor if they are passed. They set the hostname, TCP/IP port, and socket
-listening queue, respectively. Again, they are not used if the C<no_http>
-argument was set.
-
-=item B<debug>
-
-If passed with a C<true> value, sets an internal debugging flag. Right now,
-this does not do anything.
-
-=back
-
-Any other keys in the options hash not explicitly used by the constructor are
-copied over verbatim onto the object, for the benefit of sub-classing this
-class. All internal keys are prefixed with "C<__>" to avoid confusion. Feel
-free to use this prefix only if you wish to re-introduce confusion.
-
-=item version
-
-Returns the version string associated with this package.
-
-=item url
-
-This returns the HTTP URL that the server will be responding to, when it is
-in the connection-accept loop. If the server object was created without a
-built-in HTTP listener, then this method returns C<undef>.
-
-=item started([BOOL])
-
-Gets and possibly sets the clock-time when the server starts accepting
-connections. If a value is passed that evaluates to true, then the current
-clock time is marked as the starting time. In either case, the current value
-is returned. The clock-time is based on the internal B<time> command of Perl,
-and thus is represented as an integer number of seconds since the system
-epoch. Generally, it is suitable for passing to either B<localtime> or to the
-C<time2iso8601> routine exported by the B<RPC::XML> package.
-
-=item add_method(FILE | HASHREF)
-
-This adds a new published method to the server object that invokes it. The
-new method may be specified in one of two ways: as a filename or as a hash
-reference.
-
-If passed as a hash reference, the following keys are expected:
-
-=over 4
-
-=item B<name>
-
-The published (externally-visible) name for the method
-
-=item B<version>
-
-An optional version stamp. Not used internally, kept mainly for informative
-purposes.
-
-=item B<hidden>
-
-If passed and evaluates to a C<true> value, then the method should be hidden
-from any introspection API implementations.
-
-=item B<code>
-
-A code reference to the actual Perl subroutine that handles this method. A
-symbolic reference is not accepted. The value can be passed either as a
-reference to an existing routine, or possibly as a closure. See
-L</"How Methods are Called"> for the semantics the referenced subroutine must
-follow.
-
-=item B<signature>
-
-A list reference of the signatures by which this routine may be invoked. Every
-method has at least one signature. Though less efficient for cases of exactly
-one signature, a list reference is always used for sake of consistency.
-
-=item B<help>
-
-Optional documentation text for the method. This is the text that would be
-returned, for example, by a B<system.methodHelp> call (providing the server
-has such an externally-visible method).
-
-=back
-
-If a file is passed, then it is expected to be in the XML-based format,
-described later (see L<"Specifying Server-Side Remote Methods">).
-
-=item get_method(NAME)
-
-Returns a hash reference containing the current binding for the published
-method NAME. If there is no such method known to the server, then C<undef> is
-returned. The hash has the same key and value pairs as for C<add_method>,
-above. Thus, hash reference returned is suitable for passing back to
-C<add_method>. This facilitates temporary changes in what a published name
-maps to.
-
-=item method_to_ref(NAME)
-
-This is a shorter implementation of the above, that only returns the code
-reference associated with the named method. It returns C<undef> if no such
-method exists. Since the methods are stored internally as closures, this is
-the only reliable way of calling one method from within another.
-
-=item accept_loop(HASH)
-
-Enters the connection-accept loop, which generally does not return. This is
-only useful if the server object was created with a HTTP listener. It uses
-the C<accept> method of B<HTTP::Daemon> to listen for requests, and marshalls
-them out via the C<dispatch> method described below. It answers HTTP-HEAD
-requests immediately (without counting them on the server statistics) and
-efficiently by using a cached B<HTTP::Response> object.
-
-Because infinite loops requiring a HUP or KILL signal to terminate are
-generally in poor taste, C<accept_loop> sets up a localized signal handler
-which causes an exit when triggered. By default, this is attached to the
-QUIT signal.
-
-The arguments, if passed, are interpreted as a hash of key/value options (not
-a hash reference, please note). Currently, only one is recognized:
-
-=over 4
-
-=item B<signal>
-
-If passed, should be the traditional name for the signal that should be bound
-to the exit function. The user is responsible for not passing the name of a
-non-existent signal, or one that cannot be caught. If the value of this
-argument is 0 (a C<false> value) or the string C<B<NONE>>, then the signal
-handler will I<not> be installed, and the loop may only be broken out of by
-killing the running process (unless other arrangements are made within the
-application).
-
-=back
-
-=item dispatch(REQUEST)
-
-This is the server method that actually manages the marshalling of an incoming
-request into an invocation of a Perl subroutine. The parameter passed in may
-be one of: a scalar containing the full XML text of the request, a scalar
-reference to such a string, or a pre-constructed B<RPC::XML::request> object.
-Unless an object is passed, the text is parsed with any errors triggering an
-early exit. Once the object representation of the request is on hand, the
-parameter data is extracted, as is the method name itself. The call is sent
-along to the appropriate subroutine, and the results are collated into an
-object of the B<RPC::XML::response> class, which is returned. Any non-reference
-return value should be presumed to be an error string. If the dispatched
-method encountered some sort of error, it will not be propagated upward here,
-but rather encoded as an object of the B<RPC::XML::fault> class, and returned
-as the result of the dispatch. This distinguishes between server-centric
-errors, and general run-time errors.
-
-=item add_default_methods([DETAILS])
-
-This method adds all the default methods (those that are shipped with this
-extension) to the calling server object. The files are denoted by their
-C<*.xpl> extension, and are installed into the same directory as this
-B<Server.pm> file. The set of default methods are described below (see
-L<"The Default Methods Provided">).
-
-If any names are passed as a list of arguments to this call, then only those
-methods specified are actually loaded. If the C<*.xpl> extension is absent on
-any of these names, then it is silently added for testing purposes. Note that
-the methods shipped with this package have file names without the leading
-"C<status.>" part of the method name. If the very first element of the list of
-arguments is "C<except>" (or "C<-except>"), then the rest of the list is
-treated as a set of names to I<not> load, while all others do get read. The
-B<Apache::RPC::Server> module uses this to prevent the loading of the default
-C<system.status> method while still loading all the rest of the defaults. (It
-then provides a more Apache-centric status method.)
-
-=back
-
-=head2 How Methods Are Called
-
-When a routine is called via the server dispatcher, it is called with the
-arguments that the client request passed, plus one. The extra argument is the
-first one passed, a reference to a B<RPC::XML::Server> object (or a subclass
-thereof). This is derived from a hash reference, and will include two
-special keys:
-
-=over 4
-
-=item method_name
-
-This is the name by which the method was called in the client. Most of the
-time, this will probably be consistent for all calls to the server-side
-method. But it does not have to be, hence the passing of the value.
-
-=item signature
-
-This is the signature that was used, when dispatching. Perl has a liberal
-view of lists and scalars, so it is not always clear what arguments the client
-specifically has in mind when calling the method. The signature is an array
-reference containing one or more datatypes, each a simple string. The first
-of the datatypes specifies the expected return type. The remainder (if any)
-refer to the arguments themselves.
-
-=back
-
-The methods should not make (excessive) use of global variables. Each method
-will be evaluated in the same package space, so methods may call each other
-without difficulty. Likewise, methods should not change their package space
-within the definition. Bad Things Could Happen.
-
-=head2 Specifying Server-Side Remote Methods
-
-=head2 The Default Methods Provided
-
-The following methods are provided with this package, and are the ones
-installed on newly-created server objects unless told not to. These are
-identified by their published names, as they are compiled internally as
-anonymous subroutines and thus cannot be called directly:
-
-=over 4
-
-=item B<system.identity>
-
-Returns a B<string> value identifying the server name, version, and possibly a
-capability level. Takes no arguments.
-
-=item B<system.introspection>
-
-Returns a series of B<struct> objects that give overview documentation of one
-or more of the published methods. It may be called with a B<string>
-identifying a single routine, in which case the return value is a
-B<struct>. It may be called with an B<array> of B<string> values, in which
-case an B<array> of B<struct> values, one per element in, is returned. Lastly,
-it may be called with no input parameters, in which case all published
-routines are documented.  Note that routines may be configured to be hidden
-from such introspection queries.
-
-=item B<system.listMethods>
-
-Returns a list of the published methods or a subset of them as an B<array> of
-B<string> values. If called with no parameters, returns all (non-hidden)
-method names. If called with a single B<string> pattern, returns only those
-names that contain the string as a substring of their name (case-sensitive,
-and this is I<not> a regular expression evaluation).
-
-=item B<system.methodHelp>
-
-Takes either a single method name as a B<string>, or a series of them as an
-B<array> of B<string>. The return value is the help text for the method, as
-either a B<string> or B<array> of B<string> value. If the method(s) have no
-help text, the string will be null.
-
-=item B<system.methodSignature>
-
-As above, but returns the signatures that the method accepts, as B<array> of
-B<string> representations. If only one method is requests via a B<string>
-parameter, then the return value is the corresponding array. If the parameter
-in is an B<array>, then the returned value will be an B<array> of B<array> of
-B<string>.
-
-=item B<system.multicall>
-
-This is a simple implementation of composite function calls in a single
-request. It takes an B<array> of B<struct> values. Each B<struct> has at least
-a C<methodName> member, which provides the name of the method to call. If
-there is also a C<params> member, it refers to an B<array> of the parameters
-that should be passed to the call.
-
-=item B<system.status>
-
-Takes no arguments and returns a B<struct> containing a number of system
-status values including (but not limited to) the current time on the server,
-the time the server was started (both of these are returned in both ISO 8601
-and UNIX-style integer formats), number of requests dispatched, and some
-identifying information (hostname, port, etc.).
-
-=back
-
-In addition, each of these has an accompanying help file in the C<methods>
-sub-directory of the distribution.
-
-These methods are installed as C<*.xpl> files, which are generated from files
-in the C<methods> directory of the distribution using the B<make_method> tool
-(see L<make_method>). The files there provide the Perl code that implements
-these, their help files and other information.
-
-=head1 DIAGNOSTICS
-
-All methods return some type of reference on success, or an error string on
-failure. Non-reference return values should always be interpreted as errors
-unless otherwise noted.
-
-=head1 CAVEATS
-
-This is a reference implementation in which clarity of process and readability
-of the code took precedence over general efficiency. Much, if not all, of this
-can be written more compactly and/or efficiently.
-
-=head1 CREDITS
-
-The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
-See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
-specification.
-
-=head1 SEE ALSO
-
-L<RPC::XML>, L<RPC::XML::Client>, L<RPC::XML::Parser>
-
-=head1 AUTHOR
-
-Randy J. Ray <rjray@blackperl.com>
-
-=cut
