@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.2 2001/06/05 18:41:22 rjray Exp $
+# $Id: Makefile.PL,v 1.3 2001/06/07 03:56:49 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -54,3 +54,4 @@ sub MY::post_initialize
          '');
     join("\n", @text);
 }
+
