@@ -14,6 +14,7 @@ ex/linux.proc.cpuinfo.help
 ex/README                      # Description of the contents of the ex/ dir
 ex/Makefile                    # Makefile to generate *.xpl files in ex/
 lib/Apache/RPC/Server.pm       # Apache-centric server implementation
+lib/Apache/RPC/Status.pm       # Apache::Status for Apache::RPC::Server data
 lib/Apache/RPC/status.base     # Apache version of the system.status method
 lib/Apache/RPC/status.code
 lib/Apache/RPC/status.help
