@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.42
+Version: 0.43
 
 WHAT IS IT
 
@@ -65,27 +65,23 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-Changed the test in Apache::RPC::Server of the Content-type header so
-that it accepts a header that contains "text/xml", as opposed to only
-accepting a header that exactly equalled that string. Allows for
-things like SOAP::Lite's XMLRPC::Lite which include a charset in the
-header.
+Changed methods/methodSignature.code, t/40_server.t and
+t/60_net_server.t so that the provided system.methodSignature follows
+the accepted API (returns a list of lists, rather than list of
+strings). Pointed out by Bjoern Stierand.
 
-time2iso8601() in the RPC::XML module now allows defaulting of the
-$time argument to time() (which means no timezone specification).
+Added a missing helper (RPC_I4) to RPC::XML.pm.
 
-Found a bug in RPC::XML::Parser where base64 data being parsed in a
-request/response message wasn't being properly passed to the c'tor
-for RPC::XML::base64. Reported by Chris Brierley.
+Fixed a bad bug with the newly-added compression support in
+Apache::RPC::Server::handler. Because $self was defined earlier,
+strict failed to point out that my object in that scope was called
+$srv, rather than $self. And $self->compress didn't work, amazingly
+enough. Found and reported by Scott Fagg.
 
-Added a line in Apache::RPC::Server to set the Content-Type header
-on HEAD responses. Apache won't take this from the usual header()
-method, it has to be explicitly set with content_type().
+Added a credentials() method to the RPC::XML::Client class to set
+Basic Authentication credentials on the underlying LWP::UserAgent
+object. Per suggestion and sample implementation from Stuart Clark.
 
-Two of the tests in t/40_server.t could cause fatal errors since a
-return value wasn't tested for ref-ness before having a method called
-on it. Fixed.
-
-Compress::Zlib-based compression is now supported in RPC::XML::Server,
-RPC::XML::Client and Apache::RPC::Server. It should be compatible with
-the XMLRPC::Lite package's compression.
+Fixed a docs-nit in RPC::XML::Server, and did some major clean-up in
+the docs for RPC::XML. In particular, added documentation for one
+of the data class methods that had been overlooked ("type").
