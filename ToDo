@@ -1,4 +1,4 @@
-$Id: ToDo,v 1.1 2001/06/13 05:32:19 rjray Exp $
+$Id: ToDo,v 1.2 2001/07/08 10:05:06 rjray Exp $
 
 * Add more tests. In particular, attack the testing of RPC::XML::Server by
   using LWP and canned request data. When RPC::XML::Server has passed tests,
@@ -15,3 +15,6 @@ $Id: ToDo,v 1.1 2001/06/13 05:32:19 rjray Exp $
 
 * Work on getting all error messages and codes to conform to the developing
   XML-RPC consensus.
+
+* Once a strong test suite exists, go back and make the code efficient (in
+  lieu of clear)
