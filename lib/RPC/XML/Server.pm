@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.8 2001/06/07 08:50:27 rjray Exp $
+#   $Id: Server.pm,v 1.9 2001/06/08 09:11:17 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -17,6 +17,29 @@
 #                   requests.
 #
 #   Functions:      new
+#                   version
+#                   url
+#                   product_tokens
+#                   started
+#                   path
+#                   host
+#                   port
+#                   requests
+#                   response
+#                   debug
+#                   xpl_path
+#                   add_method
+#                   get_method
+#                   method_to_ref
+#                   server_loop
+#                   post_configure_hook
+#                   pre_loop_hook
+#                   process_request
+#                   dispatch
+#                   call
+#                   load_XPL_file
+#                   add_default_methods
+#                   add_methods_in_dir
 #
 #   Libraries:      AutoLoader
 #                   HTTP::Daemon
@@ -34,14 +57,14 @@ use 5.005;
 use strict;
 use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR @XPL_PATH);
 
-BEGIN {
-    ($INSTALL_DIR) = (__FILE__ =~ m|(.*)/|);
-    @XPL_PATH = ($INSTALL_DIR, '.');
-}
-
 use Carp 'carp';
 use AutoLoader 'AUTOLOAD';
-require File::Spec;
+use File::Spec;
+
+BEGIN {
+    $INSTALL_DIR = (File::Spec->splitpath(__FILE__))[1];
+    @XPL_PATH = ($INSTALL_DIR, File::Spec->curdir);
+}
 
 require HTTP::Daemon;
 require HTTP::Response;
@@ -51,7 +74,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -690,6 +713,12 @@ The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
 See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
 specification.
 
+=head1 LICENSE
+
+This module is licensed under the terms of the Artistic License that covers
+Perl itself. See <http://language.perl.com/misc/Artistic.html> for the
+license itself.
+
 =head1 SEE ALSO
 
 L<RPC::XML>, L<RPC::XML::Client>, L<RPC::XML::Parser>
@@ -1009,9 +1038,18 @@ sub dispatch
     @data = @{$reqobj->args};
     # First test: do we have this method?
     $name = $reqobj->name;
-    return RPC::XML::response
+    unless ($self->{__method_table}->{$name})
+    {
+        # Try to load this dynamically on the fly, from any of the dirs that
+        # are in this object's @xpl_path
+        (my $loadname = $name) =~ s/^system\.//;
+        $self->add_method("$loadname.xpl");
+        # If the method is still not in the table, we were unable to load it
+        return RPC::XML::response
         ->new(RPC::XML::fault->new(300, "Unknown method: $name"))
             unless ($self->{__method_table}->{$name});
+    }
+
     # Create the param list.
     # The type for the response will be derived from the matching signature
     @paramtypes = map { $_->type } @data;
@@ -1081,7 +1119,17 @@ sub call
 
     my $response;
 
+    if (! $self->{__method_table}->{$name})
+    {
+        # Try to load this dynamically on the fly, from any of the dirs that
+        # are in this object's @xpl_path
+        (my $loadname = $name) =~ s/^system\.//;
+        $self->add_method("$loadname.xpl");
+    }
+    # If the method is still not in the table, we were unable to load it
     return "Unknown method: $name" unless ($self->{__method_table}->{$name});
+    # Though we have no signature, we can still tell them what name was called
+    local $self->{method_name} = $name;
     eval {
         $response = &{$self->{__method_table}->{$name}->{code}}($self, @args);
     };
@@ -1129,10 +1177,12 @@ sub load_XPL_file
 
     unless (File::Spec->file_name_is_absolute($file))
     {
+        my $path;
         push(@path, @{$self->xpl_path}) if (ref $self);
         for (@path, @XPL_PATH)
         {
-            if (-e "$_/$file") { $file = "$_/$file"; last; }
+            $path = File::Spec->catfile($_, $file);
+            if (-e $path) { $file = $path; last; }
         }
     }
 
@@ -1184,6 +1234,10 @@ sub load_XPL_file
     $return->{code} = $code;
     # The XML::Parser approach above gave us an empty "methoddef" key
     delete $return->{methoddef};
+    # Add the file's mtime for when we check for stat-based reloading
+    $return->{mtime} = (stat $file)[9];
+    $return->{file} = $file;
+
     $return;
 }
 
@@ -1264,7 +1318,7 @@ sub add_methods_in_dir
         next if ($detail and
                  $negate ? $details{$_} : ! $details{$_});
         # n.b.: Giving the full path keeps add_method from having to search
-        $ret = $self->add_method("$dir/$_");
+        $ret = $self->add_method(File::Spec->catfile($dir, $_));
         return $ret unless ref $ret;
     }
 
