@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.14 2002/06/14 00:49:17 rjray Exp $
+#   $Id: Server.pm,v 1.15 2002/08/01 05:26:24 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -49,7 +49,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.14 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.15 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -117,6 +117,7 @@ sub handler ($$)
     {
         # These headers are either only sent for HEAD requests or are different
         # enough to move here from the above block
+        $r->content_type('text/xml');
         $r->set_last_modified($srv->started);
         $r->send_http_header;
     }
