@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.15 2002/08/01 05:26:24 rjray Exp $
+#   $Id: Server.pm,v 1.16 2002/08/01 07:43:48 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -49,7 +49,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.15 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.16 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -99,7 +99,7 @@ sub handler ($$)
     my $class = shift;
     my $r = shift;
 
-    my ($self, $srv, $content, $resp, $respxml, $hdrs, $hdrs_out);
+    my ($self, $srv, $content, $resp, $respxml, $hdrs, $hdrs_out, $compress);
 
     $srv = (ref $class) ? $class : $class->get_server($r);
     unless (ref $srv)
@@ -128,6 +128,9 @@ sub handler ($$)
         # Note that this currently binds us to the Content-Length header a lot
         # more tightly than I like. Expect to see this change sometime soon.
         $r->read($content, $r->header_in('Content-Length'));
+        $content = Compress::Zlib::uncompress($content)
+            if (($compress = $self->compress) &&
+                $r->header_in('Content-Encoding') =~ $self->compress_re);
 
         # Step 2: Process the request and encode the outgoing response
         # Dispatch will always return a RPC::XML::response object
@@ -135,6 +138,12 @@ sub handler ($$)
         $respxml = $resp->as_string;
 
         # Step 3: Form up and send the headers and body of the response
+        if ($compress and (length($respxml) > $self->compress_thresh) and
+            ($r->header_in('Accept-Encoding') =~ $self->compress_re))
+        {
+            $respxml = Compress::Zlib::compress($respxml);
+            $hdrs_out->{'Content-Encoding'} = $compress;
+        }
         $r->content_type('text/xml');
         $r->set_content_length(length $respxml);
         $r->no_cache(1);
