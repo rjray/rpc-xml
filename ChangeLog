@@ -13,3 +13,23 @@ Revision history for Perl extension RPC::XML.
 	a new section was added that illustrates using <Perl> configuration
 	sections to create the server objects in the master Apache process,
 	so that they are automatically inherited by children.
+
+0.27	Sun Jul  8 16:25:51 PDT 2001
+
+	Removed a -w warning from RPC/XML.pm. Fixed some cases in the new()
+	method of RPC::XML::boolean that would have permitted invalid data.
+	Added two convenience methods to RPC::XML::fault, called code() and
+	string(), that fetch the faultCode and faultString member values as
+	native Perl values. The RPC::XML::base64 class was using the wrong
+	container tags in the as_string method.
+
+	Clarified and expanded some of the documentation in RPC/XML/Server.pm.
+
+	Adjusted the PREREQ_PM hash in Makefile.PL so that it correctly looks
+	for LWP, and also looks for File::Spec 0.8 or newer (needed to ensure
+	that the splitpath() method is available).
+
+	Cleaned up the load-tests (t/00_load.t) to use the Test harnessing
+	package. Added test suites for the RPC::XML data classes (t/10_data.t,
+	96 tests) and the RPC::XML::Parser container-class (t/20_parser.t,
+	7 tests).
