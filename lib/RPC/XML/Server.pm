@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.37 2003/01/31 12:50:08 rjray Exp $
+#   $Id: Server.pm,v 1.38 2003/05/21 09:21:12 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -86,7 +86,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.37 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.38 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -1192,12 +1192,13 @@ sub get_proc { shift->get_method(@_) }
 sub server_loop
 {
     my $self = shift;
-    my %args = @_;
 
     if ($self->{__daemon})
     {
         my ($conn, $req, $resp, $reqxml, $return, $respxml, $exit_now,
             $timeout);
+
+        my %args = @_;
 
         # Localize and set the signal handler as an exit route
         my @exit_signals;
@@ -1237,16 +1238,30 @@ sub server_loop
         # for the code that converts socket data to a HTTP::Request object
         require HTTP::Daemon;
 
-        # Don't do this next part if they've already given a port, or are
-        # pointing to a config file:
+        my $conf_file_flag = 0;
+        my $port_flag = 0;
+        my $host_flag = 0;
+
+        for (my $i = 0; $i < @_; $i += 2)
+        {
+            $conf_file_flag = 1 if ($_[$i] eq 'conf_file');
+            $port_flag = 1 if ($_[$i] eq 'port');
+            $host_flag = 1 if ($_[$i] eq 'host');
+        }
 
         # An explicitly-given conf-file trumps any specified at creation
-        $args{conf_file} = $self->{conf_file}
-            if (exists($self->{conf_file}) and (! exists $args{conf_file}));
-        unless ($args{conf_file} or $args{port})
+        if (exists($self->{conf_file}) and (! $conf_file_flag))
         {
-            $args{port} = $self->{port} || $self->port || 9000;
-            $args{host} = $self->{host} || $self->host || '*';
+            push (@_, 'conf_file', $self->{conf_file});
+            $conf_file_flag = 1;
+        }
+
+        # Don't do this next part if they've already given a port, or are
+        # pointing to a config file:
+        unless ($conf_file_flag or $port_flag)
+        {
+            push (@_, 'port', $self->{port} || $self->port || 9000);
+            push (@_, 'host', $self->{host} || $self->host || '*');
         }
 
         # Try to load the Net::Server::MultiType module
@@ -1258,7 +1273,7 @@ sub server_loop
 
         $self->started('set');
         # ...and we're off!
-        $self->run(%args);
+        $self->run(@_);
     }
 
     return;
