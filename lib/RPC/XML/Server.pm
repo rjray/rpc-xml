@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.11 2001/06/13 05:02:45 rjray Exp $
+#   $Id: Server.pm,v 1.12 2001/06/15 17:18:23 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -74,7 +74,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -109,8 +109,8 @@ sub new
     $class = ref($class) || $class;
     $self = bless {}, $class;
 
-    $srv_version = $args{server_version} || $RPC::XML::Server::VERSION;
-    $srv_name    = $args{server_name}    || __PACKAGE__;
+    $srv_version = $args{server_version} || $self->version;
+    $srv_name    = $args{server_name}    || $class;
     $self->{__version} = "$srv_name/$srv_version";
 
     unless ($args{no_http})
