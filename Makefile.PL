@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.26 2002/12/05 04:17:14 rjray Exp $
+# $Id: Makefile.PL,v 1.27 2002/12/30 07:38:52 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -48,7 +48,7 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.45',
+              VERSION   => '0.46',
               EXE_FILES => \@scripts,
               PM        => \%PM_FILES,
               PREREQ_PM => { XML::Parser => 2.25,
@@ -97,53 +97,56 @@ sub MY::postamble
     my @text;
     my $makemeth = File::Spec->catfile(qw(etc make_method));
 
-    #
-    # Generate the spec file from <DATA> with substitutions
-    #
-    print "Generating perl-$self->{DISTNAME}.spec...\n";
-    $self->{RELEASE} = 1 unless $self->{RELEASE};
-    $self->{INSTALLDIR} = $Config{installsitelib} unless $self->{INSTALLDIR};
-    open(SPECI, "< spec.in");
-    if ($?)
+    if (-e 'spec.in' and -f _)
     {
-        die "Error opening template spec file: $!, stopped";
-    }
-    open(SPECO, "> perl-$self->{DISTNAME}.spec");
-    if ($?)
-    {
-        die "Error creating output spec file: $!, stopped";
-    }
+        #
+        # Generate the spec file from spec.in with substitutions
+        #
+        print "Generating perl-$self->{DISTNAME}.spec...\n";
+        $self->{RELEASE} = 1 unless $self->{RELEASE};
+        $self->{INSTALLDIR} = $Config{installsitelib}
+            unless $self->{INSTALLDIR};
+        open(SPECI, "< spec.in");
+        if ($?)
+        {
+            die "Error opening template spec file: $!, stopped";
+        }
+        open(SPECO, "> perl-$self->{DISTNAME}.spec");
+        if ($?)
+        {
+            die "Error creating output spec file: $!, stopped";
+        }
 
-    for (<SPECI>)
-    {
-        s/(\$\{(\w+)\})/$self->{$2}/eg;
-        print SPECO $_;
-    }
-    close(SPECO); close(SPECI);
+        for (<SPECI>)
+        {
+            s/(\$\{(\w+)\})/$self->{$2}/eg;
+            print SPECO $_;
+        }
+        close(SPECO); close(SPECI);
 
-    print "Generating rpmrc...\n";
-    open(RPMRC, "> rpmrc");
-    if ($?)
-    {
-        die "Error creating rpmrc file: $!, stopped";
-    }
-    else
-    {
-        print RPMRC <<END_rpmrc;
+        print "Generating rpmrc...\n";
+        open(RPMRC, "> rpmrc");
+        if ($?)
+        {
+            die "Error creating rpmrc file: $!, stopped";
+        }
+        else
+        {
+            print RPMRC <<END_rpmrc;
 include: /usr/lib/rpm/rpmrc
 macrofiles: /usr/lib/rpm/macros:rpmmacro
 END_rpmrc
-        close(RPMRC);
-    }
-    print "Generating rpmmacros...\n";
-    open(MACRO, "> rpmmacro");
-    if ($?)
-    {
-        die "Error creating macro file: $!, stopped";
-    }
-    else
-    {
-        print MACRO <<END_macro;
+            close(RPMRC);
+        }
+        print "Generating rpmmacros...\n";
+        open(MACRO, "> rpmmacro");
+        if ($?)
+        {
+            die "Error creating macro file: $!, stopped";
+        }
+        else
+        {
+            print MACRO <<END_macro;
 %_rpmfilename           %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
 %_builddir              %{_topdir}
 %_sourcedir             %{_topdir}
@@ -152,17 +155,18 @@ END_rpmrc
 %_rpmdir                %{_topdir}
 %_topdir                $cwd
 END_macro
-        close(MACRO);
-    }
+            close(MACRO);
+        }
 
-    # Create the rules that create RPM and SRPM files
-    push(@text, qq{
+        # Create the rules that create RPM and SRPM files
+        push(@text, qq{
 rpm: \$(SPECFILE) \$(DISTVNAME).tar\$(SUFFIX)
 \t\$(RPM) -bb --clean --rcfile rpmrc \$(SPECFILE)
 
 srpm: \$(SPECFILE) \$(DISTVNAME).tar\$(SUFFIX)
 \t\$(RPM) -bs --clean --rcfile rpmrc \$(SPECFILE)
 });
+    }
 
     # Create the dependancy rules for the methods/XPL files
     for (sort grep(/\.xpl$/, keys %::PM_FILES))
