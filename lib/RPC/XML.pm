@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.26 2003/02/25 09:09:52 rjray Exp $
+#   $Id: XML.pm,v 1.27 2003/02/27 12:30:57 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -59,7 +59,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.26 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.27 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -1030,7 +1030,7 @@ sub as_string
 
     $RPC::XML::ERROR = '';
 
-    $text = qq(<?xml version="1.0"?>\n);
+    $text = qq(<?xml version="1.0"?>);
 
     $text .= "<methodCall><methodName>$self->{name}</methodName><params>";
     for (@{$self->{args}})
@@ -1049,7 +1049,7 @@ sub serialize
 {
     my ($self, $fh) = @_;
 
-    print $fh qq(<?xml version="1.0"?>\n);
+    print $fh qq(<?xml version="1.0"?>);
 
     print $fh "<methodCall><methodName>$self->{name}</methodName><params>";
     for (@{$self->{args}})
@@ -1067,7 +1067,6 @@ sub length
     my $self = shift;
 
     my $len = 88; # All the constant XML present
-    $len += length("\n"); # For OS-dependant cases
     $len += length($self->{name});
 
     for (@{$self->{args}})
@@ -1177,7 +1176,7 @@ sub as_string
 
     $RPC::XML::ERROR = '';
 
-    $text = qq(<?xml version="1.0"?>\n);
+    $text = qq(<?xml version="1.0"?>);
 
     $text .= '<methodResponse>';
     if ($self->{value}->isa('RPC::XML::fault'))
@@ -1199,7 +1198,7 @@ sub serialize
 {
     my ($self, $fh) = @_;
 
-    print $fh qq(<?xml version="1.0"?>\n);
+    print $fh qq(<?xml version="1.0"?>);
 
     print $fh '<methodResponse>';
     if ($self->{value}->isa('RPC::XML::fault'))
@@ -1224,7 +1223,6 @@ sub length
     my $self = shift;
 
     my $len = 54; # All the constant XML present
-    $len += length("\n"); # OS-dependent issues
 
     # This boilerplate XML is only present when it is NOT a fault
     $len += 47 unless ($self->{value}->isa('RPC::XML::fault'));
