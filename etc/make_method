@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: make_method,v 1.8 2002/01/19 08:25:11 rjray Exp $
+#   $Id: make_method,v 1.9 2002/05/03 20:32:50 rjray Exp $
 #
 #   Description:    Simple tool to turn a Perl routine and the support data
 #                   into the simple XML representation that RPC::XML::Server
@@ -17,7 +17,10 @@
 #
 #   Functions:      write_file
 #
-#   Libraries:      Getopt::Long
+#   Libraries:      Config
+#                   Getopt::Long
+#                   IO::File
+#                   File::Spec
 #
 #   Global Consts:  $VERSION
 #                   $cmd
@@ -32,11 +35,12 @@ use vars qw($cmd $USAGE $VERSION $revision %opts $ifh $ofh $path
             $helptxt $codetxt @siglist $name $type $version $hidden $lang);
 use subs qw(read_external write_file);
 
+use Config;
 use Getopt::Long;
 use IO::File;
 use File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 ($cmd = $0) =~ s|.*/||;
 $USAGE = "$cmd [ --options ]
 
@@ -45,7 +49,8 @@ Where:
 --help        Generate this message.
 
 --name        Specifies the external (published) name of the method.
---type        Specify whether this defines a PROCEDURE or a METHOD (case-free)
+--type        Specify whether this defines a PROCEDURE, a METHOD or a
+                FUNCTION (case-free)
 --version     Gives the version that should be attached to the method.
 --hidden      Takes no value; if passed, flags the method as hidden.
 --signature   Specifies one method signature. May be specified more than once.
@@ -260,7 +265,10 @@ sub write_file
     my ($fh, $name, $type, $version, $hidden, $code, $help, $sigs) = @_;
 
     my $date = scalar localtime;
-    my $tag  = ($type eq 'm') ? 'methoddef' : 'proceduredef';
+    my %typemap = ( 'm' => 'method',
+                    p   => 'procedure',
+                    f   => 'function');
+    my $tag  = "$typemap{$type}def";
 
     # Armor against XML confusion
     foreach ($name, $$help)
@@ -271,9 +279,18 @@ sub write_file
     }
     for (keys %$code)
     {
-        ${$code->{$_}} =~ s/&/&amp;/g;
-        ${$code->{$_}} =~ s/</&lt;/g;
-        ${$code->{$_}} =~ s/>/&gt;/g;
+        if (($_ eq 'perl') and (index(${$code->{$_}}, ']]>') == -1) and
+            (index(${$code->{$_}}, '__END__') == -1))
+        {
+            ${$code->{$_}} =
+                "<![CDATA[\n$Config{startperl}\n${$code->{$_}}\n__END__\n]]>";
+        }
+        else
+        {
+            ${$code->{$_}} =~ s/&/&amp;/g;
+            ${$code->{$_}} =~ s/</&lt;/g;
+            ${$code->{$_}} =~ s/>/&gt;/g;
+        }
     }
 
     print $ofh <<"EO_HDR";
@@ -472,6 +489,8 @@ The Document Type Declaration for the format can be summarized by:
                              help?, code)>
     <!ELEMENT  methoddef  (name, version?, hidden?, signature+,
                            help?, code)>
+    <!ELEMENT  functiondef (name, version?, hidden?, signature+,
+                            help?, code)>
     <!ELEMENT  name       (#PCDATA)>
     <!ELEMENT  version    (#PCDATA)>
     <!ELEMENT  hidden     EMPTY>
@@ -484,13 +503,13 @@ The file C<rpc-method.dtd> that comes with the distribution has some
 commentary in addition to the actual specification.
 
 A file is (for now) limited to one definition. This is started by the one of
-the opening tags C<E<lt>methoddefE<gt>> or C<E<lt>proceduredefE<gt>>. This is
-followed by exactly one C<E<lt>nameE<gt>> container specifying the method
-name, an optional version stamp, an optional hide-from-introspection flag, one
-or more C<E<lt>signatureE<gt>> containers specifying signatures, an optional
-C<E<lt>helpE<gt>> container with the help text, then the C<E<lt>codeE<gt>>
-container with the actual program code. All text should use entity encoding
-for the symbols:
+the opening tags C<E<lt>methoddefE<gt>>, C<E<lt>functiondefE<gt>> or
+C<E<lt>proceduredefE<gt>>. This is followed by exactly one C<E<lt>nameE<gt>>
+container specifying the method name, an optional version stamp, an optional
+hide-from-introspection flag, one or more C<E<lt>signatureE<gt>> containers
+specifying signatures, an optional C<E<lt>helpE<gt>> container with the help
+text, then the C<E<lt>codeE<gt>> container with the actual program code. All
+text should use entity encoding for the symbols:
 
     & C<&amp;> (ampersand)
     E<lt> C<&lt;>  (less-than)
@@ -510,14 +529,22 @@ of the server code. The price of the flexibility this system offers is the
 responsibility on the part of the developer to ensure that the code is tested
 and safe.
 
-That being said, the block of code will undergo one minor edit (aside from the
-entity expansion). The server looks for a pattern of C<sub NAME {>, which it
-assumes delinates the start of the declaration. The text is edited to remove
-the name, the result being an anonymous subroutine definition which is
-assigned to a lexically-scoped variable within the server. If something other
-than the subroutine declaration matches the pattern, then likely the
-declaration itself will generate an error in the C<eval>. Again, this is not
-I<"Teach Yourself Perl with only 24 Brain Cells">.
+Code itself is treated as verbatim as possible. Some edits may occur on the
+server-side, as it make the code suitable for creating an anonymous subroutine
+from. The B<make_method> tool will attempt to use a C<CDATA> section to embed
+the code within the XML document, so that there is no need to encode entities
+or such. This allows for the resulting F<*.xpl> files to be syntax-testable
+with C<perl -cx>. You can aid this by ensuring that the code does not contain
+either of the two following character sequences:
+
+    ]]>
+
+    __DATA__
+
+The first is the C<CDATA> terminator. If it occurs naturally in the code, it
+would trigger the end-of-section in the parser. The second is the familiar
+Perl token, which is inserted so that the remainder of the XML document does
+not clutter up the Perl parser.
 
 =head1 EXAMPLES
 
