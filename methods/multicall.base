@@ -3,5 +3,4 @@ Version:   1.0
 Hidden:    no
 Signature: array array
 Helpfile:  multicall.help
-Package:   RPC::XML::Server::__methods__
 Code:      multicall.code

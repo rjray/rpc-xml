@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: make_method,v 1.2 2001/06/07 07:57:54 rjray Exp $
+#   $Id: make_method,v 1.3 2001/06/07 08:43:31 rjray Exp $
 #
 #   Description:    Simple tool to turn a Perl routine and the support data
 #                   into the simple XML representation that RPC::XML::Server
@@ -29,14 +29,14 @@
 use 5.005;
 use strict;
 use vars qw($cmd $USAGE $VERSION $revision %opts $ifh $ofh $path
-            $helptxt $codetxt @siglist $name $version $hidden $package $lang);
+            $helptxt $codetxt @siglist $name $version $hidden $lang);
 use subs qw(read_external write_file);
 
 use Getopt::Long;
 use IO::File;
 use File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 ($cmd = $0) =~ s|.*/||;
 $USAGE = "$cmd [ --options ]
 
@@ -50,7 +50,6 @@ Where:
 --signature   Specifies one method signature. May be specified more than once.
 --helptext    Provides the help string.
 --helpfile    Gives the name of a file from which the help-text is read.
---package     Optionally specify a package namespace for the method to be in.
 --code        Gives the name of the file from which to read the code.
 --output      Name of the file to write the resulting XML to.
 
@@ -68,8 +67,7 @@ Where:
 GetOptions(\%opts,
            qw(help
               base=s
-              name=s version=s hidden signature=s@ helptext=s helpfile=s
-              package=s code=s
+              name=s version=s hidden signature=s@ helptext=s helpfile=s code=s
               output=s))
     or die "$USAGE\n\nStopped";
 
@@ -114,11 +112,6 @@ if ($opts{base})
         {
             $hidden = ($1 eq 'yes') ? 1 : 0;
         }
-        elsif (/^package(\[(.*)\])?:\s+(.*)/i)
-        {
-            $lang = $2 || 'perl';
-            $package->{$lang} = $3;
-        }
         elsif (/^helpfile:\s+(.*)/i)
         {
             $helptxt = read_external "$path/$1";
@@ -151,7 +144,6 @@ else
 
     $hidden = $opts{hidden}   || 0;
     $version = $opts{version} || '';
-    $package = $opts{package} || '';
 
     if ($opts{signature})
     {
@@ -196,8 +188,7 @@ else
     }
 }
 
-write_file($ofh, $name, $version, $hidden, $package, $codetxt, $helptxt,
-           \@siglist);
+write_file($ofh, $name, $version, $hidden, $codetxt, $helptxt, \@siglist);
 
 exit;
 
@@ -283,10 +274,6 @@ EO_HDR
     print $ofh "<name>$name</name>\n";
     print $ofh "<version>$version</version>\n" if $version;
     print $ofh "<hidden />\n" if $hidden;
-    for (sort keys %$package)
-    {
-        print $ofh qq{<package language="$_">$package->{$_}</package>\n};
-    }
     print $ofh map { "<signature>$_</signature>\n" } @$sigs;
     print $ofh "<help>\n$$help</help>\n" if ($$help);
     for (sort keys %$code)
@@ -352,11 +339,6 @@ Specify a version stamp for the code routine.
 
 If this is passe, the resulting file will include a tag that tells the server
 daemon to not make the routine visible through any introspection interfaces.
-
-=item --package=STRING
-
-If given, the routine will be compiled so that it executes in the given
-package, which allows for easier cross-calling of methods.
 
 =item --signature=STRING [ --signature=STRING ... ]
 
@@ -427,12 +409,6 @@ one signature, so a lack of any will cause an error.
 Specifies the file from which to read the help text. It is not an error if
 no help text is specified.
 
-=item B<Package: I<STRING>>
-
-Define the package namespace that the method should be compiled into. If none
-is provided, the B<RPC::XML::Server> routines will create the method as
-free-floating in terms of package.
-
 =item B<Code: I<STRING>>
 
 Specifies the file from which to read the code. If no code has been read, then
@@ -467,8 +443,6 @@ The Document Type Declaration for the format can be summarized by:
     <!ELEMENT  hidden     EMPTY>
     <!ELEMENT  signature  (#PCDATA)>
     <!ELEMENT  help       (#PCDATA)>
-    <!ELEMENT  package    (#PCDATA)>
-    <!ATTLIST  package    language (#PCDATA)>
     <!ELEMENT  code       (#PCDATA)>
     <!ATTLIST  code       language (#PCDATA)>
 
@@ -504,12 +478,11 @@ and safe.
 That being said, the block of code will undergo one minor edit (aside from the
 entity expansion). The server looks for a pattern of C<sub NAME {>, which it
 assumes delinates the start of the declaration. The text is edited to remove
-the name and add the package declaration if there is one, the result being an
-anonymous subroutine definition, which is assigned to a lexically-scoped
-variable within the server. If something other than the subroutine declaration
-matches the pattern, then likely the declaration itself will generate an error
-in the C<eval>. Again, this is not I<"Teach Yourself Perl with only 24 Brain
-Cells">.
+the name, the result being an anonymous subroutine definition which is
+assigned to a lexically-scoped variable within the server. If something other
+than the subroutine declaration matches the pattern, then likely the
+declaration itself will generate an error in the C<eval>. Again, this is not
+I<"Teach Yourself Perl with only 24 Brain Cells">.
 
 =head1 EXAMPLES
 

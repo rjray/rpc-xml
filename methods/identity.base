@@ -3,5 +3,4 @@ Version:   1.0
 Hidden:    no
 Signature: string
 Helpfile:  identity.help
-Package:   RPC::XML::Server::__methods__
 Code:      identity.code

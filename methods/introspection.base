@@ -5,5 +5,4 @@ Signature: array
 Signature: array array
 Signature: struct string
 Helpfile:  introspection.help
-Package:   RPC::XML::Server::__methods__
 Code:      introspection.code
