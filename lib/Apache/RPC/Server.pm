@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.4 2001/06/08 09:16:09 rjray Exp $
+#   $Id: Server.pm,v 1.5 2001/06/13 05:02:45 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -44,11 +44,25 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
 sub version { $Apache::RPC::Server::VERSION }
+
+sub debug
+{
+    my $self = shift;
+    my $fmt  = shift;
+
+    my $debug = ref($self) ? $self->SUPER::debug() : 1;
+
+    $fmt && $debug &&
+        Apache::log_error(sprintf("%p ($$): $fmt",
+                                  (ref $self) ? $self : 0, @_));
+
+    $debug;
+}
 
 ###############################################################################
 #
@@ -176,32 +190,34 @@ sub new
     my $class = shift;
     my @argz  = @_;
 
-    my ($R, $servid, $prefix, $self, @dirs, @files, $ret, $no_def);
+    my ($R, $servid, $prefix, $self, @dirs, @files, $ret, $no_def, $debug,
+        $do_auto, $do_mtime);
 
-    if ($argz[0] eq 'set-default')
-    {
-        # Assume that this leading argument is only called from the BEGIN block
-        # and just clobber @argz. Serves anyone right for trying to out-tricky
-        # me
-        $R = Apache->server;
-        $servid = '<default>';
-        $prefix = '';
-        @argz = (path => '/', no_http => 1,
-                 xpl_path => [ $Apache::RPC::Server::INSTALL_DIR ]);
-    }
-    else
-    {
-        ($R, $servid, $prefix) = splice(@argz, 0, 3);
-    }
+    ($R, $servid, $prefix) = splice(@argz, 0, 3);
+    push(@argz, path => $R->location) unless (grep(/^path$/, @argz));
+
+    # Is debugging requested?
+    $debug = $R->dir_config("${prefix}RpcDebugLevel") || 0;
+    # Check for disabling of auto-loading or mtime-checking
+    $do_auto  = $R->dir_config("${prefix}RpcAutoMethods");
+    $do_mtime = $R->dir_config("${prefix}RpcAutoUpdates");
+    foreach ($do_auto, $do_mtime) { $_ = (/yes/i) ? 1 : 0 }
 
     # Create the object, ensuring that the defaults are not yet loaded:
-    $self = $class->SUPER::new(no_default => 1, @argz);
+    $self = $class->SUPER::new(no_default => 1, debug => $debug, no_http => 1,
+                               host => $R->hostname,
+                               port => $R->get_server_port,
+                               auto_methods => $do_auto,
+                               auto_updates => $do_mtime,
+                               xpl_path =>
+                               [ $Apache::RPC::Server::INSTALL_DIR ],
+                               @argz);
     return $self unless (ref $self); # Non-ref means an error message
     $self->started('set');
 
     # Check to see if we should suppress the default methods
     $no_def = $R->dir_config("${prefix}RpcDefMethods");
-    $no_def = ($no_def =~ /no/i) ? 0 : 1;
+    $no_def = ($no_def =~ /no/i) ? 1 : 0;
     unless ($no_def)
     {
         $self->add_default_methods(-except => 'status.xpl');
@@ -210,8 +226,8 @@ sub new
     }
 
     # Determine what methods we are configuring for this server instance
-    @dirs    = $R->dir_config->get("${prefix}RpcMethodDir");
-    @files   = $R->dir_config->get("${prefix}RpcMethod");
+    @dirs    = split(/:/, $R->dir_config("${prefix}RpcMethodDir"));
+    @files   = split(/:/, $R->dir_config("${prefix}RpcMethod"));
     # Load the directories first, then the individual files. This allows the
     # files to potentially override entries in the directories.
     for (@dirs)
@@ -228,6 +244,7 @@ sub new
     unshift(@$ret, @dirs);
     $self->xpl_path($ret);
 
+    $Apache::RPC::Server::SERVER_TABLE{$servid} = $self;
     $self;
 }
 
@@ -277,7 +294,7 @@ sub get_server
                    # These are parameters that bubble up to the SUPER::new()
                    xpl_path => [ $Apache::RPC::Server::INSTALL_DIR ],
                    no_http  => 1, # We, um, have that covered
-                   path     => $r->uri);
+                   path     => $r->location);
 }
 
 __END__
@@ -291,21 +308,19 @@ Apache::RPC::Server - A subclass of RPC::XML::Server class tuned for mod_perl
 =head1 SYNOPSIS
 
     # In httpd.conf:
-    PerlAddVar RpcMethodDir /var/www/rpc
-    PerlAddVar RpcMethodDir /usr/lib/perl5/RPC-shared
+    PerlSetVar RpcMethodDir /var/www/rpc:/usr/lib/perl5/RPC-shared
+    PerlChildInitHandler Apache::RPC::Server->init_handler
     ...
     <Location /RPC>
         SetHandler perl-script
-        PerlChildInitHandler Apache::RPC::Server->init_handler
         PerlHandler Apache::RPC::Server
     </Location>
     </Location /RPC-limited>
         SetHandler perl-script
-        PerlChildInitHandler Apache::RPC::Server->init_handler
         PerlHandler Apache::RPC::Server
         PerlSetVar RPCOptPrefix RpcLimit
         PerlSetVar RpcLimitRpcServer Limited
-        PerlAddVar RpcLimitRpcMethodDir /usr/lib/perl5/RPC-shared
+        PerlSetVar RpcLimitRpcMethodDir /usr/lib/perl5/RPC-shared
     </Location>
 
     # In the start-up Perl file:
@@ -445,22 +460,22 @@ etc.
 
 =item RpcServerDir [DIRECTORY]
 
-This variable specifies a directory to be scanned for method C<*.xpl>
-files. This option may appear more than once, and all directories are
-cumulative. All directories are kept (in the order specified) as the search
-path for future loading of methods.
+This variable specifies directories to be scanned for method C<*.xpl>
+files. To specify more than one directory, separate them with "C<:>" just as
+with any other directory-path expression. All directories are kept (in the
+order specified) as the search path for future loading of methods.
 
 =item RpcServerMethod [FILENAME]
 
 This is akin to the directory-specification option above, but only provides a
-single method at a time. It may also appear more than once. The method is
-loaded into the server table. If the name is not an absolute pathname, then it
-is searched for in the directories that currently comprise the path. The
-directories above, however, have not been added to the search path yet. This is
-because these directives are processed immediately after the directory
-specifications, and thus do not need to be searched. This directive is designed
-to allow selective overriding of methods in the previously-specified
-directories.
+single method at a time. It may also have multiple values separated by
+colons. The method is loaded into the server table. If the name is not an
+absolute pathname, then it is searched for in the directories that currently
+comprise the path. The directories above, however, have not been added to the
+search path yet. This is because these directives are processed immediately
+after the directory specifications, and thus do not need to be searched. This
+directive is designed to allow selective overriding of methods in the
+previously-specified directories.
 
 =item RpcDefMethods [YES|NO]
 
@@ -468,24 +483,29 @@ If specified and set to "no" (case-insensitive), suppresses the loading of the
 system default methods that are provided with this package. The absence of this
 setting is interpreted as a "yes", so explicitly specifying such is not needed.
 
-=item RpcNoNewMethods [YES|NO]
+=item RpcAutoMethods [YES|NO]
 
-(Not yet implemented) If specified and set to "yes", disables the automatic
-searching for a requested remote method that is unknown to the server object
-handling the request. If set to "no" (or not set at all), then a request for an
-unknown function causes the object instance to search over the internal
-directory path before reporting an error. If the routine is still not found,
-the error is reported. This is a security risk, and should only be permitted by
-a server administrator with fully informed acknowledgement and consent.
+If specified and set to "yes", enables the automatic searching for a requested
+remote method that is unknown to the server object handling the request. If
+set to "no" (or not set at all), then a request for an unknown function causes
+the object instance to report an error. If the routine is still not found, the
+error is reported. Enabling this is a security risk, and should only be
+permitted by a server administrator with fully informed acknowledgement and
+consent.
 
-=item RpcAutoUpdate [YES|NO]
+=item RpcNoAutoUpdate [YES|NO]
 
-(Not yet implemented) If specified and set to "yes", cause each call to a
-remote method to be checked against the modification time of the file from
-which is was originally loaded. If the file has changed, the method is
-re-loaded before execution is handed off. As with the auto-loading of methods,
-this represents a security risk, and should only be permitted by a server
-administrator with fully informed acknowledgement and consent.
+(Not yet implemented) If specified and set to "yes", enables the checking of
+the modification time of the file from which a method was originally
+loaded. If the file has changed, the method is re-loaded before execution is
+handed off. As with the auto-loading of methods, this represents a security
+risk, and should only be permitted by a server administrator with fully
+informed acknowledgement and consent.
+
+=item RpcDebugLevel [NUMBER]
+
+Enable debugging by providing a numerical value that will
+be used as the debug setting by the parent class, B<RPC::XML::Server>.
 
 =back
 

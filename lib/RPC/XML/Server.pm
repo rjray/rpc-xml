@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.10 2001/06/08 11:25:21 rjray Exp $
+#   $Id: Server.pm,v 1.11 2001/06/13 05:02:45 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -74,7 +74,7 @@ require URI;
 require RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.11 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -149,6 +149,8 @@ sub new
     $self->{__method_table}    = {};
     $self->{__signature_table} = {};
     $self->{__requests}        = 0;
+    $self->{__auto_methods}    = $args{auto_methods} || 0;
+    $self->{__auto_updates}    = $args{auto_updates} || 0;
     $self->{__debug}           = $args{debug} || 0;
     $self->{__parser}          = new RPC::XML::Parser;
     $self->{__xpl_path}        = $args{xpl_path} || [];
@@ -160,6 +162,7 @@ sub new
     # Copy the rest over untouched
     $self->{$_} = $args{$_} for (keys %args);
 
+    $self->debug("New %s created, path = %s", ref($self), $self->{__path});
     $self;
 }
 
@@ -200,7 +203,18 @@ sub host     { shift->{__host} }
 sub port     { shift->{__port} }
 sub requests { shift->{__requests} }
 sub response { shift->{__response} }
-sub debug    { shift->{__debug} }
+
+sub debug
+{
+    my $self = shift;
+    my $fmt  = shift;
+
+    my $debug = ref($self) ? $self->{__debug} : 1;
+
+    $fmt && $debug && printf STDERR "%p: $fmt\n", (ref $self) ? $self : 0, @_;
+
+    $debug;
+}
 
 # Get/set the search path for XPL files
 sub xpl_path
@@ -238,6 +252,7 @@ sub add_method
     my ($new_meth, $name, $val, $sig, @sig);
 
     my $me = ref($self) . '::add_method';
+    $self->debug("Entering add_method for %s", $meth);
 
     if (! ref($meth))
     {
@@ -283,6 +298,7 @@ sub add_method
         $self->{__signature_table}->{$name}->{$val} = $sig->[0];
     }
 
+    $self->debug("Exiting add_method");
     $self;
 }
 
@@ -372,10 +388,29 @@ additional directories to be searched when the passed-in filename is a
 relative path. The value for this must be an array reference. See also
 B<add_method> and B<xpl_path>, below.
 
+=item B<auto_methods>
+
+If specified and set to a true value, enables the automatic searching for a
+requested remote method that is unknown to the server object handling the
+request. If set to "no" (or not set at all), then a request for an unknown
+function causes the object instance to report an error. If the routine is
+still not found, the error is reported. Enabling this is a security risk, and
+should only be permitted by a server administrator with fully informed
+acknowledgement and consent.
+
+=item B<auto_updates>
+
+If specified and set to a "true" value, enables the checking of the
+modification time of the file from which a method was originally loaded. If
+the file has changed, the method is re-loaded before execution is handed
+off. As with the auto-loading of methods, this represents a security risk, and
+should only be permitted by a server administrator with fully informed
+acknowledgement and consent.
+
 =item B<debug>
 
-If passed with a C<true> value, sets an internal debugging flag. Right now,
-this does not do anything.
+The value passed with this option is treated as a boolean toggle to decide
+whether debugging statements should be sent to the logging facility.
 
 =back
 
@@ -425,6 +460,17 @@ is returned. The clock-time is based on the internal B<time> command of Perl,
 and thus is represented as an integer number of seconds since the system
 epoch. Generally, it is suitable for passing to either B<localtime> or to the
 C<time2iso8601> routine exported by the B<RPC::XML> package.
+
+=item B<debug>
+
+If called with no arguments, it returns the current debugging value as a
+decimal value. The debugging level cannot be changed at run-time.
+
+If there are any arguments, the first one is treated as a numerical value that
+gets logically-anded with the internal debugging level. If the result is a
+true value, then the remainder is treated as an C<sprintf> format string and
+arguments. This is evaluated and written to the error log (generally the
+STDERR file descriptor).
 
 =item add_method(FILE | HASHREF)
 
@@ -906,6 +952,7 @@ sub server_loop
     my $self = shift;
     my %args = @_;
 
+    $self->debug("Entering server_loop");
     if ($self->{__daemon})
     {
         my ($conn, $req, $resp, $reqxml, $return, $respxml, $exit_now,
@@ -963,6 +1010,7 @@ sub server_loop
         $self->run(%args);
     }
 
+    $self->debug("Exiting server_loop");
     return;
 }
 
@@ -1042,6 +1090,7 @@ sub process_request
 
     my ($req, $reqxml, $resp, $respxml);
 
+    $self->debug("Entering process_request");
     unless ($conn and ref($conn))
     {
         $conn = $self->{server}->{client};
@@ -1070,7 +1119,6 @@ sub process_request
             $resp->content($respxml);
             $conn->send_response($resp);
             undef $resp;
-            $self->{__requests}++;
         }
         else
         {
@@ -1078,6 +1126,7 @@ sub process_request
         }
     }
 
+    $self->debug("Entering process_request");
     return;
 }
 
@@ -1114,6 +1163,7 @@ sub dispatch
 
     my ($reqobj, @data, @paramtypes, $resptype, $response, $signature, $name);
 
+    $self->debug("Entering dispatch");
     if (ref($xml) eq 'SCALAR')
     {
         $reqobj = $self->{__parser}->parse($$xml);
@@ -1142,16 +1192,36 @@ sub dispatch
     @data = @{$reqobj->args};
     # First test: do we have this method?
     $name = $reqobj->name;
-    unless ($self->{__method_table}->{$name})
+    if (! $self->{__method_table}->{$name})
     {
-        # Try to load this dynamically on the fly, from any of the dirs that
-        # are in this object's @xpl_path
-        (my $loadname = $name) =~ s/^system\.//;
-        $self->add_method("$loadname.xpl");
-        # If the method is still not in the table, we were unable to load it
+        if ($self->{__auto_methods})
+        {
+            # Try to load this dynamically on the fly, from any of the dirs
+            # that are in this object's @xpl_path
+            (my $loadname = $name) =~ s/^system\.//;
+            $self->add_method("$loadname.xpl");
+            # If method is still not in the table, we were unable to load it
+            return RPC::XML::response
+                ->new(RPC::XML::fault->new(300, "Unknown method: $name"))
+                    unless ($self->{__method_table}->{$name});
+        }
+        else
+        {
+            return RPC::XML::response
+                ->new(RPC::XML::fault->new(300, "Unknown method: $name"));
+        }
+    }
+    # Check the mod-time of the file the method came from, if the test is on
+    if ($self->{__auto_updates} && $self->{__method_table}->{$name}->{file} &&
+        ($self->{__method_table}->{$name}->{mtime} <
+         (stat $self->{__method_table}->{$name}->{file})[9]))
+    {
+        my $ret = $self->add_method($self->{__method_table}->{$name}->{file});
+
         return RPC::XML::response
-        ->new(RPC::XML::fault->new(300, "Unknown method: $name"))
-            unless ($self->{__method_table}->{$name});
+            ->new(RPC::XML::fault
+                  ->new(302, "Reload of method $name failed: $ret"))
+                unless (ref $ret);
     }
 
     # Create the param list.
@@ -1181,7 +1251,9 @@ sub dispatch
         $response = RPC::XML::fault->new(302,
                                          "Method $name returned error: $@");
     }
+    $self->{__requests}++;
 
+    $self->debug("Exiting dispatch");
     return RPC::XML::response->new($response);
 }
 
@@ -1279,6 +1351,7 @@ sub load_XPL_file
     my ($signature, $code, $codetext, $return, $accum, $P, @path, %attr);
     local *F;
 
+    $self->debug("Entering load_XPL_file for %s", $file);
     unless (File::Spec->file_name_is_absolute($file))
     {
         my $path;
@@ -1325,9 +1398,11 @@ sub load_XPL_file
                                $accum = '';
                            }});
     return "Error creating XML::Parser object" unless $P;
+    $self->debug("Parser obj created: %s", "$P");
     # Trap any errors
     eval { $P->parse(*F) };
     return "Error parsing $file: $@" if $@;
+    $self->debug("Parse finished");
 
     # Try to normalize $codetext before passing it to eval
     ($codetext = $return->{code}) =~
@@ -1342,6 +1417,7 @@ sub load_XPL_file
     $return->{mtime} = (stat $file)[9];
     $return->{file} = $file;
 
+    $self->debug("Exiting load_XPL_file");
     $return;
 }
 
@@ -1399,6 +1475,7 @@ sub add_methods_in_dir
     my $detail = 0;
     my (%details, $ret);
 
+    $self->debug("Entering add_methods_in_dir for %s", $dir);
     if (@details)
     {
         $detail = 1;
@@ -1426,5 +1503,6 @@ sub add_methods_in_dir
         return $ret unless ref $ret;
     }
 
+    $self->debug("Exiting add_methods_in_dir");
     $self;
 }
