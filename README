@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.51
+Version: 0.52
 
 WHAT IS IT
 
@@ -65,18 +65,18 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-Removed an extraneous print line in t/11_base64_fh that caused a
-warning on some systems.
+Really got the warning in RPC::XML::Server.pm this time. Really. Also
+got some potential errors that seem to be overlooked under auto-loading
+but appear when auto-loading is disabled.
 
-Fixed calls to skip() in the test suites so that they work with
-older versions of the Test module.
+Fixed a potentially-confusing problem in the example code within the
+RPC::XML::Client man page, just under "SYNOPSIS".
 
-Calls to the encode_base64 routine from MIME::Base64 now pass a zero-
-length second argument, to suppress newlines between Base64 lines
-when stringifying the RPC::XML::base64 objects. This is to accomodate
-a broken Java XML-RPC package.
+More work to the spec.in RPM specfile template. The Provides/Requires
+list should be a lot cleaner now, and it also builds packages under
+rpm 4.1, now.
 
-Force a default value for the compress_re attribute in RPC::XML::Server
-when none is otherwise present. All my tests have had Compress::Zlib
-available, but when it isn't the compress_re attribute was triggering
-warnings when used in a regex.
+Fixed a lurking bug in the Apache::RPC::Server class that was not
+setting the headers properly on responses. Probably lived this long
+because no one else but me was using it, and my client is lax enough
+to ignore it.

@@ -1,5 +1,23 @@
 Revision history for Perl extension RPC::XML.
 
+0.52	Mon Feb 10 01:37:05 PST 2003
+
+	Really got the warning in RPC::XML::Server.pm this time. Really. Also
+	got some potential errors that seem to be overlooked under auto-loading
+	but appear when auto-loading is disabled.
+
+	Fixed a potentially-confusing problem in the example code within the
+	RPC::XML::Client man page, just under "SYNOPSIS".
+
+	More work to the spec.in RPM specfile template. The Provides/Requires
+	list should be a lot cleaner now, and it also builds packages under
+	rpm 4.1, now.
+
+	Fixed a lurking bug in the Apache::RPC::Server class that was not
+	setting the headers properly on responses. Probably lived this long
+	because no one else but me was using it, and my client is lax enough
+	to ignore it.
+
 0.51	Thu Jan 30 00:49:07 PST 2003
 
 	Removed an extraneous print line in t/11_base64_fh that caused a
