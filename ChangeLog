@@ -1,5 +1,23 @@
 Revision history for Perl extension RPC::XML.
 
+0.51	Thu Jan 30 00:49:07 PST 2003
+
+	Removed an extraneous print line in t/11_base64_fh that caused a
+	warning on some systems.
+
+	Fixed calls to skip() in the test suites so that they work with
+	older versions of the Test module.
+
+	Calls to the encode_base64 routine from MIME::Base64 now pass a zero-
+	length second argument, to suppress newlines between Base64 lines
+	when stringifying the RPC::XML::base64 objects. This is to accomodate
+	a broken Java XML-RPC package.
+
+	Force a default value for the compress_re attribute in RPC::XML::Server
+	when none is otherwise present. All my tests have had Compress::Zlib
+	available, but when it isn't the compress_re attribute was triggering
+	warnings when used in a regex.
+
 0.50	Mon Jan 27 03:24:45 PST 2003
 
 	Changed the usage of =head3 directives in the manual page for
