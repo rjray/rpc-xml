@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.4 2002/05/22 09:44:49 rjray Exp $
+#   $Id: Parser.pm,v 1.5 2002/08/01 04:53:09 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -86,7 +86,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -272,7 +272,8 @@ sub tag_end
         }
 
         $class = "RPC::XML::$class";
-        $obj = $class->new($robj->{cdata});
+	# The string at the end is only seen by the RPC::XML::base64 class
+        $obj = $class->new($robj->{cdata}, 'base64 already encoded');
         return error($robj, $self, 'Error instantiating data object: ' .
                             $RPC::XML::ERROR)
             unless ($obj);
