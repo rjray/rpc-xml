@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.19 2002/03/23 06:21:39 rjray Exp $
+# $Id: Makefile.PL,v 1.20 2002/05/03 21:25:48 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -48,7 +48,7 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.37',
+              VERSION   => '0.40',
               EXE_FILES => \@scripts,
               PM        => \%PM_FILES,
               PREREQ_PM => { XML::Parser => 2.25,
@@ -95,6 +95,7 @@ sub MY::postamble
     my $self = shift;
 
     my @text;
+    my $makemeth = File::Spec->catfile(qw(etc make_method));
 
     #
     # Generate the spec file from <DATA> with substitutions
@@ -167,7 +168,7 @@ srpm: \$(SPECFILE) \$(DISTVNAME).tar\$(SUFFIX)
     for (sort grep(/\.xpl$/, keys %::PM_FILES))
     {
         s/\.xpl$//;
-        push(@text, "$_.xpl: $_.base $_.help $_.code");
+        push(@text, "$_.xpl: $_.base $_.help $_.code $makemeth");
     }
 
     join("\n", @text);
