@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Sub Name:       methodHelp__CRIS
+#   Sub Name:       methodHelp
 #
 #   Description:    Retrieve any help text for the specified methods.
 #
@@ -16,7 +16,7 @@
 #                   Failure:    fault object
 #
 ###############################################################################
-sub methodHelp__CRIS
+sub methodHelp
 {
     use strict;
 

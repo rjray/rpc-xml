@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Sub Name:       methodSignature__CRIS
+#   Sub Name:       methodSignature
 #
 #   Description:    Retrieve the list of method signatures for the specified
 #                   methods.
@@ -17,7 +17,7 @@
 #                   Failure:    fault object
 #
 ###############################################################################
-sub methodSignature__CRIS
+sub methodSignature
 {
     use strict;
 

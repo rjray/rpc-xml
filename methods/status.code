@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Sub Name:       status__CRIS
+#   Sub Name:       status
 #
 #   Description:    Create a status-reporting struct and returns it.
 #
@@ -14,7 +14,7 @@
 #   Returns:        hashref
 #
 ###############################################################################
-sub status__CRIS
+sub status
 {
     use strict;
 

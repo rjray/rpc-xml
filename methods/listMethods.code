@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Sub Name:       listMethods__CRIS
+#   Sub Name:       listMethods
 #
 #   Description:    Read the current list of methods from the server object
 #                   and return the names in a list reference.
@@ -17,7 +17,7 @@
 #   Returns:        listref
 #
 ###############################################################################
-sub listMethods__CRIS
+sub listMethods
 {
     use strict;
 

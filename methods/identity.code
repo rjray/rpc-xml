@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Sub Name:       identity__CRIS
+#   Sub Name:       identity
 #
 #   Description:    Simply returns the server's identity as a string
 #
@@ -11,7 +11,7 @@
 #   Returns:        string
 #
 ###############################################################################
-sub identity__CRIS
+sub identity
 {
     use strict;
 

@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Sub Name:       introspection__CRIS
+#   Sub Name:       introspection
 #
 #   Description:    Collates the data from listMethods, methodHelp and
 #                   methodSignature into a single array
@@ -18,7 +18,7 @@
 #                   Failure:    fault object
 #
 ###############################################################################
-sub introspection__CRIS
+sub introspection
 {
     use strict;
 

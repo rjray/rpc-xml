@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Sub Name:       multicall__CRIS
+#   Sub Name:       multicall
 #
 #   Description:    Execute multiple method calls in a single request
 #
@@ -17,7 +17,7 @@
 #                   Failure:    fault object
 #
 ###############################################################################
-sub multicall__CRIS
+sub multicall
 {
     use strict;
 
