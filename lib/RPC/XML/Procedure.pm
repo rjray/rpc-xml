@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.1 2002/01/19 09:48:16 rjray Exp $
+#   $Id: Procedure.pm,v 1.2 2002/01/24 07:51:02 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.1 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -789,13 +789,12 @@ sub load_XPL_file
 
     require XML::Parser;
 
-    my ($me, $data, $signature, $code, $codetext, $accum, $P, %attr, $keep);
+    my ($me, $pkg, $data, $signature, $code, $codetext, $accum, $P, %attr);
     local *F;
 
     if (ref($self) eq 'SCALAR')
     {
         $me = __PACKAGE__ . '::load_XPL_file';
-        $keep = 1;
     }
     else
     {
@@ -834,7 +833,7 @@ sub load_XPL_file
                                    # We may need it to tell the caller what
                                    # our type is
                                    $$self = ucfirst substr($elem, 0, -3)
-                                       if $keep;
+                                       if (ref($self) eq 'SCALAR');
                                }
                                else
                                {
@@ -850,9 +849,10 @@ sub load_XPL_file
     return "$me: Error parsing $file: $@" if $@;
 
     # Try to normalize $codetext before passing it to eval
+    $class = __PACKAGE__; # token won't expand in the s/// below
     ($codetext = $data->{code}) =~
-        s/sub[\s\n]+([\w:]+)?[\s\n]+\{/\$code = sub \{/;
-    eval "$codetext";
+        s/sub[\s\n]+([\w:]+)?[\s\n]*\{/sub \{ package $class; /;
+    $code = eval $codetext;
     return "$me: Error creating anonymous sub: $@" if $@;
 
     $data->{code} = $code;
