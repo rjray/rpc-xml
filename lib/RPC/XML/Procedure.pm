@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.2 2002/01/24 07:51:02 rjray Exp $
+#   $Id: Procedure.pm,v 1.3 2002/03/23 06:21:25 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.2 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -110,6 +110,7 @@ sub new
             # Spoofing the "class" argument to load_XPL_file makes me feel
             # even dirtier...
             $data = load_XPL_file(\$class, $argz[0]);
+            return $data unless ref $data; # load_XPL_path signalled an error
             $class = "RPC::XML::$class";
         }
     }
