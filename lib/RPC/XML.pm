@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.9 2001/10/07 10:32:50 rjray Exp $
+#   $Id: XML.pm,v 1.10 2001/11/01 10:26:11 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -40,7 +40,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.9 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.10 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -1021,11 +1021,6 @@ response. Responses have the following methods (in addition to C<new> and
 C<as_string>):
 
 =over 4
-
-=item name
-
-The name of the remote method that was called. This will not be set in
-compatibility mode.
 
 =item value
 
