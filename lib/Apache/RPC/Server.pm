@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.13 2002/04/26 07:30:51 rjray Exp $
+#   $Id: Server.pm,v 1.14 2002/06/14 00:49:17 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -49,7 +49,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.14 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 1;
 
@@ -123,7 +123,7 @@ sub handler ($$)
     elsif ($r->method eq 'POST')
     {
         # Step 1: Do we have the correct content-type?
-        return DECLINED unless ($r->header_in('Content-Type') eq 'text/xml');
+        return DECLINED unless ($r->header_in('Content-Type') =~ m|text/xml|i);
         # Note that this currently binds us to the Content-Length header a lot
         # more tightly than I like. Expect to see this change sometime soon.
         $r->read($content, $r->header_in('Content-Length'));
