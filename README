@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.37
+Version: 0.40
 
 WHAT IS IT
 
@@ -65,11 +65,27 @@ The Artistic License: http://language.perl.com/misc/Artistic.html
 
 CHANGES
 
-Applied a patch to RPC::XML::Server from Tino Wuensche
-(<tino_wuensche@yahoo.com>) that fixed some of the signal-handling and
-exit-case-handling in server_loop().
+Fixed some grammar problems in error messages, and some formatting.
 
-Fixed a bug in RPC::XML::Procedure found by a user (a former co-worker
-from my Denver days, coincidentally enough) that would trigger when
-auto_methods was set to 1 on a server object, but the request had no
-matching file anywhere in the search path.
+Fixed a bug in the new() method of Apache::RPC::Server where it was
+expecting the value of the "apache" key to be an object of the
+Apache::Server class, but it was actually getting an object of the
+Apache class.
+
+Created RPC::XML::Function class, which is a type of server-side
+encapsulator that doesn't bother with signature tests of any kind.
+The DTD and make_method tool support the new type.
+
+Changed the encoding of the Perl code in etc/make_method as follows:
+If the code does not already contain either of the two sequences,
+']]>' or '__DATA__', then the code is wrapped in a <![CDATA[ ]]>
+section, with #!/usr/bin/perl (actually, $Config{startperl}) at the
+head and __DATA__ at the end. Besides leaving the Perl code readable,
+the *.xpl files can now be syntax-checked with "perl -cx". Thanks to
+the mod_perl guys for this idea, cribbed from their manual page.
+
+Abstracted some of the invocation code out of the server class and
+into the RPC::XML::Procedure class, where it really belonged. This
+aided in further eliminating redundancy in the server class in the
+same general area. I may yet want to tune this area, but I'm a good
+deal happier with the reduction in complexity and repetition.
