@@ -63,7 +63,7 @@ ok(length($obj->as_string), $obj->length);
 
 # Test the base64 type
 require MIME::Base64;
-$val = MIME::Base64::encode_base64(q/one reasonable-length string/);
+$val = MIME::Base64::encode_base64(q/one reasonable-length string/, '');
 $obj = new RPC::XML::base64(q/one reasonable-length string/);
 ok(ref $obj);
 ok($obj->as_string, "<base64>$val</base64>");

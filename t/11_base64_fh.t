@@ -31,7 +31,7 @@ END
 }
 
 $value = 'Short string for easy tests';
-$enc_value = encode_base64($value);
+$enc_value = encode_base64($value, '');
 
 if (ref($fh = IO::File->new_tmpfile))
 {
@@ -121,7 +121,7 @@ if ($fh = IO::File->new("< $file"))
 
     while (read($fh, $value, 60*57))
     {
-        $enc_value .= encode_base64($value);
+        $enc_value .= encode_base64($value, '');
     }
     ok($obj->as_string(), "<base64>$enc_value</base64>");
     ok(length($obj->as_string), $obj->length);
