@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.12 2004/12/14 10:01:24 rjray Exp $
+#   $Id: Procedure.pm,v 1.13 2005/05/02 09:50:16 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -432,10 +432,10 @@ passed in PARAMLIST. The SERVER argument should be an object derived from the
 B<RPC::XML::Server> class. For some types of procedure objects, this becomes
 the first argument of the parameter list to simulate a method call as if it
 were on the server object itself. The return value should be a data object
-(possible a B<RPC::XML::fault>), but may not always be pre-encoded. This
-method is generally used in the C<dispatch> method of the server class, where
-the return value is subsequently wrapped within a B<RPC::XML::response>
-object.
+(possibly a B<RPC::XML::fault>), but may not always be pre-encoded. Errors
+trapped in C<$@> are converted to fault objects. This method is generally used
+in the C<dispatch> method of the server class, where the return value is
+subsequently wrapped within a B<RPC::XML::response> object.
 
 =item reload
 
@@ -942,8 +942,14 @@ sub call
 
     # Now take a deep breath and call the method with the arguments
     eval { $response = $self->{code}->(@params); };
-    # Report a Perl-level error/failure if it occurs
-    return RPC::XML::fault->new(302, "Method $name returned error: $@") if $@;
+    # On failure, propagate user-generated RPC::XML::fault exceptions, or
+    # transform Perl-level error/failure into such an object
+    if ($@)
+    {
+        return UNIVERSAL::isa($@, 'RPC::XML::fault') ?
+            $@ :
+            RPC::XML::fault->new(302, "Method $name returned error: $@");
+    }
 
     $self->{called}++ unless $noinc;
     # Create a suitable return value

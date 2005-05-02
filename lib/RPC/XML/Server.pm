@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.42 2004/12/14 10:01:24 rjray Exp $
+#   $Id: Server.pm,v 1.43 2005/05/02 09:50:16 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -86,7 +86,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.42 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.43 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -740,11 +740,14 @@ early exit. Once the object representation of the request is on hand, the
 parameter data is extracted, as is the method name itself. The call is sent
 along to the appropriate subroutine, and the results are collated into an
 object of the B<RPC::XML::response> class, which is returned. Any non-reference
-return value should be presumed to be an error string. If the dispatched
-method encountered some sort of error, it will not be propagated upward here,
-but rather encoded as an object of the B<RPC::XML::fault> class, and returned
-as the result of the dispatch. This distinguishes between server-centric
-errors, and general run-time errors.
+return value should be presumed to be an error string.
+
+The dispatched method may communicate error in several ways.  First, any
+non-reference return value is presumed to be an error string, and is encoded
+and returned as an B<RPC::XML::fault> response.  The method is run under an
+C<eval()>, so errors conveyed by C<$@> are similarly encoded and returned.  As
+a special case, a method may explicitly C<die()> with a fault response, which
+is passed on unmodified.
 
 =item add_default_methods([DETAILS])
 
