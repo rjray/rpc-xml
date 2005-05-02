@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Procedure.pm,v 1.13 2005/05/02 09:50:16 rjray Exp $
+#   $Id: Procedure.pm,v 1.14 2005/05/02 10:03:10 rjray Exp $
 #
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
@@ -50,7 +50,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.14 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -829,8 +829,7 @@ sub load_XPL_file
     # So these don't end up undef, since they're optional elements
     $data->{hidden} = 0; $data->{version} = ''; $data->{help} = '';
     $data->{called} = 0;
-    open(F, "< $file");
-    return "$me: Error opening $file for reading: $!" if ($?);
+    open(F, "< $file") or return "$me: Error opening $file for reading: $!";
     $P = XML::Parser
         ->new(Handlers => {Char  => sub { $accum .= $_[1] },
                            Start => sub { %attr = splice(@_, 2) },
@@ -870,6 +869,7 @@ sub load_XPL_file
     return "$me: Error creating XML::Parser object" unless $P;
     # Trap any errors
     eval { $P->parse(*F) };
+    close(F);
     return "$me: Error parsing $file: $@" if $@;
 
     # Try to normalize $codetext before passing it to eval
