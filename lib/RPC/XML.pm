@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.34 2004/12/17 09:42:37 rjray Exp $
+#   $Id: XML.pm,v 1.35 2005/05/02 09:37:56 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -66,7 +66,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.34 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.35 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -316,7 +316,8 @@ sub as_string
 
     return unless ($class = $self->type);
 
-    ($value = $$self || '') =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
+    ($value = defined $$self ? $$self : '' )
+        =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
 
     "<$class>$value</$class>";
 }
@@ -1292,9 +1293,7 @@ RPC::XML - A set of classes for core data, message and XML handling
 
 =head1 DESCRIPTION
 
-The B<RPC::XML> package is a reference implementation of the XML-RPC
-standard. As a reference implementation, it is geared more towards clarity and
-readability than efficiency.
+The B<RPC::XML> package is an implementation of the B<XML-RPC> standard.
 
 The package provides a set of classes for creating values to pass to the
 constructors for requests and responses. These are lightweight objects, most
@@ -1616,8 +1615,8 @@ provided for clarity and simplicity.
 
 =head1 DIAGNOSTICS
 
-All constructors return C<undef> upon failure, with the error message available
-in the package-global variable B<C<$RPC::XML::ERROR>>.
+All constructors (in all data classes) return C<undef> upon failure, with the
+error message available in the package-global variable B<C<$RPC::XML::ERROR>>.
 
 =head1 CAVEATS
 
@@ -1629,13 +1628,13 @@ written more efficiently.
 =head1 CREDITS
 
 The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
-See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
+See L<http://www.xmlrpc.com> for more information about the B<XML-RPC>
 specification.
 
 =head1 LICENSE
 
 This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
+Perl. See L<http://www.opensource.org/licenses/artistic-license.php> for the
 license itself.
 
 =head1 SEE ALSO

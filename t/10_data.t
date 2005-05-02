@@ -8,7 +8,7 @@ use vars qw($val $obj $class %val_tbl @values);
 use Test;
 use RPC::XML ':all';
 
-BEGIN { plan tests => 150 }
+BEGIN { plan tests => 151 }
 
 # First, the most basic data-types
 %val_tbl = (
@@ -57,6 +57,11 @@ $obj = RPC::XML::string->new($val);
 ok($obj->value, $val);
 ok($obj->as_string,
    "<string>Subroutine &amp;bogus not defined at &lt;_&gt; line -NaN</string>");
+
+# Test for correct handling of encoding a 0 (false but defined)
+$val = 0; 
+$obj = RPC::XML::string->new($val);
+ok($obj->as_string, "<string>0</string>");
 
 # Type boolean is a little funky
 
