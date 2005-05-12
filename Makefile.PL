@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.37 2004/12/24 11:03:53 rjray Exp $
+# $Id: Makefile.PL,v 1.38 2005/05/12 10:36:37 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -24,6 +24,24 @@ if ($LWP::VERSION < 5.801)
 	feature of RPC::XML::Client is broken. The relevant tests will be
 	skipped in the test suite, but unless you upgrade your LWP you
 	should not attempt to use this feature.
+@@@@@
+
+END
+}
+
+eval "use XML::LibXML;";
+if ($@ or $XML::LibXML::VERSION < 1.58)
+{
+    print STDERR <<END;
+@@@@@
+	Please note!
+
+	Starting with release 0.60 (two releases from this one), the XML
+	parsing will switch to using the XML::LibXML module, in place of
+	XML::Parser. You either do not have this module, or it is a version
+	older than 1.58, the minimum version that will be required. When
+	release 0.60 is made available, you will not be able to build this
+	package without at least version 1.58 of XML::LibXML.
 @@@@@
 
 END
@@ -67,7 +85,7 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.57',
+              VERSION   => '0.58',
               AUTHOR    => 'Randy J. Ray',
               ABSTRACT  => 'Data, client and server classes for XML-RPC',
               EXE_FILES => \@scripts,
