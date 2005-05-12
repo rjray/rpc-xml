@@ -4,12 +4,55 @@
 
     http://www.blackperl.com/XML/ChangeLog/changelog092.xsd
 
-    $Header: /work/cvs/perl/RPC-XML/ChangeLog.xml,v 1.3 2004/12/24 11:03:53 rjray Exp $
+    $Header: /work/cvs/perl/RPC-XML/ChangeLog.xml,v 1.4 2005/05/12 10:40:16 rjray Exp $
 -->
 <changelog xmlns="http://www.blackperl.com/XML/ChangeLog">
   <description>
-    Revision history for Perl extension RPC::XML
+    Revision history for the Perl extension module RPC::XML. This is an
+    implementation of the XML-RPC standard as described at the URL
+    "http://www.xmlrpc.com". This implementation also permits some minor
+    extensions to the base protocol in terms of supporting HTTP/1.1 and
+    allowing choice of character-set encodings for XML messages.
   </description>
+  <release version="0.58" tag="v0_58" date="2005-05-12T03:24:23-07:00">
+    <item>
+      <fileset>
+        <file path="lib/RPC/XML.pm" revision="1.35" />
+        <file path="t/10_data.t" revision="1.9" />
+      </fileset>
+      <description>
+        Applied patches from Stephen Veiss to fix a small bug in the encoding
+        method of RPC::XML::string. Trying to encode the literal string "0"
+        would result in a null string. The patches provided the fix and a
+        specific test-case for the related suite.
+      </description>
+    </item>
+    <item>
+      <fileset>
+        <file path="lib/RPC/XML/Procedure.pm" revision="1.13" />
+        <file path="lib/RPC/XML/Server.pm" revision="1.43" />
+      </fileset>
+      <description>
+        Applied a patch from Mike Pomraning to allow user-level functions to
+        return RPC::XML::fault objects directly without them being further
+        wrapped by intermediate layers.
+      </description>
+    </item>
+    <item>
+      <file path="lib/RPC/XML/Procedure.pm" revision="1.14" />
+      <description>
+        Implemented a modified version of a patch from Lubomir Host that
+        addresses an intermittent IOCTL problem when reading XPL files.
+      </description>
+    </item>
+    <item>
+      <file path="Makefile.PL" revision="1.38" />
+      <description>
+        Incremented package version number and put in warning of the impending
+        move to XML::LibXML.
+      </description>
+    </item>
+  </release>
   <release version="0.57" tag="v0_57" date="2004-12-24T03:02:48-08:00">
     <item>
       <file path="lib/Apache/RPC/Server.pm" revision="1.27" />
@@ -20,8 +63,8 @@
     </item>
     <item>
       <fileset>
-        <file path="lib/RPC/XML.pm" version="1.34" />
-        <file path="t/10_data.t" version="1.8" />
+        <file path="lib/RPC/XML.pm" revision="1.34" />
+        <file path="t/10_data.t" revision="1.8" />
       </fileset>
       <description>
         Based on a report from Brian Phillips, made adjustments in the

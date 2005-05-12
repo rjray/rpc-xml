@@ -1,5 +1,28 @@
 Revision history for Perl extension RPC::XML.
 
+0.58	Thu May 12 03:24:23 PDT 2005
+
+	lib/RPC/XML.pm:
+	t/10_data.t:
+	Applied patches from Stephen Veiss to fix a small bug in the encoding
+	method of RPC::XML::string. Trying to encode the literal string "0"
+	would result in a null string. The patches provided the fix and a
+	specific test-case for the related suite.
+
+	lib/RPC/XML/Procedure.pm:
+	lib/RPC/XML/Server.pm:
+	Applied a patch from Mike Pomraning to allow user-level functions to
+	return RPC::XML::fault objects directly without them being further
+	wrapped by intermediate layers.
+
+	lib/RPC/XML/Procedure.pm:
+	Implemented a modified version of a patch from Lubomir Host that
+	addresses an intermittent IOCTL problem when reading XPL files.
+
+	Makefile.PL:
+	Incremented package version number and put in warning of the impending
+	move to XML::LibXML.
+
 0.57	Fri Dec 24 03:02:48 PST 2004
 
 	lib/Apache/RPC/Server.pm:
