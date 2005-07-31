@@ -31,12 +31,12 @@ for (sort keys %val_tbl)
 }
 
 # Go again, with each of the values being a blessed scalar reference
-my @vals = \(int(rand 10000) + 1, int(rand 10000) + 1, rand 10001, __FILE__);
+my @vals = (int(rand 10000) + 1, int(rand 10000) + 1, rand 10001, __FILE__);
 %val_tbl = (
-            'int'  => bless(shift(@vals), "Tmp::Scalar::Int"),
-            i4     => bless(shift(@vals), "Tmp::Scalar::I4"),
-            double => bless(shift(@vals), "Tmp::Scalar::Double"),
-            string => bless(shift(@vals), "Tmp::Scalar::String")
+            'int'  => bless(\(shift(@vals)), "Tmp::Scalar::Int"),
+            i4     => bless(\(shift(@vals)), "Tmp::Scalar::I4"),
+            double => bless(\(shift(@vals)), "Tmp::Scalar::Double"),
+            string => bless(\(shift(@vals)), "Tmp::Scalar::String")
            );
 
 for (sort keys %val_tbl)
