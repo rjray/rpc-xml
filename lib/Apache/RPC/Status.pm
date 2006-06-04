@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Status.pm,v 1.5 2004/12/09 08:50:17 rjray Exp $
+#   $Id: Status.pm,v 1.6 2006/06/04 07:44:41 rjray Exp $
 #
 #   Description:    This module is intended to provide a browser-friendly
 #                   status page on the RPC server(s) being managed by the
@@ -17,7 +17,19 @@
 #                   Some parts of this are borrowed from the Apache::Status
 #                   module.
 #
-#   Functions:      handler
+#   Functions:      new
+#                   version
+#                   handler
+#                   init_handler
+#                   apache_status_attach
+#                   header
+#                   footer
+#                   make_url
+#                   main_screen
+#                   server_summary
+#                   server_detail
+#                   method_summary
+#                   method_detail
 #
 #   Libraries:      Apache
 #                   Apache::Constants
@@ -34,8 +46,8 @@ use 5.005;
 use strict;
 use vars qw(%IS_INSTALLED $SERVER_VER $STARTED $PERL_VER $DEFAULT $SERVER_CLASS
             %proto $newQ);
-use subs qw(header footer main_screen srv_summary server_detail meth_summary
-            method_detail);
+use subs qw(header footer main_screen server_summary server_detail
+            method_summary method_detail);
 
 use Apache;
 use Apache::Constants qw(DECLINED OK SERVER_VERSION);
@@ -50,7 +62,7 @@ $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf "v%vd", $^V : $];
 
-$Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 #
 # %proto is the prototype set of screens/handlers that this class knows about.
@@ -91,11 +103,9 @@ sub new
     bless \%self, $class;
 }
 
-#
 # This retrieves the default object for use within handler() below. Basically,
 # handler() needs a blessed reference to operate on so that it can call the
 # header() and footer() routines as methods to allow for subclassing.
-#
 sub default_object
 {
     return $DEFAULT if (ref $DEFAULT);
@@ -356,9 +366,9 @@ sub main_screen
                                      # calls to make_url()
                                      $Q->a({ -href => "$uri&server=$_" },
                                            $server)),
-                              $Q->td(srv_summary($Q,
-                                                 $SERVER_CLASS->
-                                                 get_server($_))));
+                              $Q->td(server_summary($Q,
+                                                    $SERVER_CLASS->
+                                                    get_server($_))));
                    } (@servers))));
 
     \@lines;
@@ -366,7 +376,7 @@ sub main_screen
 
 ###############################################################################
 #
-#   Sub Name:       srv_summary
+#   Sub Name:       server_summary
 #
 #   Description:    Produce the summary table of server info for the main
 #                   status page.
@@ -378,7 +388,7 @@ sub main_screen
 #   Returns:        text chunk
 #
 ###############################################################################
-sub srv_summary
+sub server_summary
 {
     my ($Q, $srv) = @_;
 
@@ -423,7 +433,7 @@ sub server_detail
     $server = $Q->param('server');
     # Override this before calling make_url:
     $Q->param(-name => 'screen', -value => 'method');
-    # Now create the base URL string for meth_summary to use
+    # Now create the base URL string for method_summary to use
     $base_url = $self->make_url($Q, $flag);
     if (! $server)
     {
@@ -467,14 +477,14 @@ sub server_detail
         {
             ($meth1, $meth2) = splice(@methods, 0, 2);
             push(@lines, '<tr valign="top"><td width="50%">');
-            push(@lines, meth_summary($Q, $server, $srv->get_method($meth1),
-                                      $base_url));
+            push(@lines, method_summary($Q, $server, $srv->get_method($meth1),
+                                        $base_url));
             push(@lines, '</td><td width="50%">');
             if ($meth2)
             {
-                push(@lines, meth_summary($Q, $server,
-                                          $srv->get_method($meth2),
-                                          $base_url));
+                push(@lines, method_summary($Q, $server,
+                                            $srv->get_method($meth2),
+                                            $base_url));
             }
             else
             {
@@ -491,7 +501,7 @@ sub server_detail
 
 ###############################################################################
 #
-#   Sub Name:       meth_summary
+#   Sub Name:       method_summary
 #
 #   Description:    Create the HTML table for a method-object summary
 #
@@ -507,7 +517,7 @@ sub server_detail
 #   Returns:        text
 #
 ###############################################################################
-sub meth_summary
+sub method_summary
 {
     my ($Q, $server, $meth, $base_url) = @_;
 
@@ -800,6 +810,32 @@ issues:
 
 =over 4
 
+=item version
+
+(May be called as a static method.) Returns the current version of this
+module.
+
+=item apache_status_attach
+
+Attach the B<Apache::RPC::Status> module to the main screen of the
+B<Apache::Status> display.
+
+=item default_object
+
+(May be called as a static method.) Returns a default B<Apache::RPC::Status>
+instance when called as a static method. Returns the calling reference itself,
+otherwise.
+
+=item header(REQUEST, TITLE)
+
+Produces the HTML header for a page. Uses the passed-in title parameter to
+give the page a title, and extracts any request-specific information from the
+B<Apache> request object passed as the first parameter.
+
+=item footer(REQUEST)
+
+Produces the HTML footer.
+
 =item make_url(QUERY|REQUEST, FLAG)
 
 (May be called as a static method.) This creates a URL string for use as a
@@ -810,6 +846,38 @@ parameter is passed and is any true value, then the resulting URL will be
 tailored for use with B<Apache::Status>. The first argument must be either the
 original request object as passed by mod_perl, or a reference to a CGI object
 created from the request (see L<CGI> for more on the CGI class).
+
+=item main_screen(REQUEST, QUERY, INTERNAL)
+
+Renders the HTML (minus the header and footer) for the main screen. The
+arguments are the B<Apache> request object, a B<CGI> query object created
+from the request, and a boolean flag indicating whether the call into this
+method was made from within this module or made from the B<Apache::Status>
+page.
+
+=item server_summary(SERVER)
+
+Creates an HTML snippet to provide a summary for the server passed in as an
+argument. The passed-in value should be the server object, not the name.
+
+=item server_detail(REQUEST, QUERY, INTERNAL)
+
+Renders the HTML (minus header and footer) for a screen describing a server
+instance in detail. The server is specified by name in the query parameters.
+The arguments are the same as for C<main_screen>.
+
+=item method_summary(SERVER, METHOD, BASEURL)
+
+Creates and HTML snippet to provide a summary for the specified method of the
+specified server. The third argument is a base-URL to use for making links to
+the detailed method page.
+
+=item method_detail(REQUEST, QUERY, INTERNAL)
+
+Renders the HTML (minus header and footer) for a screen describing a method on
+a specific server instance, in detail. The method and server are specified by
+name in the query parameters. The arguments are the same as for
+C<main_screen>.
 
 =back
 

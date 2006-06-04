@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.12 2004/12/09 08:50:18 rjray Exp $
+#   $Id: Parser.pm,v 1.13 2006/06/04 07:44:41 rjray Exp $
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -17,11 +17,14 @@
 #   Functions:      new
 #                   parse
 #                   message_init
+#                   message_end
 #                   tag_start
 #                   error
 #                   stack_error
 #                   tag_end
 #                   char_data
+#                   extern_ent
+#                   final
 #
 #   Libraries:      RPC::XML
 #                   XML::Parser
@@ -87,7 +90,7 @@ require File::Spec;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.12 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #

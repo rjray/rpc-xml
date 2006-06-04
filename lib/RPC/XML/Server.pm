@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.43 2005/05/02 09:50:16 rjray Exp $
+#   $Id: Server.pm,v 1.44 2006/06/04 07:44:41 rjray Exp $
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -86,7 +86,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.43 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.44 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -400,11 +400,37 @@ instantiated from the class, methods (subroutines) are made public by adding
 them through the object interface, and then the server object is responsible
 for dispatching requests (and possibly for the HTTP listening, as well).
 
+=head2 Static Methods
+
+These methods are static to the package, and are used to provide external
+access to internal settings:
+
+=over 4
+
+=item INSTALL_DIR
+
+Returns the directory that this module is installed into. This is used by
+methods such as C<add_default_methods> to locate the XPL files that are
+shipped with the distribution.
+
+=item version
+
+Returns the version string associated with this package.
+
+=item product_tokens
+
+This returns the identifying string for the server, in the format
+C<NAME/VERSION> consistent with other applications such as Apache and
+B<LWP>. It is provided here as part of the compatibility with B<HTTP::Daemon>
+that is required for effective integration with B<Net::Server>.
+
+=back
+
 =head2 Methods
 
-The following methods are provided by the B<RPC::XML::Server> class. Unless
-otherwise explicitly noted, all methods return the invoking object reference
-upon success, and a non-reference error string upon failure.
+The following are object (non-static) methods. Unless otherwise explicitly
+noted, all methods return the invoking object reference upon success, and a
+non-reference error string upon failure.
 
 See L</Content Compression> below for details of how the server class manages
 gzip-based compression and expansion of messages.
@@ -518,17 +544,6 @@ Any other keys in the options hash not explicitly used by the constructor are
 copied over verbatim onto the object, for the benefit of sub-classing this
 class. All internal keys are prefixed with C<__> to avoid confusion. Feel
 free to use this prefix only if you wish to re-introduce confusion.
-
-=item version
-
-Returns the version string associated with this package.
-
-=item product_tokens
-
-This returns the identifying string for the server, in the format
-C<NAME/VERSION> consistent with other applications such as Apache and
-B<LWP>. It is provided here as part of the compatibility with B<HTTP::Daemon>
-that is required for effective integration with B<Net::Server>.
 
 =item url
 

@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Function.pm,v 1.3 2004/12/09 08:50:17 rjray Exp $
+#   $Id: Function.pm,v 1.4 2006/06/04 07:44:41 rjray Exp $
 #
 #   Description:    This is a type of Procedure that does no signature tests
 #                   at either creation or invocation.
@@ -40,7 +40,7 @@ use AutoLoader 'AUTOLOAD';
 require RPC::XML::Procedure;
 
 @ISA = qw(RPC::XML::Procedure);
-$VERSION = do { my @r=(q$Revision: 1.3 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 ###############################################################################
 #
@@ -192,12 +192,6 @@ an error message is returned.
 =item signature
 
 Returns C<undef> only.
-
-=item make_sig_table
-
-This method does nothing, though in keeping with the interface from the
-parent class, it returns the object reference to permit chaining methods
-together.
 
 =item clone
 

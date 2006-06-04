@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.27 2004/12/13 09:47:25 rjray Exp $
+#   $Id: Server.pm,v 1.28 2006/06/04 07:44:41 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.27 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.28 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 sub version { $Apache::RPC::Server::VERSION }
 
@@ -632,10 +632,31 @@ If the server has not been configured to set this at child initialization, then
 the main C<started> value is returned. The name is different so that a child
 may specify both server-start and child-start times with clear distinction.
 
+=item get_server(APACHEREQ|STRING)
+
+Get the server object that corresponds to the argument passed. If the argument
+is a reference to an B<Apache> request object, use it to determine the name
+(by path, etc.) and return that object. If the parameter is not a reference,
+it is assumed to be the specific name desired.
+
+If the requested server object does not yet exist, an attempt will be made to
+create it and add it to the internal table. The newly-created object is then
+returned.
+
+=item list_servers
+
+Return a list of the I<names> used for all the current server instances. Does
+not return the server objects themselves (use B<get_server>, above, for that).
+
 =item version
 
-This method behaves exactly like the B<RPC::XML::Server> method, save that the
-version string returned is (surprisingly enough) for this module instead.
+This method behaves exactly like the B<RPC::XML::Server> method, except that
+the version string returned is specific to this module instead.
+
+=item INSTALL_DIR
+
+As with B<version>, this is an overload of the parent-class static method that
+returns the installation directory of this particular module.
 
 =back
 
