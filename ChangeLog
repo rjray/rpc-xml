@@ -1,5 +1,41 @@
 Revision history for Perl extension RPC::XML.
 
+0.59	Fri Jun 30 01:48:37 MDT 2006
+
+	t/10_data.t:
+	Eliminated the source of some "Modification of a read-only value..."
+	errors. Patch from Juan Camacho.
+
+	t/01_pod.t (ADD):
+	t/02_pod_coverage.t (ADD):
+	Two new unit-test suites added; the first checks the validity of the
+	POD docs in each module (correctness tests), the other checks that POD
+	covers all the publically-visible API routines (coverage tests).
+
+	lib/Apache/RPC/Server.pm:
+	lib/Apache/RPC/Status.pm:
+	lib/RPC/XML/Function.pm:
+	lib/RPC/XML/Parser.pm:
+	lib/RPC/XML/Server.pm:
+	Fixes to POD documentation (and/or inline comments) as uncovered by
+	the added POD-oriented unit tests.
+
+	README.apache (DELETE):
+	MANIFEST:
+	The README.apache file is no longer relevant.
+
+	lib/Apache/RPC/Server.pm:
+	Fixed the logic around the setting of $no_def in new(); it was
+	handling the no_default method-argument backwards. Found by Eric
+	Cholet.
+
+	lib/RPC/XML.pm:
+	t/01_data.t:
+	Applied a patch from Jos Boumans to add flexibility to the
+	smart_encode() hack that tries to match bare Perl data to RPC classes.
+	At the same time, added documentation of the $ENCODE global variable
+	in the documentation.
+
 0.58	Thu May 12 03:24:23 PDT 2005
 
 	lib/RPC/XML.pm:

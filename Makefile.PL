@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.38 2005/05/12 10:36:37 rjray Exp $
+# $Id: Makefile.PL,v 1.39 2006/06/30 07:52:26 rjray Exp $
 #
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
@@ -36,7 +36,7 @@ if ($@ or $XML::LibXML::VERSION < 1.58)
 @@@@@
 	Please note!
 
-	Starting with release 0.60 (two releases from this one), the XML
+	Starting with release 0.60 (the next after this one), the XML
 	parsing will switch to using the XML::LibXML module, in place of
 	XML::Parser. You either do not have this module, or it is a version
 	older than 1.58, the minimum version that will be required. When
@@ -49,7 +49,8 @@ END
 
 $cwd = cwd;
 
-$CLEAN = 'pod2html-* *.html *.spec *.rpm rpmrc rpmmacro *.log t/*.log *.ppd ';
+$CLEAN = 'pod2html-* *.html *.spec *.rpm rpmrc rpmmacro *.log t/*.log ' .
+    'META.yml *.ppd ';
 
 @scripts = (File::Spec->catfile(qw(etc make_method)));
 $CLEAN  .= File::Spec->catfile(qw(methods *.xpl));
@@ -85,12 +86,12 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.58',
+              VERSION   => '0.59',
               AUTHOR    => 'Randy J. Ray',
               ABSTRACT  => 'Data, client and server classes for XML-RPC',
               EXE_FILES => \@scripts,
               PM        => \%PM_FILES,
-              PREREQ_PM => { XML::Parser => 2.25,
+              PREREQ_PM => { XML::Parser => 2.31,
                              File::Spec  => 0.8,
                              LWP         => 5.801 },
               dist      => { COMPRESS => 'gzip -9f' },

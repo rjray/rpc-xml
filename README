@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.58
+Version: 0.59
 
 WHAT IS IT
 
@@ -65,24 +65,36 @@ The Artistic License: http://www.opensource.org/licenses/artistic-license.php
 
 CHANGES
 
-lib/RPC/XML.pm:
 t/10_data.t:
-Applied patches from Stephen Veiss to fix a small bug in the encoding
-method of RPC::XML::string. Trying to encode the literal string "0"
-would result in a null string. The patches provided the fix and a
-specific test-case for the related suite.
+Eliminated the source of some "Modification of a read-only value..."
+errors. Patch from Juan Camacho.
 
-lib/RPC/XML/Procedure.pm:
+t/01_pod.t (ADD):
+t/02_pod_coverage.t (ADD):
+Two new unit-test suites added; the first checks the validity of the
+POD docs in each module (correctness tests), the other checks that POD
+covers all the publically-visible API routines (coverage tests).
+
+lib/Apache/RPC/Server.pm:
+lib/Apache/RPC/Status.pm:
+lib/RPC/XML/Function.pm:
+lib/RPC/XML/Parser.pm:
 lib/RPC/XML/Server.pm:
-Applied a patch from Mike Pomraning to allow user-level functions to
-return RPC::XML::fault objects directly without them being further
-wrapped by intermediate layers.
+Fixes to POD documentation (and/or inline comments) as uncovered by
+the added POD-oriented unit tests.
 
-lib/RPC/XML/Procedure.pm:
-Implemented a modified version of a patch from Lubomir Host that
-addresses an intermittent IOCTL problem when reading XPL files.
+README.apache (DELETE):
+MANIFEST:
+The README.apache file is no longer relevant.
 
-Makefile.PL:
-Incremented package version number and put in warning of the impending
-move to XML::LibXML.
+lib/Apache/RPC/Server.pm:
+Fixed the logic around the setting of $no_def in new(); it was
+handling the no_default method-argument backwards. Found by Eric
+Cholet.
 
+lib/RPC/XML.pm:
+t/01_data.t:
+Applied a patch from Jos Boumans to add flexibility to the
+smart_encode() hack that tries to match bare Perl data to RPC classes.
+At the same time, added documentation of the $ENCODE global variable
+in the documentation.
