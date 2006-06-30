@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.28 2006/06/04 07:44:41 rjray Exp $
+#   $Id: Server.pm,v 1.29 2006/06/30 07:10:29 rjray Exp $
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.28 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Server::VERSION = do { my @r=(q$Revision: 1.29 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 sub version { $Apache::RPC::Server::VERSION }
 
@@ -381,11 +381,11 @@ sub new
     return $self unless (ref $self); # Non-ref means an error message
     $self->started('set');
 
-    # Check to see if we should suppress the default methods
-    $no_def = $R->dir_config("${prefix}RpcDefMethods") || $argz{no_default};
-    # The default is "yes", so use || in the evaluation in case neither of the
-    # above were set
-    $no_def = (($no_def || '') =~ /no/i) ? 1 : 0;
+    # Check to see if we should suppress the default methods.
+    # The default is "no" (don't suppress the default methods), so use || in
+    # the evaluation in case neither were set.
+    $no_def = $argz{no_default} ? 1 :
+	(($R->dir_config("${prefix}RpcDefMethods") || '') =~ /no/i) ? 1 : 0;
     unless ($no_def)
     {
         $self->add_default_methods(-except => 'status.xpl');
