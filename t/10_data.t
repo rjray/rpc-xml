@@ -8,7 +8,7 @@ use vars qw($val $obj $class %val_tbl @values);
 use Test;
 use RPC::XML ':all';
 
-BEGIN { plan tests => 151 }
+BEGIN { plan tests => 175 }
 
 # First, the most basic data-types
 %val_tbl = (
@@ -104,7 +104,7 @@ ok($RPC::XML::ERROR =~ /::new: Must be called with non-null data/);
 # Now we throw some junk at smart_encode()
 @values = smart_encode(__FILE__, 10, 3.14159, '2112',
                        RPC::XML::string->new('2112'), [], {}, \"foo", \2,
-                       \1.414);
+                       \1.414, );
 
 ok($values[0]->type, 'string');
 ok($values[1]->type, 'int');
@@ -260,5 +260,37 @@ $obj = RPC::XML::response->new(RPC::XML::fault->new(1, 'test'));
 ok(ref $obj);
 # The other methods have already been tested
 ok($obj->is_fault);
+
+### test for bug where encoding was done too freely, encoding
+### any ^\d+$ as int, etc
+{
+    my %map = (
+        256         => 'int',
+        256**4+1    => 'double',    # will do *-1 as well
+        1e37+1      => 'string',
+    );
+
+    while (my($val,$type) = each %map)
+    {
+        for my $mod (1,-1)
+        {
+            {
+                my $obj = smart_encode($mod * $val);
+                ok($obj);
+                ok($obj->type, $type);
+            }
+
+            ### test force string encoding
+            {
+                ### double assign to silence -w
+                local $RPC::XML::FORCE_STRING_ENCODING = 1;
+                local $RPC::XML::FORCE_STRING_ENCODING = 1;
+                my $obj = smart_encode($mod * $val);
+                ok($obj);
+                ok($obj->type, 'string');
+            }
+        }
+    }
+}
 
 exit 0;

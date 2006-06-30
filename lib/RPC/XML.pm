@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.35 2005/05/02 09:37:56 rjray Exp $
+#   $Id: XML.pm,v 1.36 2006/06/30 07:36:29 rjray Exp $
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
@@ -28,7 +28,7 @@ package RPC::XML;
 use 5.005;
 use strict;
 use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR
-            %xmlmap $xmlre $ENCODING);
+            %xmlmap $xmlre $ENCODING $FORCE_STRING_ENCODING);
 use subs qw(time2iso8601 smart_encode bytelength);
 
 # The following is cribbed from SOAP::Lite, tidied up to suit my tastes
@@ -54,6 +54,9 @@ BEGIN
 
     # Default encoding:
     $ENCODING = 'us-ascii';
+
+    # force strings?
+    $FORCE_STRING_ENCODING = 0;
 }
 
 require Exporter;
@@ -61,12 +64,12 @@ require Exporter;
 @ISA = qw(Exporter);
 @EXPORT_OK = qw(time2iso8601 smart_encode bytelength
                 RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_DATETIME_ISO8601
-                RPC_BASE64 RPC_STRING $ENCODING);
+                RPC_BASE64 RPC_STRING $ENCODING $FORCE_STRING_ENCODING);
 %EXPORT_TAGS = (types => [ qw(RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_STRING
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.35 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = do { my @r=(q$Revision: 1.36 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 
 # Global error string
 $ERROR = '';
@@ -102,65 +105,77 @@ sub time2iso8601
 
 # This is a (futile?) attempt to provide a "smart" encoding method that will
 # take a Perl scalar and promote it to the appropriate RPC::XML::_type_.
-sub smart_encode
 {
-    my @values = @_;
+    my $MaxInt      = 256**4;
+    my $MinInt      = $MaxInt * -1;
 
-    my $type;
+    my $MaxDouble   = 1e37;
+    my $MinDouble   = $MaxDouble * -1;
 
-    @values = map
+    sub smart_encode
     {
-        if (!defined $_)
+        my @values = @_;
+        my $type;
+
+        @values = map
         {
-            $type = RPC::XML::string->new('');
-        }
-        elsif (ref $_)
-        {
-            # Skip any that have already been encoded
-            if (UNIVERSAL::isa($_, 'RPC::XML::datatype'))
+            if (!defined $_)
             {
-                $type = $_;
+                $type = RPC::XML::string->new('');
             }
-            elsif (UNIVERSAL::isa($_, 'HASH'))
+            elsif (ref $_)
             {
-                $type = RPC::XML::struct->new($_);
+                # Skip any that have already been encoded
+                if (UNIVERSAL::isa($_, 'RPC::XML::datatype'))
+                {
+                    $type = $_;
+                }
+                elsif (UNIVERSAL::isa($_, 'HASH'))
+                {
+                    $type = RPC::XML::struct->new($_);
+                }
+                elsif (UNIVERSAL::isa($_, 'ARRAY'))
+                {
+                    $type = RPC::XML::array->new($_);
+                }
+                elsif (UNIVERSAL::isa($_, 'SCALAR'))
+                {
+                    # This is a rare excursion into recursion, since the scalar
+                    # nature (de-refed from the object, so no longer magic)
+                    # will prevent further recursing.
+                    $type = smart_encode($$_);
+                }
+                else
+                {
+                    # ??? Don't know what else to do, so skip it for now
+                    next;
+                }
             }
-            elsif (UNIVERSAL::isa($_, 'ARRAY'))
+            # You have to check ints first, because they match the 
+            # next pattern too
+            # make sure not to encode digits that are larger than i4
+            elsif (! $FORCE_STRING_ENCODING and /^[-+]?\d+$/
+                   and $_ > $MinInt and $_ < $MaxInt)
             {
-                $type = RPC::XML::array->new($_);
+                $type = RPC::XML::int->new($_);
             }
-            elsif (UNIVERSAL::isa($_, 'SCALAR'))
+            # Pattern taken from perldata(1)
+            elsif (! $FORCE_STRING_ENCODING and
+                   /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/
+                   and $_ > $MinDouble and $_ < $MaxDouble)
             {
-                # This is a rare excursion into recursion, since the scalar
-                # nature (de-refed from the object, so no longer magic) will
-                # prevent further recursing.
-                $type = smart_encode($$_);
+                $type = RPC::XML::double->new($_);
             }
             else
             {
-                # ??? Don't know what else to do, so skip it for now
-                next;
+                $type = RPC::XML::string->new($_);
             }
-        }
-        # You have to check ints first, because they match the next pattern too
-        elsif (/^[-+]?\d+$/)
-        {
-            $type = RPC::XML::int->new($_);
-        }
-        # Pattern taken from perldata(1)
-        elsif (/^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/)
-        {
-            $type = RPC::XML::double->new($_);
-        }
-        else
-        {
-            $type = RPC::XML::string->new($_);
-        }
 
-        $type;
-    } @values;
+            $type;
+        } @values;
 
-    return (wantarray ? @values : $values[0]);
+        return (wantarray ? @values : $values[0]);
+    }
 }
 
 # This is a (mostly) empty class used as a common superclass for simple and
@@ -1617,6 +1632,33 @@ provided for clarity and simplicity.
 
 All constructors (in all data classes) return C<undef> upon failure, with the
 error message available in the package-global variable B<C<$RPC::XML::ERROR>>.
+
+=head1 GLOBAL VARIABLES
+
+The following global variables may be changed to control certain behavior of
+the library. All variables listed below may be imported into the application
+namespace when you C<use> B<RPC::XML>:
+
+=over 4
+
+=item $ENCODING
+
+This variable controls the character-set encoding reported in outgoing XML
+messages. It defaults to C<us-ascii>, but may be set to any value recognized
+by XML parsers.
+
+=item $FORCE_STRING_ENCODING
+
+By default, C<smart_encode> uses heuristics to determine what encoding
+is required for a data type. For example, C<123> would be encoded as C<int>,
+where C<3.14> would be encoded as C<double>. In some situations it may be
+handy to turn off all these heuristics, and force encoding of C<string> on
+all data types encountered during encoding. Setting this flag to C<true>
+will do just that.
+
+Defaults to C<false>.
+
+=back
 
 =head1 CAVEATS
 
