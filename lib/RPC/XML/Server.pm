@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: Server.pm,v 1.44 2006/06/04 07:44:41 rjray Exp $
+#   $Id$
 #
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
@@ -50,7 +50,7 @@
 #                   timeout
 #
 #   Libraries:      AutoLoader
-#                   HTTP::Daemon
+#                   HTTP::Daemon (conditionally)
 #                   HTTP::Response
 #                   HTTP::Status
 #                   URI
@@ -67,7 +67,8 @@ package RPC::XML::Server;
 
 use 5.005;
 use strict;
-use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR @XPL_PATH);
+use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR @XPL_PATH
+            $IO_SOCKET_SSL_HACK_NEEDED);
 
 use Carp 'carp';
 use AutoLoader 'AUTOLOAD';
@@ -76,6 +77,12 @@ use File::Spec;
 BEGIN {
     $INSTALL_DIR = (File::Spec->splitpath(__FILE__))[1];
     @XPL_PATH = ($INSTALL_DIR, File::Spec->curdir);
+
+    # For now, I have an ugly hack in place to make the functionality that
+    # runs under HTTP::Daemon/Net::Server work better with SSL. This flag
+    # starts out true, then gets set to false the first time the hack is
+    # applied, so that it doesn't get repeated over and over...
+    $IO_SOCKET_SSL_HACK_NEEDED = 1;
 }
 
 use HTTP::Status;
@@ -86,7 +93,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = do { my @r=(q$Revision: 1.44 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = '1.45';
 
 ###############################################################################
 #
@@ -1370,6 +1377,14 @@ sub process_request
         $conn = $self->{server}->{client};
         bless $conn, 'HTTP::Daemon::ClientConn';
         ${*$conn}{'httpd_daemon'} = $self;
+
+        if ($IO::Socket::SSL::VERSION and
+            $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED)
+        {
+            no strict 'vars';
+            unshift @HTTP::Daemon::ClientConn::ISA, 'IO::Socket::SSL';
+            $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED = 0;
+        }
     }
 
     while ($req = $conn->get_request('headers only'))
