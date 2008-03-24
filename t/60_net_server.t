@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# $Id$
 
 # Test the RPC::XML::Server class with Net::Server rather than HTTP::Daemon
 
@@ -29,7 +30,7 @@ BEGIN
 require RPC::XML::Server;
 require RPC::XML::Client;
 
-(undef, $dir, undef) = File::Spec->splitpath($0);
+(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 require File::Spec->catfile($dir, 'util.pl');
 
 $pid_file  = File::Spec->catfile($dir, 'net_server.pid');

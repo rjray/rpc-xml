@@ -1,11 +1,12 @@
 #!/usr/bin/perl
+# $Id$
 
 use strict;
 use vars qw(@MODULES);
 
 use Test;
 
-# $Id: 00_load.t,v 1.5 2002/01/19 09:54:30 rjray Exp $
+# $Id$
 # Verify that the individual modules will load
 
 BEGIN

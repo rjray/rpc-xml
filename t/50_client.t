@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# $Id$
 
 # Test the RPC::XML::Client class
 
@@ -16,7 +17,7 @@ require File::Spec;
 require RPC::XML::Server;
 require RPC::XML::Client;
 
-(undef, $dir, undef) = File::Spec->splitpath($0);
+(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 require File::Spec->catfile($dir, 'util.pl');
 
 # The organization of the test suites is such that we assume anything that

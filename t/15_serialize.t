@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# $Id$
 
 # Test the serialization of XML structures to filehandles
 
@@ -11,7 +12,7 @@ use Test;
 use File::Spec;
 use IO::File;
 
-(undef, $dir, undef) = File::Spec->splitpath($0);
+(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
 $tmpfile = File::Spec->catfile($dir, "__tmp__${$}__");
 

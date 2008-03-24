@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# $Id$
 
 # Test the RPC::XML::Method class
 
@@ -12,7 +13,7 @@ use RPC::XML::Procedure;
 
 BEGIN { plan tests => 25 }
 
-(undef, $dir, undef) = File::Spec->splitpath($0);
+(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on

@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# $Id$
 
 # Test the XML::Parser container
 
@@ -14,7 +15,7 @@ use RPC::XML::Parser;
 
 BEGIN { plan tests => 13 }
 
-(undef, $dir, undef) = File::Spec->splitpath($0);
+(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
 
 # The organization of the test suites is such that we assume anything that
