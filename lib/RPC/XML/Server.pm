@@ -93,7 +93,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = '1.45';
+$VERSION = '1.46';
 
 ###############################################################################
 #
@@ -190,7 +190,7 @@ sub new
         # Add some more headers to the default response object for compression.
         # It looks wasteful to keep using the hash key, but it makes it easier
         # to change the string in just one place (above) if I have to.
-        $resp->header(Accept_Encoding  => $self->{__compress})
+        $resp->header(Accept_Encoding => $self->{__compress})
             if $self->{__compress};
         $self->{__compress_thresh} = $args{compress_thresh} || 4096;
         # Yes, I know this is redundant. It's for future expansion/flexibility.
@@ -1450,6 +1450,17 @@ sub process_request
                     {
                         $read = sysread($conn, $buf,
                                         ($length < 2048) ? $length : 2048);
+                        unless ($read)
+                        {
+                            # Convert this print to a logging-hook call.
+                            # Umm, when I have real logging hooks, I mean.
+                            # The point is, odds are very good that $conn is
+                            # dead to us now, and I don't want this package
+                            # taking over SIGPIPE as well as the ones it
+                            # already monopolizes.
+                            #print STDERR "Error: Connection Dropped\n";
+                            return undef;
+                        }
                     }
                     $length -= $read;
                     if ($do_compress)
@@ -1502,7 +1513,7 @@ sub process_request
                  $self->compress_re))
             {
                 $do_compress = 1;
-                $resp->content_encoding($self->compress);
+                $resp->header(Content_Encoding => $self->compress);
             }
             # Next step, determine the response disposition. If it is above the
             # threshhold for a requested file cut-off, send it to a temp file
@@ -1514,6 +1525,7 @@ sub process_request
                 $tmpfile = $self->message_temp_dir || File::Spec->tmpdir;
                 $tmpfile = File::Spec->catfile($tmpfile,
                                                __PACKAGE__ . $$ . time);
+                $tmpfile =~ s/::/-/g;
                 unless (open($resp_fh, "+> $tmpfile"))
                 {
                     $conn->send_error(RC_INTERNAL_SERVER_ERROR,
