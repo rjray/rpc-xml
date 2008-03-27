@@ -69,7 +69,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = do { my @r=(q$Revision: 1.36 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = '1.37';
 
 # Global error string
 $ERROR = '';
@@ -147,8 +147,9 @@ sub time2iso8601
                 }
                 else
                 {
-                    # ??? Don't know what else to do, so skip it for now
-                    next;
+                    # If the user passed in a reference that didn't pass one
+                    # of the above tests, we can't do anything with it:
+                    die "Un-convertable reference: $_, cannot use";
                 }
             }
             # You have to check ints first, because they match the 
