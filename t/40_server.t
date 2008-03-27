@@ -50,7 +50,8 @@ undef $srv;
 # This one will have a HTTP::Daemon server, but still no default methods
 die "No usable port found between 9000 and 10000, skipping"
     if (($port = find_port) == -1);
-$srv = RPC::XML::Server->new(no_default => 1, port => $port);
+$srv = RPC::XML::Server->new(no_default => 1,
+                             host => 'localhost', port => $port);
 ok(ref($srv) eq 'RPC::XML::Server');
 ok($srv->url); # This should be non-null this time
 # Test some of the simpler cases of add_method and get_method
@@ -132,7 +133,7 @@ undef $srv;
 undef $req;
 die "No usable port found between 9000 and 10000, skipping"
     if (($port = find_port) == -1);
-$srv = RPC::XML::Server->new(port => $port);
+$srv = RPC::XML::Server->new(host => 'localhost', port => $port);
 
 # Did it create OK, with the requirement of loading the XPL code?
 if (ref $srv)
