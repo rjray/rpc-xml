@@ -9,7 +9,7 @@
 #
 ###############################################################################
 #
-#   $Id: XML.pm,v 1.36 2006/06/30 07:36:29 rjray Exp $
+#   $Id$
 #
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
