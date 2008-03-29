@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-#   $Id: Parser.pm,v 1.13 2006/06/04 07:44:41 rjray Exp $
+#   $Id$
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -85,12 +85,21 @@ use constant TAG2TOKEN   => { methodCall        => METHOD,
                               member            => STRUCTMEM,
                               name              => STRUCTNAME  };
 
+# Members of the class
+use constant {
+    M_STACK                => 0,
+    M_CDATA                => 1,
+    M_BASE64_TO_FH         => 2,
+    M_BASE64_TEMP_DIR      => 3,
+    M_SPOOLING_BASE64_DATA => 4,
+};
+
 use XML::Parser;
 require File::Spec;
 
 require RPC::XML;
 
-$VERSION = do { my @r=(q$Revision: 1.13 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = '1.14';
 
 ###############################################################################
 #
@@ -114,8 +123,19 @@ sub new
     my $class = shift;
     my %attrs = @_;
 
-    my $self = {};
-    %$self = %attrs if (keys %attrs);
+    my $self = [];
+
+    while (my ($key, $val) = each %attrs)
+    {
+        if ($key eq 'base64_to_fh')
+        {
+            $self->[M_BASE64_TO_FH] = $val;
+        }
+        elsif ($key eq 'base64_temp_dir')
+        {
+            $self->[M_BASE64_TEMP_DIR] = $val;
+        }
+    }
 
     bless $self, $class;
 }
@@ -139,8 +159,7 @@ sub new
 ###############################################################################
 sub parse
 {
-    my $self = shift;
-    my $stream = shift;
+    my ($self, $stream) = @_;
 
     my $parser = XML::Parser->new(Namespaces => 0, ParseParamEnt => 0,
                                   Handlers =>
@@ -167,26 +186,24 @@ sub parse
 # This is called when a new document is about to start parsing
 sub message_init
 {
-    my $robj = shift;
-    my $self = shift;
+    my ($robj, $self) = @_;
 
-    $robj->{stack} = [];
+    $robj->[M_STACK] = [];
     $self;
 }
 
 # This is called when the parsing process is complete
 sub final
 {
-    my $robj = shift;
-    my $self = shift;
+    my ($robj, $self) = @_;
 
     # Look at the top-most marker, it'll need to be one of the end cases
-    my $marker = pop(@{$robj->{stack}});
+    my $marker = pop(@{$robj->[M_STACK]});
     # There should be only on item on the stack after it
-    my $retval = pop(@{$robj->{stack}});
+    my $retval = pop(@{$robj->[M_STACK]});
     # If the top-most marker isn't the error marker, check the stack
     $retval = 'RPC::XML Error: Extra data on parse stack at document end'
-        if ($marker != PARSE_ERROR and (@{$robj->{stack}}));
+        if ($marker != PARSE_ERROR and (@{$robj->[M_STACK]}));
 
     $retval;
 }
@@ -194,45 +211,43 @@ sub final
 # This gets called each time an opening tag is parsed
 sub tag_start
 {
-    my $robj = shift;
-    my $self = shift;
-    my $elem = shift;
-    my %attr = @_;
+    my ($robj, $self, $elem, %attr) = @_;
 
-    $robj->{cdata} = '';
+    $robj->[M_CDATA] = [];
     return if ($elem eq 'data');
+
     if (TAG2TOKEN->{$elem})
     {
-        push(@{$robj->{stack}}, TAG2TOKEN->{$elem});
+        push(@{$robj->[M_STACK]}, TAG2TOKEN->{$elem});
     }
     elsif (VALIDTYPES->{$elem})
     {
         # All datatypes are represented on the stack by this generic token
-        push(@{$robj->{stack}}, DATATYPE);
+        push(@{$robj->[M_STACK]}, DATATYPE);
         # If the tag is <base64> and we've been told to use filehandles, set
         # that up.
         if ($elem eq 'base64')
         {
-            return unless ($robj->{base64_to_fh});
+            return unless ($robj->[M_BASE64_TO_FH]);
             require Symbol;
             my ($fh, $file) = (Symbol::gensym(), File::Spec->tmpdir);
 
-            $file = $robj->{base64_temp_dir} if ($robj->{base64_temp_dir});
+            $file = $robj->[M_BASE64_TEMP_DIR] if ($robj->[M_BASE64_TEMP_DIR]);
             $file  = File::Spec->catfile($file, 'b64' . $self->current_byte);
             unless (open($fh, "+> $file"))
             {
-                push(@{$robj->{stack}},
+                push(@{$robj->[M_STACK]},
                      "Error opening temp file for base64: $!", PARSE_ERROR);
                 $self->finish;
             }
             unlink($file);
-            $robj->{cdata} = $fh;
-            $robj->{spooling_base64_data} = 1;
+            $robj->[M_CDATA] = $fh;
+            $robj->[M_SPOOLING_BASE64_DATA]= 1;
         }
     }
     else
     {
-        push(@{$robj->{stack}},
+        push(@{$robj->[M_STACK]},
              "Unknown tag encountered: $elem", PARSE_ERROR);
         $self->finish;
     }
@@ -242,16 +257,14 @@ sub tag_start
 # next sub:
 sub error
 {
-    my $robj = shift;
-    my $self = shift;
-    my $mesg = shift;
-    my $elem = shift || '';
+    my ($robj, $self, $mesg, $elem) = @_;
+    $elem ||= '';
 
     my $fmt = $elem ?
         '%s at document line %d, column %d (byte %d, closing tag %s)' :
         '%s at document line %d, column %d (byte %d)';
 
-    push(@{$robj->{stack}},
+    push(@{$robj->[M_STACK]},
          sprintf($fmt, $mesg, $self->current_line, $self->current_column,
                  $self->current_byte, $elem),
          PARSE_ERROR);
@@ -261,9 +274,7 @@ sub error
 # A shorter-cut for stack integrity errors
 sub stack_error
 {
-    my $robj = shift;
-    my $self = shift;
-    my $elem = shift;
+    my ($robj, $self, $elem) = @_;
 
     error($robj, $self, 'Stack corruption detected', $elem);
 }
@@ -272,15 +283,24 @@ sub stack_error
 # from simply new-ing a datatype all the way to building the final object.
 sub tag_end
 {
-    my $robj = shift;
-    my $self = shift;
-    my $elem = shift;
+    my ($robj, $self, $elem) = @_;
 
     my ($op, $attr, $obj, $class, $list, $name, $err);
 
     return if ($elem eq 'data');
     # This should always be one of the stack machine ops defined above
-    $op = pop(@{$robj->{stack}});
+    $op = pop(@{$robj->[M_STACK]});
+
+    my $cdata = '';
+    if ($robj->[M_SPOOLING_BASE64_DATA])
+    {
+        $cdata = $robj->[M_CDATA];
+        seek $cdata, 0, 0;
+    }
+    elsif ($robj->[M_CDATA])
+    {
+        $cdata = join('', @{$robj->[M_CDATA]});
+    }
 
     # Decide what to do from here
     if (VALIDTYPES->{$elem})
@@ -293,24 +313,28 @@ sub tag_end
         if ($class eq 'int' or $class eq 'i4')
         {
             return error($robj, $self, 'Bad integer data read')
-                unless ($robj->{cdata} =~ /^[-+]?\d+$/);
+                unless ($cdata =~ /^[-+]?\d+$/);
         }
         elsif ($class eq 'double')
         {
             return error($robj, $self, 'Bad floating-point data read')
-                unless ($robj->{cdata} =~
+                unless ($cdata =~
                         # Taken from perldata(1)
                         /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/);
         }
 
         $class = "RPC::XML::$class";
         # The string at the end is only seen by the RPC::XML::base64 class
-        $obj = $class->new($robj->{cdata}, 'base64 already encoded');
+        $obj = $class->new($cdata, 'base64 already encoded');
         return error($robj, $self, 'Error instantiating data object: ' .
                             $RPC::XML::ERROR)
             unless ($obj);
-        push(@{$robj->{stack}}, $obj, DATAOBJECT);
-        delete $robj->{spooling_base64_data}; # Just in case
+        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
+        if ($robj->[M_SPOOLING_BASE64_DATA])
+        {
+            $robj->[M_SPOOLING_BASE64_DATA] = 0;
+            $robj->[M_CDATA] = undef; # Doesn't close FH, $obj still holds it
+        }
     }
     elsif ($elem eq 'value')
     {
@@ -318,13 +342,13 @@ sub tag_end
         # the marker token in which case the CDATA is used as a string value.
         if ($op == DATAOBJECT)
         {
-            ($op, $obj) = splice(@{$robj->{stack}}, -2);
+            ($op, $obj) = splice(@{$robj->[M_STACK]}, -2);
             return stack_error($robj, $self, $elem)
                 unless ($op == VALUEMARKER);
         }
         elsif ($op == VALUEMARKER)
         {
-            $obj = RPC::XML::string->new($robj->{cdata});
+            $obj = RPC::XML::string->new($cdata);
         }
         else
         {
@@ -332,16 +356,16 @@ sub tag_end
                          'No datatype found within <value> container');
         }
 
-        push(@{$robj->{stack}}, $obj, DATAOBJECT);
+        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
     }
     elsif ($elem eq 'param')
     {
         # Almost like above, since this is really a NOP anyway
         return error($robj, $self, 'No <value> found within <param> container')
             unless ($op == DATAOBJECT);
-        ($op, $obj) = splice(@{$robj->{stack}}, -2);
+        ($op, $obj) = splice(@{$robj->[M_STACK]}, -2);
         return stack_error($robj, $self, $elem) unless ($op == PARAM);
-        push(@{$robj->{stack}}, $obj, DATAOBJECT);
+        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
     }
     elsif ($elem eq 'params')
     {
@@ -352,19 +376,19 @@ sub tag_end
             unless ($op == DATAOBJECT or $op == PARAMSTART);
         while ($op == DATAOBJECT)
         {
-            unshift(@$list, pop(@{$robj->{stack}}));
-            $op = pop(@{$robj->{stack}});
+            unshift(@$list, pop(@{$robj->[M_STACK]}));
+            $op = pop(@{$robj->[M_STACK]});
         }
         # Now that we see something ! DATAOBJECT, it needs to be PARAMSTART
         return stack_error($robj, $self, $elem) unless ($op == PARAMSTART);
-        push(@{$robj->{stack}}, $list, PARAMLIST);
+        push(@{$robj->[M_STACK]}, $list, PARAMLIST);
     }
     elsif ($elem eq 'fault')
     {
         # If we're finishing up a fault definition, there needs to be a struct
         # on the stack.
         return stack_error($robj, $self, $elem) unless ($op == DATAOBJECT);
-        ($op, $obj) = splice(@{$robj->{stack}}, -2);
+        ($op, $obj) = splice(@{$robj->[M_STACK]}, -2);
         return error($robj, $self,
                      'Only a <struct> value may be within a <fault>')
             unless ($obj->isa('RPC::XML::struct'));
@@ -373,24 +397,24 @@ sub tag_end
         return error($robj, $self, 'Unable to instantiate fault object: ' .
                             $RPC::XML::ERROR)
             unless $obj;
-        push(@{$robj->{stack}}, $obj, FAULTENT);
+        push(@{$robj->[M_STACK]}, $obj, FAULTENT);
     }
     elsif ($elem eq 'member')
     {
         # We need to see a DATAOBJECT followed by a STRUCTNAME
         return stack_error($robj, $self, $elem) unless ($op == DATAOBJECT);
-        ($op, $obj) = splice(@{$robj->{stack}}, -2);
+        ($op, $obj) = splice(@{$robj->[M_STACK]}, -2);
         return stack_error($robj, $self, $elem) unless ($op == STRUCTNAME);
         # Get the name off the stack to clear the way for the STRUCTMEM marker
         # under it
-        ($op, $name) = splice(@{$robj->{stack}}, -2);
+        ($op, $name) = splice(@{$robj->[M_STACK]}, -2);
         # Push the name back on, with the value and the new marker (STRUCTMEM)
-        push(@{$robj->{stack}}, $name, $obj, STRUCTMEM);
+        push(@{$robj->[M_STACK]}, $name, $obj, STRUCTMEM);
     }
     elsif ($elem eq 'name')
     {
         # Fairly simple: just push the current content of CDATA on w/ a marker
-        push(@{$robj->{stack}}, $robj->{cdata}, STRUCTNAME);
+        push(@{$robj->[M_STACK]}, $cdata, STRUCTNAME);
     }
     elsif ($elem eq 'struct')
     {
@@ -402,9 +426,9 @@ sub tag_end
         while ($op == STRUCTMEM)
         {
             # Next on stack (in list-order): name, value
-            ($name, $obj) = splice(@{$robj->{stack}}, -2);
+            ($name, $obj) = splice(@{$robj->[M_STACK]}, -2);
             $list->{$name} = $obj;
-            $op = pop(@{$robj->{stack}});
+            $op = pop(@{$robj->[M_STACK]});
         }
         # Now that we see something ! STRUCTMEM, it needs to be STRUCT
         return stack_error($robj, $self, $elem) unless ($op == STRUCT);
@@ -413,7 +437,7 @@ sub tag_end
                      'Error creating a RPC::XML::struct object: ' .
                      $RPC::XML::ERROR)
             unless $obj;
-        push(@{$robj->{stack}}, $obj, DATAOBJECT);
+        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
     }
     elsif ($elem eq 'array')
     {
@@ -426,8 +450,8 @@ sub tag_end
             unless ($op == DATAOBJECT or $op == ARRAY);
         while ($op == DATAOBJECT)
         {
-            unshift(@$list, pop(@{$robj->{stack}}));
-            $op = pop(@{$robj->{stack}});
+            unshift(@$list, pop(@{$robj->[M_STACK]}));
+            $op = pop(@{$robj->[M_STACK]});
         }
         # Now that we see something ! DATAOBJECT, it needs to be ARRAY
         return stack_error($robj, $self, $elem) unless ($op == ARRAY);
@@ -436,14 +460,14 @@ sub tag_end
                      'Error creating a RPC::XML::array object: ' .
                      $RPC::XML::ERROR)
             unless $obj;
-        push(@{$robj->{stack}}, $obj, DATAOBJECT);
+        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
     }
     elsif ($elem eq 'methodName')
     {
         return error($robj, $self,
                      "<$elem> tag must immediately follow a <methodCall> tag")
-            unless ($robj->{stack}->[$#{$robj->{stack}}] == METHOD);
-        push(@{$robj->{stack}}, $robj->{cdata}, NAMEVAL);
+            unless ($robj->[M_STACK]->[$#{$robj->[M_STACK]}] == METHOD);
+        push(@{$robj->[M_STACK]}, $cdata, NAMEVAL);
     }
     elsif ($elem eq 'methodCall')
     {
@@ -452,7 +476,7 @@ sub tag_end
         # opening tag. An ATTR_SET may follow the METHOD token.
         if ($op == PARAMLIST)
         {
-            ($op, $list) = splice(@{$robj->{stack}}, -2);
+            ($op, $list) = splice(@{$robj->[M_STACK]}, -2);
         }
         else
         {
@@ -460,7 +484,7 @@ sub tag_end
         }
         if ($op == NAMEVAL)
         {
-            ($op, $name) = splice(@{$robj->{stack}}, -2);
+            ($op, $name) = splice(@{$robj->[M_STACK]}, -2);
         }
         return error($robj, $self,
                      "No methodName tag detected during methodCall parsing")
@@ -471,7 +495,7 @@ sub tag_end
         return error($robj, $self,
                      "Error creating request object: $RPC::XML::ERROR")
             unless $obj;
-        push(@{$robj->{stack}}, $obj, METHODENT);
+        push(@{$robj->[M_STACK]}, $obj, METHODENT);
     }
     elsif ($elem eq 'methodResponse')
     {
@@ -482,7 +506,7 @@ sub tag_end
             # To my knowledge, the XML-RPC spec limits the params list for
             # a response to exactly one object. Extract it from the listref
             # and put it back.
-            $list = pop(@{$robj->{stack}});
+            $list = pop(@{$robj->[M_STACK]});
             return error($robj, $self,
                          "Params list for <$elem> tag invalid")
                 unless (@$list == 1);
@@ -490,39 +514,37 @@ sub tag_end
             return error($robj, $self,
                          "Returned value on stack not a type reference")
                 unless (ref $obj and $obj->isa('RPC::XML::datatype'));
-            push(@{$robj->{stack}}, $obj);
+            push(@{$robj->[M_STACK]}, $obj);
         }
         elsif (! ($op == DATAOBJECT or $op == FAULTENT))
         {
             return error($robj, $self,
                          "No parameter was declared for the <$elem> tag");
         }
-        ($op, $list) = splice(@{$robj->{stack}}, -2);
+        ($op, $list) = splice(@{$robj->[M_STACK]}, -2);
         return stack_error($robj, $self, $elem) unless ($op == RESPONSE);
         # Create the response object and push it on the stack
         $obj = RPC::XML::response->new($list);
         return error($robj, $self,
                      "Error creating response object: $RPC::XML::ERROR")
             unless $obj;
-        push(@{$robj->{stack}}, $obj, RESPONSEENT);
+        push(@{$robj->[M_STACK]}, $obj, RESPONSEENT);
     }
 }
 
 # This just spools the character data until a closing tag makes use of it
 sub char_data
 {
-    my $robj = shift;
-    my $self = shift;
-    my $data = shift;
+     my ($robj, undef, $data) = @_;
 
-    if ($robj->{spooling_base64_data})
-    {
-        print { $robj->{cdata} } $data;
-    }
-    else
-    {
-        $robj->{cdata} .= $data;
-    }
+     if ($robj->[M_SPOOLING_BASE64_DATA])
+     {
+         print {$robj->[M_CDATA]} $data;
+     }
+     else
+     {
+         push @{$robj->[M_CDATA]}, $data;
+     }
 }
 
 # At some future point, this may be expanded to provide more entities than
@@ -530,6 +552,7 @@ sub char_data
 sub extern_ent
 {
     my $robj = shift;
+
     local $" = ', ';
     warn ref($robj) . '::extern_ent: Attempt to reference external entity ' .
         "(@_)\n";

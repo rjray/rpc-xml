@@ -6,14 +6,12 @@
 use strict;
 use vars qw($p $req $res $ret $dir $file);
 
-use Test;
+use Test::More tests => 13;
 require File::Spec;
 require IO::File;
 
 use RPC::XML ':all';
 use RPC::XML::Parser;
-
-BEGIN { plan tests => 13 }
 
 (undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
@@ -24,23 +22,23 @@ $file = File::Spec->catfile($dir, 'svsm_text.gif');
 # class under consideration, RPC::XML::Parser.
 
 $p = RPC::XML::Parser->new();
-ok(ref $p);
+isa_ok($p, 'RPC::XML::Parser', '$p');
 
 $req = RPC::XML::request->new('test.method');
 $ret = $p->parse($req->as_string);
-ok(ref($ret) && $ret->isa('RPC::XML::request'));
-ok($ret->name, 'test.method');
+isa_ok($ret, 'RPC::XML::request', '$ret');
+is($ret->name, 'test.method', 'Correct request method name');
 
 $res = RPC::XML::response->new(RPC::XML::string->new('test response'));
 $ret = $p->parse($res->as_string);
-ok(ref($ret) && $ret->isa('RPC::XML::response'));
-ok($ret->value->value, 'test response');
+isa_ok($ret, 'RPC::XML::response', '$ret');
+is($ret->value->value, 'test response', 'Response value');
 
 # Test some badly-formed data
 my $tmp = $res->as_string; $tmp =~ s/methodResponse/mR/g;
 $ret = $p->parse($tmp);
-ok(! ref($ret));
-ok($ret =~ /Unknown tag/);
+ok(! ref($ret), 'Bad XML did not parse');
+like($ret, qr/Unknown tag/, 'Parse failure returned error');
 
 # Prior to this, we've confirmed that spooling base64 data to files works.
 # Here, we test whether the parser (when configured to do so) can create
@@ -53,14 +51,15 @@ my $base64 = RPC::XML::base64->new($fh);
 $req = RPC::XML::request->new('method', $base64);
 
 # Start testing
-$ret = $p->parse($req->as_string);
-ok(ref($ret) && $ret->isa('RPC::XML::request'));
-ok($ret->name, 'method');
-ok(ref($ret->args));
+my $spool_ret = $p->parse($req->as_string);
+isa_ok($spool_ret, 'RPC::XML::request', '$spool_ret');
+is($spool_ret->name, 'method', 'Request, base64 spooling, method name test');
+ok(ref($spool_ret->args), 'Request, base64 spooling, return arg test');
 
-my $new_base64 = $ret->args->[0];
-ok(ref($new_base64), 'RPC::XML::base64');
-ok($base64->as_string(), $new_base64->as_string);
-ok(UNIVERSAL::isa($new_base64->{value_fh}, 'GLOB'));
+my $new_base64 = $spool_ret->args->[0];
+isa_ok($new_base64, 'RPC::XML::base64', '$new_base64');
+is($base64->as_string(), $new_base64->as_string,
+   'Parse base64 spooling, value comparison');
+isa_ok($new_base64->{value_fh}, 'GLOB', '$new_base64->{value_fh}');
 
 exit 0;
