@@ -34,6 +34,7 @@ package Apache::RPC::Server;
 use 5.005;
 use strict;
 
+use Socket;
 use File::Spec;
 
 use Apache;
@@ -99,7 +100,8 @@ sub handler ($$)
     my $r = shift;
 
     my ($srv, $content, $resp, $hdrs, $hdrs_out, $compress, $length,
-        $do_compress, $com_engine, $parser, $me, $resp_fh);
+        $do_compress, $com_engine, $parser, $me, $resp_fh, $c, $peeraddr,
+        $peerhost, $peerport);
 
     $srv = (ref $class) ? $class : $class->get_server($r);
     $me = (ref($class) || $class) . '::handler';
@@ -176,7 +178,17 @@ sub handler ($$)
 
         # Step 3: Process the request and encode the outgoing response
         # Dispatch will always return a RPC::XML::response object
-        $resp = $srv->dispatch($content);
+        {
+            # We set some short-lifespan localized keys on $srv to let the
+            # methods have access to client connection info
+            $c = $r->connection;
+            ($peerport, $peeraddr) = unpack_sockaddr_in($c->remote_addr);
+            $peerhost = inet_ntoa($peeraddr);
+            local $srv->{peeraddr} = $peeraddr;
+            local $srv->{peerhost} = $peerhost;
+            local $srv->{peerport} = $peerport;
+            $resp = $srv->dispatch($content);
+        }
 
         # Step 4: Form up and send the headers and body of the response
         $r->no_cache(1);
@@ -385,7 +397,7 @@ sub new
     # The default is "no" (don't suppress the default methods), so use || in
     # the evaluation in case neither were set.
     $no_def = $argz{no_default} ? 1 :
-	(($R->dir_config("${prefix}RpcDefMethods") || '') =~ /no/i) ? 1 : 0;
+        (($R->dir_config("${prefix}RpcDefMethods") || '') =~ /no/i) ? 1 : 0;
     unless ($no_def)
     {
         $self->add_default_methods(-except => 'status.xpl');

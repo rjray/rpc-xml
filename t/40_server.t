@@ -8,12 +8,14 @@ use subs qw(start_server find_port);
 use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
             $list $meth @keys %seen $dir);
 
+use Socket;
 use File::Spec;
-use Test::More tests => 48;
 
+use Test::More tests => 54;
 use LWP::UserAgent;
 use HTTP::Request;
 
+use RPC::XML 'RPC_BASE64';
 require RPC::XML::Server;
 require RPC::XML::Parser;
 
@@ -97,6 +99,21 @@ ok(ref $srv->delete_method('perl.test.suite.test1'),
 
 # Start the server again
 sleep 1; # To allow the old sockets time enough to go away
+# Add a method that echoes back socket-peer information
+$res = $srv->add_method({ name      => 'perl.test.suite.peeraddr',
+                          signature => [ 'array' ],
+                          code      =>
+                          sub {
+                              my $srv = shift;
+
+                              my $ipaddr = inet_aton($srv->{peerhost});
+                              my $peeraddr = RPC_BASE64 $srv->{peeraddr};
+                              my $packet = pack_sockaddr_in($srv->{peerport},
+                                                            $ipaddr);
+                              $packet = RPC_BASE64 $packet;
+                              [ $peeraddr, $packet,
+                                $srv->{peerhost}, $srv->{peerport} ];
+                          } });
 $child = start_server($srv);
 $bucket = 0;
 $SIG{ALRM} = sub { $bucket++ };
@@ -113,6 +130,28 @@ SKIP: {
     ok($res->is_fault, 'Second live req: parsed $res is a fault');
     like($res->value->value->{faultString}, qr/Unknown method/,
          'Second live request: correct faultString');
+}
+
+$bucket = 0;
+$req->content(RPC::XML::request->new('perl.test.suite.peeraddr')->as_string);
+$SIG{ALRM} = sub { $bucket++ };
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+ok(! $bucket, 'Third live-request returned without timeout');
+SKIP: {
+    skip "Server failed to respond within 120 seconds!", 4 if $bucket;
+
+    ok(! $res->is_error, 'Third live req: $res is not an error');
+    $res = $parser->parse($res->content);
+    isa_ok($res, 'RPC::XML::response', 'Third live req: parsed $res');
+    $res = $res->value->value;
+    is($res->[2], inet_ntoa(inet_aton('localhost')),
+       'Third live req: Correct IP addr from peerhost');
+    is($res->[0], inet_aton($res->[2]),
+       'Third request: peeraddr packet matches converted peerhost');
+    is($res->[1], pack_sockaddr_in($res->[3], inet_aton($res->[2])),
+       'Third request: pack_sockaddr_in validates all');
 }
 
 # Test the error-message-mixup problem reported in RT# 29351

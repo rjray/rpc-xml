@@ -250,11 +250,12 @@ sub product_tokens
     sprintf "%s/%s", (ref $_[0] || $_[0]), $_[0]->version;
 }
 
-# This fetches/sets the internal "started" timestamp
+# This fetches/sets the internal "started" timestamp. Unlike the other
+# plain-but-mutable attributes, this isn't set to the passed-value but
+# rather a non-null argument sets it from the current time.
 sub started
 {
-    my $self = shift;
-    my $set  = shift || 0;
+    my ($self, $set) = @_;
 
     my $old = $self->{__started} || 0;
     $self->{__started} = time if $set;
@@ -262,48 +263,27 @@ sub started
     $old;
 }
 
-# Fetch/set the compression threshhold
-sub compress_thresh
-{
-    my $self = shift;
-    my $set = shift || 0;
-
-    my $old = $self->{__compress_thresh};
-    $self->{__compress_thresh} = $set if ($set);
-
-    $old;
-}
-
-# Fetch/set the threshhold for spooling messages to files
-sub message_file_thresh
-{
-    my $self = shift;
-    my $set = shift || 0;
-
-    my $old = $self->{__message_file_thresh};
-    $self->{__message_file_thresh} = $set if ($set);
-
-    $old;
-}
-
-# Fetch/set the temp dir to use for spooling large messages to files
-sub message_temp_dir
-{
-    my $self = shift;
-    my $set = shift || 0;
-
-    my $old = $self->{__message_temp_dir};
-    $self->{__message_temp_dir} = $set if ($set);
-
-    $old;
-}
-
 BEGIN
 {
     no strict 'refs';
+    my $method;
+
+    # These are mutable member values for which the logic only differs in
+    # the name of the field to modify:
+    for $method (qw(compress_thresh message_file_thresh message_temp_dir))
+    {
+        *$method = sub {
+            my ($self, $set) = @_;
+
+            my $old = $self->{"__$method"};
+            $self->{"__$method"} = $set if (defined $set);
+
+            $old;
+        }
+    }
 
     # These are immutable member values, so this simple block applies to all
-    for my $method (qw(path host port requests response compress compress_re
+    for $method (qw(path host port requests response compress compress_re
                        parser))
     {
         *$method = sub { shift->{"__$method"} }
@@ -879,7 +859,7 @@ considered a "procedure" or a "method", there may be an extra argument at the
 head of the list. The extra argument is present when the routine being
 dispatched is part of a B<RPC::XML::Method> object. The extra argument is a
 reference to a B<RPC::XML::Server> object (or a subclass thereof). This is
-derived from a hash reference, and will include two special keys:
+derived from a hash reference, and will include these special keys:
 
 =over 4
 
@@ -898,7 +878,30 @@ reference containing one or more datatypes, each a simple string. The first
 of the datatypes specifies the expected return type. The remainder (if any)
 refer to the arguments themselves.
 
+=item peeraddr
+
+This is the address part of a packed B<SOCKADDR_IN> structure, as returned by
+L<Socket/pack_sockaddr_in>, which contains the address of the client that has
+connected and made the current request. This is provided "raw" in case you
+need it. While you could re-create it from C<peerhost>, it is readily
+available in both this server environment and the B<Apache::RPC::Server>
+environment and thus included for convenience.
+
+=item peerhost
+
+This is the address of the remote (client) end of the socket, in C<x.x.x.x>
+(dotted-quad) format. If you wish to look up the clients host-name, you
+can use this to do so or utilize the B<SOCKADDR_IN> structure directly.
+
+=item peerport
+
+Lastly, this is the port of the remote (client) end of the socket, taken
+from the B<SOCKADDR_IN> structure.
+
 =back
+
+Those keys should only be referenced within method code itself, as they are
+not set on the server object outside of that context.
 
 Note that by passing the server object reference first, method-classed
 routines are essentially expected to behave as actual methods of the server
@@ -1369,7 +1372,8 @@ sub process_request
     my $conn = shift;
 
     my ($req, $reqxml, $resp, $respxml, $do_compress, $parser, $com_engine,
-        $length, $read, $buf, $resp_fh, $tmpfile);
+        $length, $read, $buf, $resp_fh, $tmpfile,
+        $peeraddr, $peerhost, $peerport);
 
     my $me = ref($self) . '::process_request';
     unless ($conn and ref($conn))
@@ -1387,6 +1391,11 @@ sub process_request
         }
     }
 
+    # These will be attached to any and all request objects that are
+    # (successfully) read from $conn.
+    $peeraddr = $conn->peeraddr;
+    $peerport = $conn->peerport;
+    $peerhost = $conn->peerhost;
     while ($req = $conn->get_request('headers only'))
     {
         if ($req->method eq 'HEAD')
@@ -1506,6 +1515,10 @@ sub process_request
             # as a fault, don't have dispatch() try and handle it.
             if (ref $reqxml)
             {
+                # Set localized keys on $self, based on the connection info
+                local $self->{peeraddr} = $peeraddr;
+                local $self->{peerhost} = $peerhost;
+                local $self->{peerport} = $peerport;
                 $respxml = $self->dispatch($reqxml);
             }
             else
@@ -1684,7 +1697,7 @@ sub dispatch
         # reason.
         $reqobj = RPC::XML::request->new(shift(@$xml), @$xml);
     }
-    elsif (UNIVERSAL::isa($xml, 'RPC::XML::request'))
+    elsif (ref($xml) and $xml->isa('RPC::XML::request'))
     {
         $reqobj = $xml;
     }
