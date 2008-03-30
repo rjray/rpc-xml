@@ -69,7 +69,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.37';
+$VERSION = '1.38';
 
 # Global error string
 $ERROR = '';
@@ -308,6 +308,17 @@ use strict;
 use vars qw(@ISA);
 
 @ISA = qw(RPC::XML::simple_type);
+
+sub as_string
+{
+    my $self = shift;
+
+    return unless (my $class = ref($self));
+    $class =~ s/^.*\://;
+    (my $value = sprintf("%.20f", $$self)) =~ s/0+$//;
+
+    "<$class>$value</$class>";
+}
 
 ###############################################################################
 #

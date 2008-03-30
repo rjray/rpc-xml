@@ -6,14 +6,14 @@
 use strict;
 use vars qw($val $obj $class %val_tbl @values);
 
-use Test::More tests => 177;
+use Test::More tests => 178;
 use RPC::XML ':all';
 
 # First, the most basic data-types
 %val_tbl = (
             'int'  => int(rand 10000) + 1,
             i4     => int(rand 10000) + 1,
-            double => rand 10001,
+            double => 0.5,
             string => __FILE__
            );
 
@@ -32,7 +32,7 @@ for (sort keys %val_tbl)
 }
 
 # Go again, with each of the values being a blessed scalar reference
-my @vals = (int(rand 10000) + 1, int(rand 10000) + 1, rand 10001, __FILE__);
+my @vals = (int(rand 10000) + 1, int(rand 10000) + 1, 0.5, __FILE__);
 %val_tbl = (
             'int'  => bless(\(shift(@vals)), "Tmp::Scalar::Int"),
             i4     => bless(\(shift(@vals)), "Tmp::Scalar::I4"),
@@ -214,38 +214,40 @@ is((my $tmp = $obj->as_string) =~ tr/&/&/, 7,
 # Blessed struct reference
 my $structobj = bless { key1 => 1, key2 => 2 }, "Tmp::Struct$$";
 $obj = RPC::XML::struct->new($structobj);
-ok(ref $obj);
-is($obj->type, 'struct');
+ok(ref $obj, 'struct<1> object creation');
+is($obj->type, 'struct', 'struct object type method');
 $val = $obj->value;
-is(ref($val), 'HASH');
-is(scalar(keys %$val), 2);
-is($val->{key1}, 1);
+isa_ok($val, 'HASH', 'struct $obj->value');
+is(scalar(keys %$val), 2, 'struct obj number of keys test');
+is($val->{key1}, 1, 'struct obj "key1" test');
 $val = $obj->value(1);
-ok(ref($val->{key1}) && ($val->{key1}->type eq 'int'));
+isa_ok($val->{key1}, 'RPC::XML::int', '$val->{key1} (shallow eval)');
 $val->{key1} = RPC::XML::string->new('hello');
 $obj = RPC::XML::struct->new($val);
-ok(ref $obj);
-is(($obj->value)->{key1}, 'hello');
-is(($obj->value(1))->{key1}->type, 'string');
+ok(ref $obj, 'struct<2> object creation');
+is(($obj->value)->{key1}, 'hello', 'struct<2> "key1" test');
+is(($obj->value(1))->{key1}->type, 'string', 'struct<2> "key1" type test');
 like($obj->as_string, qr|<struct>.*(<member>.*
                                       <name>.*</name>.*
                                       <value>.*</value>.*
-                                    </member>.*){2}.*</struct>|smx);
-is(length($obj->as_string), $obj->length);
+                                    </member>.*){2}.*</struct>|smx,
+     'struct<2> XML serialization');
+is(length($obj->as_string), $obj->length, 'struct<2> length() check');
 # No need to re-test the XML character handling
 
 # Faults are a subclass of structs
 $obj = RPC::XML::fault->new(faultCode => 1, faultString => 'test');
-ok(ref $obj);
+isa_ok($obj, 'RPC::XML::fault', '$obj (fault)');
 # Since it's a subclass, I won't waste cycles testing the similar methods
 $obj = RPC::XML::fault->new(faultCode => 1, faultString => 'test',
                             faultFail => 'extras are not allowed');
-ok(! ref($obj));
-like($RPC::XML::ERROR, qr/:new: Extra struct/);
+ok(! ref($obj), 'fault class rejects extra args');
+like($RPC::XML::ERROR, qr/:new: Extra struct/,
+     'fault class failure set error string');
 $obj = RPC::XML::fault->new(1, 'test');
-ok(ref $obj);
-is($obj->code, 1);
-is($obj->string, 'test');
+isa_ok($obj, 'RPC::XML::fault', '$obj<2> (fault)');
+is($obj->code, 1, 'fault code() method');
+is($obj->string, 'test', 'fault string() method');
 like($obj->as_string, qr|<fault>.*
                            <value>.*
                              <struct>.*
@@ -255,53 +257,58 @@ like($obj->as_string, qr|<fault>.*
                                 </member>.*){2}.*
                              </struct>.*
                            </value>.*
-                         </fault>|smx);
-is(length($obj->as_string), $obj->length);
+                         </fault>|smx,
+     'fault XML serialization');
+is(length($obj->as_string), $obj->length, 'fault length() check');
 
 # Requests
 $obj = RPC::XML::request->new('test.method');
-ok(ref $obj);
-is($obj->name, 'test.method');
-ok($obj->args && (@{ $obj->args } == 0));
+isa_ok($obj, 'RPC::XML::request', '$obj (request)');
+is($obj->name, 'test.method', 'request name method');
+ok($obj->args && (@{ $obj->args } == 0), 'request args method');
 $obj = RPC::XML::request->new();
-ok(! ref($obj));
-like($RPC::XML::ERROR, qr/:new: At least a method name/);
+ok(! ref($obj), 'bad request contructor failed');
+like($RPC::XML::ERROR, qr/:new: At least a method name/,
+     'bad request constructor set error string');
 $obj = RPC::XML::request->new('test.method', (1 .. 10));
-ok($obj->args && (@{ $obj->args } == 10));
+ok($obj->args && (@{ $obj->args } == 10), 'request args method size test');
 # The new() method uses smart_encode on the args, which has already been
 # tested. These are just to ensure that it *does* in fact call it
-is($obj->args->[0]->type, 'int');
-is($obj->args->[9]->value, 10);
+is($obj->args->[0]->type, 'int', 'request args elt[0] type test');
+is($obj->args->[9]->value, 10, 'request args elt[9] value test');
 like($obj->as_string, qr|<\?xml.*
                          <methodCall>.*
                            <methodName>.*</methodName>.*
                            <params>.*
                              (<param>.*</param>.*){10}.*
                            </params>.*
-                         </methodCall>|smx);
-is(length($obj->as_string), $obj->length);
+                         </methodCall>|smx,
+     'request XML serialization');
+is(length($obj->as_string), $obj->length, 'request length() test');
 
 # Responses
 $obj = RPC::XML::response->new('ok');
-ok(ref $obj);
-is($obj->value->type, 'string');
-is($obj->value->value, 'ok');
-ok(! $obj->is_fault);
+isa_ok($obj, 'RPC::XML::response', '$obj (response)');
+is($obj->value->type, 'string', 'response value->type test');
+is($obj->value->value, 'ok', 'response value->value test');
+ok(! $obj->is_fault, 'response object not fault');
 like($obj->as_string, qr|<\?xml.*
                          <methodResponse>.*
                            <params>.*
                              <param>.*</param>.*
                            </params>.*
-                         </methodResponse>|smx);
-is(length($obj->as_string), $obj->length);
+                         </methodResponse>|smx,
+     'response XML serialization');
+is(length($obj->as_string), $obj->length, 'response length() test');
 
 $obj = RPC::XML::response->new();
-ok(! ref($obj));
-like($RPC::XML::ERROR, qr/:new: One of a datatype, value or a fault/);
+ok(! ref($obj), 'bad response constructor failed');
+like($RPC::XML::ERROR, qr/:new: One of a datatype, value or a fault/,
+     'bad response constructor set error string');
 $obj = RPC::XML::response->new(RPC::XML::fault->new(1, 'test'));
-ok(ref $obj);
+isa_ok($obj, 'RPC::XML::response', '$obj (response/fault)');
 # The other methods have already been tested
-ok($obj->is_fault);
+ok($obj->is_fault, 'fault response creation is_fault test');
 
 ### test for bug where encoding was done too freely, encoding
 ### any ^\d+$ as int, etc
@@ -318,8 +325,9 @@ ok($obj->is_fault);
         {
             {
                 my $obj = smart_encode($mod * $val);
-                ok($obj);
-                is($obj->type, $type);
+                ok($obj, "smart_encode zealousness test, $mod * $val");
+                is($obj->type, $type,
+                   'smart_encode zealousness, non-forced type');
             }
 
             ### test force string encoding
@@ -328,11 +336,17 @@ ok($obj->is_fault);
                 local $RPC::XML::FORCE_STRING_ENCODING = 1;
                 local $RPC::XML::FORCE_STRING_ENCODING = 1;
                 my $obj = smart_encode($mod * $val);
-                ok($obj);
-                is($obj->type, 'string');
+                ok($obj, "smart_encode zealousness test, $mod * $val (force)");
+                is($obj->type, 'string',
+                   'smart_encode zealousness, forced to string');
             }
         }
     }
 }
+
+# Test for RT# 31818, ensure that very small double values are expressed in
+# a format that conforms to the XML-RPC spec.
+is(RPC::XML::double->new(0.000005)->as_string, '<double>0.000005</double>',
+   'Floating-point format test, RT31818');
 
 exit 0;
