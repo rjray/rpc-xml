@@ -49,7 +49,8 @@ BEGIN
         eval 'sub bytelength { use bytes; length(@_ ? $_[0] : $_) }';
     }
 
-    %xmlmap = ( '>' => '&gt;' => '<' => '&lt;' => '&' => '&amp;');
+    %xmlmap = ( '>' => '&gt;',   '<' => '&lt;', '&' => '&amp;',
+                '"' => '&quot;', "'" => '&apos;');
     $xmlre = join('', keys %xmlmap); $xmlre = qr/([$xmlre])/;
 
     # Default encoding:
@@ -69,7 +70,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.38';
+$VERSION = '1.39';
 
 # Global error string
 $ERROR = '';

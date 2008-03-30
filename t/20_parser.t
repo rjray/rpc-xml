@@ -6,7 +6,7 @@
 use strict;
 use vars qw($p $req $res $ret $dir $file);
 
-use Test::More tests => 13;
+use Test::More tests => 14;
 require File::Spec;
 require IO::File;
 
@@ -61,5 +61,12 @@ isa_ok($new_base64, 'RPC::XML::base64', '$new_base64');
 is($base64->as_string(), $new_base64->as_string,
    'Parse base64 spooling, value comparison');
 isa_ok($new_base64->{value_fh}, 'GLOB', '$new_base64->{value_fh}');
+
+# Per problem reported by Bill Moseley, check that messages parsed by the
+# parser class handle the core entities.
+$tmp = q{Entity test: & < > ' "};
+$res = RPC::XML::response->new($tmp);
+$ret = $p->parse($res->as_string);
+is($ret->value->value, $tmp, 'RPC::XML::Parser handles core entities');
 
 exit 0;
