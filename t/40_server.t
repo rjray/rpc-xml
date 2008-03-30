@@ -254,7 +254,7 @@ $res = $res->value->value;
 @keys = qw(host port name version path date date_int started started_int
            total_requests methods_known);
 ok((ref($res) eq 'HASH') && ($res->{total_requests} == 5),
-   'system.status test(1)');
+   'system.status test(2)');
 
 # system.methodHelp
 $req->content(RPC::XML::request->new('system.methodHelp',
