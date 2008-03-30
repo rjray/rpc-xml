@@ -93,7 +93,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = '1.46';
+$VERSION = '1.47';
 
 ###############################################################################
 #
@@ -1500,8 +1500,20 @@ sub process_request
                 }
             }
 
-            # Dispatch will always return a RPC::XML::response
-            $respxml = $self->dispatch($reqxml);
+            # Dispatch will always return a RPC::XML::response.
+            # RT29351: If there was an error from RPC::XML::Parser (such as
+            # a message that didn't conform to spec), then return it directly
+            # as a fault, don't have dispatch() try and handle it.
+            if (ref $reqxml)
+            {
+                $respxml = $self->dispatch($reqxml);
+            }
+            else
+            {
+                $respxml = RPC::XML::fault->new(RC_INTERNAL_SERVER_ERROR,
+                                                $reqxml);
+                $respxml = RPC::XML::response->new($respxml);
+            }
 
             # Clone the pre-fab response and set headers
             $resp = $self->response->clone;
