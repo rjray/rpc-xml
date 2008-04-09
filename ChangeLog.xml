@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="iso-8859-1"?>
+<?xml version="1.0" encoding="utf-8"?>
 <!--
     The schema for this namespace may be found at the following URL:
 
@@ -8,6 +8,7 @@
 -->
 <changelog xmlns="http://www.blackperl.com/XML/ChangeLog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:xhtml="http://www.w3.org/1999/xhtml"
     xsi:schemaLocation="http://www.blackperl.com/XML/ChangeLog etc/ChangeLogML.xsd">
   <description>
     Revision history for the Perl extension module RPC::XML. This is an
@@ -16,6 +17,169 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release version="0.60" tag="v0_60" date="2008-04-09T03:01:07-07:00">
+    <change>
+      <fileset>
+        <file path="t/00_load.t" revision="328" />
+        <file path="t/01_pod.t" revision="328" />
+        <file path="t/02_pod_coverage.t" revision="328" />
+        <file path="t/10_data.t" revision="328" />
+        <file path="t/11_base64_fh.t" revision="328" />
+        <file path="t/15_serialize.t" revision="328" />
+        <file path="t/20_parser.t" revision="328" />
+        <file path="t/30_method.t" revision="328" />
+        <file path="t/40_server.t" revision="328" />
+        <file path="t/50_client.t" revision="328" />
+        <file path="t/60_net_server.t" revision="328" />
+      </fileset>
+      <description>
+        Related to the main change of
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30849">RT ticket #30849</xhtml:a>,
+        fixes potential problem in the creation of temporary file names if a
+        test script is run directly from the "t" directory. While at it, added
+        a line with the Subversion "Id" keyword and set the "svn:keywords"
+        property on all test scripts. The code-fix is based on suggestions from
+        Jörg Meltzer &lt;joerg@joergmeltzer.de&gt;.
+      </description>
+    </change>
+    <change>
+      <file path="lib/RPC/XML/Client.pm" revision="329" />
+      <description>
+        Per <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30849">RT ticket #30849</xhtml:a>,
+        fix problem caused by having colons in temp-file names. Fix largely
+        from patch suggested by Jörg Meltzer &lt;joerg@joergmeltzer.de&gt;.
+      </description>
+    </change>
+    <change>
+      <file path="lib/RPC/XML/Server.pm" revision="331" />
+      <description>
+        Applied a modified form of a patch submitted by Mike Rylander
+        &lt;miker@n2bb.com&gt; to make things work under SSL.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="lib/RPC/XML/Server.pm" revision="332" />
+        <file path="t/41_server_hang.t" action="ADD" revision="332" />
+      </fileset>
+      <description>
+        Fixed the bug in RPC::XML::Server::process_request() could lead to an
+        infinite loop if the client shuts down the socket before the full
+        request is sent. Added a test script specific to this bug, to catch it
+        if it reappears.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="lib/RPC/XML.pm" revision="333" />
+        <file path="t/10_data.t" revision="333" />
+      </fileset>
+      <description>
+        Per <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30042">RT ticket #30042</xhtml:a>,
+        made a do-nothing branch in RPC::XML::smart_encode actually die with an
+        error when a reference-type is passed in that cannot be converted.
+        Added two tests to cover this, and took the opportunity to convert
+        10_data.t to Test::More.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="t/40_server.t" revision="334" />
+        <file path="t/50_client.t" revision="334" />
+      </fileset>
+      <description>
+        Applied a patch from Chris Darroch to make the spawning of servers work
+        in some corner-cases that were failing. All that was required was
+        explicit specification of 'localhost' in the instantiation.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="lib/RPC/XML/Parser.pm" revision="336" />
+        <file path="t/20_parser.t" revision="336" />
+      </fileset>
+      <description>
+        Applied a patch from Masatake Daimon (大門正岳) to improve the performance
+        of the parser by reducing the (vast) number of string-concat operations.
+        During this change, re-wrote the parser tests to use Test::More and
+        have better diagnostics.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="lib/RPC/XML/Server.pm" revision="337" />
+        <file path="t/40_server.t" revision="337" />
+      </fileset>
+      <description>
+        Per <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=29351">RT ticket #29351</xhtml:a>,
+        fixed a bug that caused a server to incorrectly report the location and
+        cause of an XML parsing error in the request. The actual bug and
+        solution were different than initially reported in the ticket.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="lib/RPC/XML.pm" revision="338" />
+        <file path="t/10_data.t" revision="338" />
+      </fileset>
+      <description>
+        Per <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=31818">RT ticket #31818</xhtml:a>,
+        fix to the XML serialization of double values to conform to the
+        XML-RPC spec, as it does not allow for exponential notation. This also
+        required changes to the tests, as values were no longer being
+        auto-truncated at 5 decimal places. Also finished cleaning up the
+        t/10_data.t test suite with diagnostic messages on the tests that
+        had not previously gotten them.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="lib/RPC/XML.pm" revision="339" />
+        <file path="t/20_parser.t" revision="339" />
+      </fileset>
+      <description>
+        In response to concerns raised by a report of parsing problems, added
+        XML entity encoding for ' and " (&amp;apos; and &amp;quot;) to the
+        base RPC::XML module, and added a test to the parser suite to make
+        sure it is correctly turning all core XML entities back into characters
+        during the parsing process.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm" revision="341" />
+        <file path="lib/RPC/XML/Server.pm" revision="341" />
+        <file path="t/40_server.t" revision="341" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=34557">RT ticket #34557</xhtml:a>:
+        Provide access to client-side connection info to methods called on
+        the server, by placing the data from get_peeraddr() (as abstracted
+        through existing methods in HTTP::Daemon::ClientConn and
+        Apache::Connection) into localized keys on the server object, as is
+        already done with the method_name and signature pseudo-keys. Tests
+        added to 40_server.t and docs updated.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="etc/make_method" revision="343" />
+        <file path="lib/Apache/RPC/Server.pm" revision="343" />
+        <file path="lib/Apache/RPC/Status.pm" revision="343" />
+        <file path="lib/RPC/XML/Client.pm" revision="343" />
+        <file path="lib/RPC/XML/Function.pm" revision="343" />
+        <file path="lib/RPC/XML/Method.pm" revision="343" />
+        <file path="lib/RPC/XML/Parser.pm" revision="343" />
+        <file path="lib/RPC/XML/Procedure.pm" revision="343" />
+        <file path="lib/RPC/XML/Server.pm" revision="343" />
+        <file path="lib/RPC/XML.pm" revision="343" />
+      </fileset>
+      <description>
+        Updated all copyright/redistribution information with current year and
+        correct/current URLs for Artistic and LGPL licenses.
+      </description>
+    </change>
+  </release>
   <release version="0.59" tag="v0_59" date="2006-06-30T01:48:37-06:00">
     <change>
       <file path="t/10_data.t" revision="1.10" />

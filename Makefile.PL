@@ -12,18 +12,18 @@ use ExtUtils::MakeMaker;
 use File::Spec;
 use File::Find;
 use Cwd 'cwd';
-use LWP;
 
-if ($LWP::VERSION < 5.801)
+eval "require LWP;";
+if ($LWP::VERSION and $LWP::VERSION < 5.801)
 {
     print STDERR <<END;
 @@@@@
-	Please note!
+        Please note!
 
-	Due to a bug fixed in version 5.801 of LWP, using the spool-to-file
-	feature of RPC::XML::Client is broken. The relevant tests will be
-	skipped in the test suite, but unless you upgrade your LWP you
-	should not attempt to use this feature.
+        Due to a bug fixed in version 5.801 of LWP, using the spool-to-file
+        feature of RPC::XML::Client is broken. The relevant tests will be
+        skipped in the test suite, but unless you upgrade your LWP you
+        should not attempt to use this feature.
 @@@@@
 
 END
@@ -34,14 +34,14 @@ if ($@ or $XML::LibXML::VERSION < 1.58)
 {
     print STDERR <<END;
 @@@@@
-	Please note!
+        Please note!
 
-	Starting with release 0.60 (the next after this one), the XML
-	parsing will switch to using the XML::LibXML module, in place of
-	XML::Parser. You either do not have this module, or it is a version
-	older than 1.58, the minimum version that will be required. When
-	release 0.60 is made available, you will not be able to build this
-	package without at least version 1.58 of XML::LibXML.
+        Starting with release 0.70 (previously planned for 0.60 but pushed
+        back), the XML parsing will switch to using the XML::LibXML module, in
+        place of XML::Parser. You either do not have this module, or it is a
+        version older than 1.58, the minimum version that will be
+        required. When release 0.70 is made available, you will not be able to
+        build this package without at least version 1.58 of XML::LibXML.
 @@@@@
 
 END
@@ -86,16 +86,19 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.59',
+              VERSION   => '0.60',
               AUTHOR    => 'Randy J. Ray',
               ABSTRACT  => 'Data, client and server classes for XML-RPC',
               EXE_FILES => \@scripts,
               PM        => \%PM_FILES,
               PREREQ_PM => { XML::Parser => 2.31,
                              File::Spec  => 0.8,
+                             Test::More  => 0,
                              LWP         => 5.801 },
               dist      => { COMPRESS => 'gzip -9f' },
               clean     => { FILES => $CLEAN },
+              LICENSE      => 'perl',
+              SIGN         => 'here, please',
              );
 
 sub MY::post_initialize
@@ -114,99 +117,12 @@ sub MY::post_initialize
     join("\n", @text);
 }
 
-sub MY::tools_other
-{
-    package MY;
-
-    my $text = shift->SUPER::tools_other(@_);
-
-    "$text\nECHO=\@echo\nRPM=rpmbuild\n";
-}
-
-sub MY::post_constants
-{
-    my $self = shift;
-
-    "SPECFILE=perl-$self->{DISTNAME}.spec";
-}
-
 sub MY::postamble
 {
     my $self = shift;
 
     my @text;
     my $makemeth = File::Spec->catfile(qw(etc make_method));
-
-    if (-e 'spec.in' and -f _)
-    {
-        #
-        # Generate the spec file from spec.in with substitutions
-        #
-        print "Generating perl-$self->{DISTNAME}.spec...\n";
-        $self->{RELEASE} = 1 unless $self->{RELEASE};
-        $self->{INSTALLDIR} = $Config{installsitelib}
-            unless $self->{INSTALLDIR};
-        open(SPECI, "< spec.in");
-        if ($?)
-        {
-            die "Error opening template spec file: $!, stopped";
-        }
-        open(SPECO, "> perl-$self->{DISTNAME}.spec");
-        if ($?)
-        {
-            die "Error creating output spec file: $!, stopped";
-        }
-
-        for (<SPECI>)
-        {
-            s/(\$\{(\w+)\})/$self->{$2}/eg;
-            print SPECO $_;
-        }
-        close(SPECO); close(SPECI);
-
-        print "Generating rpmrc...\n";
-        open(RPMRC, "> rpmrc");
-        if ($?)
-        {
-            die "Error creating rpmrc file: $!, stopped";
-        }
-        else
-        {
-            print RPMRC <<END_rpmrc;
-include: /usr/lib/rpm/rpmrc
-macrofiles: /usr/lib/rpm/macros:rpmmacro
-END_rpmrc
-            close(RPMRC);
-        }
-        print "Generating rpmmacros...\n";
-        open(MACRO, "> rpmmacro");
-        if ($?)
-        {
-            die "Error creating macro file: $!, stopped";
-        }
-        else
-        {
-            print MACRO <<END_macro;
-%_rpmfilename           %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
-%_builddir              %{_topdir}
-%_sourcedir             %{_topdir}
-%_specdir               %{_topdir}
-%_srcrpmdir             %{_topdir}
-%_rpmdir                %{_topdir}
-%_topdir                $cwd
-END_macro
-            close(MACRO);
-        }
-
-        # Create the rules that create RPM and SRPM files
-        push(@text, qq{
-rpm: \$(SPECFILE) \$(DISTVNAME).tar\$(SUFFIX)
-\t\$(RPM) -bb --clean --rcfile rpmrc \$(SPECFILE)
-
-srpm: \$(SPECFILE) \$(DISTVNAME).tar\$(SUFFIX)
-\t\$(RPM) -bs --clean --rcfile rpmrc \$(SPECFILE)
-});
-    }
 
     # Create the dependancy rules for the methods/XPL files
     for (sort grep(/\.xpl$/, keys %::PM_FILES))

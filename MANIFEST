@@ -56,6 +56,7 @@ t/15_serialize.t
 t/20_parser.t
 t/30_method.t
 t/40_server.t
+t/41_server_hang.t
 t/50_client.t
 t/60_net_server.t
 t/meth_bad_1.xpl
