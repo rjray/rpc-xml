@@ -1,14 +1,12 @@
 ###############################################################################
 #
-# This file copyright (c) 2001 by Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2008 Randy J. Ray, all rights reserved
 #
-# Copying and distribution are permitted under the terms of the Artistic
-# License as distributed with Perl versions 5.005 and later. See
-# http://www.opensource.org/licenses/artistic-license.php
+# See "LICENSE" in the documentation for licensing and redistribution terms.
 #
 ###############################################################################
 #
-#   $Id: Method.pm,v 1.8 2004/12/09 08:50:17 rjray Exp $
+#   $Id$
 #
 #   Description:    This is now an empty sub-class of RPC::XML::Procedure.
 #                   It is given its own file to allow for a minimal manual
@@ -33,7 +31,7 @@ use vars qw($VERSION);
 require RPC::XML::Procedure;
 
 @RPC::XML::Method::ISA = qw(RPC::XML::Procedure);
-$VERSION = do { my @r=(q$Revision: 1.8 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = '1.09';
 
 1;
 
@@ -64,9 +62,12 @@ completely.
 
 =head1 LICENSE
 
-This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
-license.
+This module and the code within are released under the terms of the Artistic
+License 2.0
+(http://www.opensource.org/licenses/artistic-license-2.0.php). This code may
+be redistributed under either the Artistic License or the GNU Lesser General
+Public License (LGPL) version 2.1
+(http://www.opensource.org/licenses/lgpl-license.php).
 
 =head1 SEE ALSO
 

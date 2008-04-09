@@ -1,10 +1,8 @@
 ###############################################################################
 #
-# This file copyright (c) 2001 by Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2008 Randy J. Ray, all rights reserved
 #
-# Copying and distribution are permitted under the terms of the Artistic
-# License as distributed with Perl versions 5.005 and later. See
-# http://www.opensource.org/licenses/artistic-license.php
+# See "LICENSE" in the documentation for licensing and redistribution terms.
 #
 ###############################################################################
 #
@@ -69,7 +67,7 @@ use constant FAULTENT    => 21;
 use constant FAULTSTART  => 22;
 
 # This is to identify valid types
-use constant VALIDTYPES  => { map { $_, 1 } qw(int i4 string double reference
+use constant VALIDTYPES  => { map { $_, 1 } qw(int i4 string double
                                                boolean dateTime.iso8601
                                                base64) };
 # This maps XML tags to stack-machine tokens
@@ -99,7 +97,7 @@ require File::Spec;
 
 require RPC::XML;
 
-$VERSION = '1.14';
+$VERSION = '1.15';
 
 ###############################################################################
 #
@@ -651,9 +649,12 @@ specification.
 
 =head1 LICENSE
 
-This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
-license itself.
+This module and the code within are released under the terms of the Artistic
+License 2.0
+(http://www.opensource.org/licenses/artistic-license-2.0.php). This code may
+be redistributed under either the Artistic License or the GNU Lesser General
+Public License (LGPL) version 2.1
+(http://www.opensource.org/licenses/lgpl-license.php).
 
 =head1 SEE ALSO
 

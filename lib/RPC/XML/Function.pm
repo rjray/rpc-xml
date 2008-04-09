@@ -1,14 +1,12 @@
 ###############################################################################
 #
-# This file copyright (c) 2002 by Randy J. Ray, all rights reserved
+# This file copyright (c) 2002-2008 Randy J. Ray, all rights reserved
 #
-# Copying and distribution are permitted under the terms of the Artistic
-# License as distributed with Perl versions 5.005 and later. See
-# http://www.opensource.org/licenses/artistic-license.php
+# See "LICENSE" in the documentation for licensing and redistribution terms.
 #
 ###############################################################################
 #
-#   $Id: Function.pm,v 1.4 2006/06/04 07:44:41 rjray Exp $
+#   $Id$
 #
 #   Description:    This is a type of Procedure that does no signature tests
 #                   at either creation or invocation.
@@ -40,7 +38,7 @@ use AutoLoader 'AUTOLOAD';
 require RPC::XML::Procedure;
 
 @ISA = qw(RPC::XML::Procedure);
-$VERSION = do { my @r=(q$Revision: 1.4 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION = '1.05';
 
 ###############################################################################
 #
@@ -217,9 +215,12 @@ upon error.
 
 =head1 LICENSE
 
-This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
-license itself.
+This module and the code within are released under the terms of the Artistic
+License 2.0
+(http://www.opensource.org/licenses/artistic-license-2.0.php). This code may
+be redistributed under either the Artistic License or the GNU Lesser General
+Public License (LGPL) version 2.1
+(http://www.opensource.org/licenses/lgpl-license.php).
 
 =head1 SEE ALSO
 

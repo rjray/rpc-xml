@@ -1,11 +1,8 @@
 ###############################################################################
 #
-# This file copyright (c) 2001 by Randy J. Ray <rjray@blackperl.com>,
-# all rights reserved
+# This file copyright (c) 2001-2008 Randy J. Ray, all rights reserved
 #
-# Copying and distribution are permitted under the terms of the Artistic
-# License as distributed with Perl versions 5.002 and later. See
-# http://www.opensource.org/licenses/artistic-license.php
+# See "LICENSE" in the documentation for licensing and redistribution terms.
 #
 ###############################################################################
 #
@@ -93,7 +90,7 @@ use RPC::XML 'bytelength';
 require RPC::XML::Parser;
 require RPC::XML::Procedure;
 
-$VERSION = '1.47';
+$VERSION = '1.48';
 
 ###############################################################################
 #
@@ -891,7 +888,7 @@ environment and thus included for convenience.
 
 This is the address of the remote (client) end of the socket, in C<x.x.x.x>
 (dotted-quad) format. If you wish to look up the clients host-name, you
-can use this to do so or utilize the B<SOCKADDR_IN> structure directly.
+can use this to do so or utilize the encoded structure above directly.
 
 =item peerport
 
@@ -1067,9 +1064,12 @@ in the signal-setting and signal-catching code in server_loop().
 
 =head1 LICENSE
 
-This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
-license.
+This module and the code within are released under the terms of the Artistic
+License 2.0
+(http://www.opensource.org/licenses/artistic-license-2.0.php). This code may
+be redistributed under either the Artistic License or the GNU Lesser General
+Public License (LGPL) version 2.1
+(http://www.opensource.org/licenses/lgpl-license.php).
 
 =head1 SEE ALSO
 

@@ -1,14 +1,12 @@
 ###############################################################################
 #
-# This file copyright (c) 2001 by Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2008 Randy J. Ray, all rights reserved
 #
-# Copying and distribution are permitted under the terms of the Artistic
-# License as distributed with Perl versions 5.005 and later. See
-# http://www.opensource.org/licenses/artistic-license.php
+# See "LICENSE" in the documentation for licensing and redistribution terms.
 #
 ###############################################################################
 #
-#   $Id: Status.pm,v 1.6 2006/06/04 07:44:41 rjray Exp $
+#   $Id$
 #
 #   Description:    This module is intended to provide a browser-friendly
 #                   status page on the RPC server(s) being managed by the
@@ -62,7 +60,7 @@ $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf "v%vd", $^V : $];
 
-$Apache::RPC::Status::VERSION = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$Apache::RPC::Status::VERSION = '1.07';
 
 #
 # %proto is the prototype set of screens/handlers that this class knows about.
@@ -963,9 +961,12 @@ this were carefully considered, so any such changes should be minimal.
 
 =head1 LICENSE
 
-This module is licensed under the terms of the Artistic License that covers
-Perl. See <http://www.opensource.org/licenses/artistic-license.php> for the
-license itself.
+This module and the code within are released under the terms of the Artistic
+License 2.0
+(http://www.opensource.org/licenses/artistic-license-2.0.php). This code may
+be redistributed under either the Artistic License or the GNU Lesser General
+Public License (LGPL) version 2.1
+(http://www.opensource.org/licenses/lgpl-license.php).
 
 =head1 SEE ALSO
 
