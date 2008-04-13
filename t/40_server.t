@@ -55,7 +55,7 @@ die "No usable port found between 9000 and 10000, skipping"
 $srv = RPC::XML::Server->new(no_default => 1,
                              host => 'localhost', port => $port);
 isa_ok($srv, 'RPC::XML::Server', '$srv<2>');
-is($srv->url, "http://localhost:$port/",
+like($srv->url, qr|http://localhost(\.localdomain)?:$port|,
    'RPC::XML::Server::url method (set)'); # This should be non-null this time
 # Test some of the simpler cases of add_method and get_method
 $res = $srv->add_method({ name      => 'perl.test.suite.test1',
