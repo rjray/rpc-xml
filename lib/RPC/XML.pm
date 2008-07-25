@@ -77,6 +77,7 @@ sub RPC_STRING           ( $ ) { RPC::XML::string->new($_[0]) }
 sub RPC_BOOLEAN          ( $ ) { RPC::XML::boolean->new($_[0]) }
 sub RPC_INT              ( $ ) { RPC::XML::int->new($_[0]) }
 sub RPC_I4               ( $ ) { RPC::XML::i4->new($_[0]) }
+sub RPC_I8               ( $ ) { RPC::XML::i8->new($_[0]) }
 sub RPC_DOUBLE           ( $ ) { RPC::XML::double->new($_[0]) }
 sub RPC_DATETIME_ISO8601 ( $ ) { RPC::XML::datetime_iso8601->new($_[0]) }
 sub RPC_BASE64           ( $ ) { RPC::XML::base64->new($_[0]) }
@@ -104,8 +105,10 @@ sub time2iso8601
 # This is a (futile?) attempt to provide a "smart" encoding method that will
 # take a Perl scalar and promote it to the appropriate RPC::XML::_type_.
 {
-    my $MaxInt      = 256**4;
+    my $MaxInt      = 256 ** 4;
     my $MinInt      = $MaxInt * -1;
+    my $MaxBigInt   = $MaxInt ** 2;
+    my $MinBigInt   = $MaxBigInt * -1;
 
     my $MaxDouble   = 1e37;
     my $MinDouble   = $MaxDouble * -1;
@@ -154,9 +157,10 @@ sub time2iso8601
             # next pattern too
             # make sure not to encode digits that are larger than i4
             elsif (! $FORCE_STRING_ENCODING and /^[-+]?\d+$/
-                   and $_ > $MinInt and $_ < $MaxInt)
+                   and $_ > $MinBigInt and $_ < $MaxBigInt)
             {
-                $type = RPC::XML::int->new($_);
+                $type = (abs($_) > $MaxInt) ? 'RPC::XML::i8' : 'RPC::XML::int';
+                $type = $type->new($_);
             }
             # Pattern taken from perldata(1)
             elsif (! $FORCE_STRING_ENCODING and
@@ -287,6 +291,20 @@ use vars qw(@ISA);
 #
 ###############################################################################
 package RPC::XML::i4;
+
+use strict;
+use vars qw(@ISA);
+
+@ISA = qw(RPC::XML::simple_type);
+
+###############################################################################
+#
+#   Package:        RPC::XML::i8
+#
+#   Description:    Data-type class for i8. Forces data into a 8-byte int.
+#
+###############################################################################
+package RPC::XML::i8;
 
 use strict;
 use vars qw(@ISA);
@@ -1371,8 +1389,8 @@ multi-byte characters. If no argument is passed in, operates on C<$_>.
 In addition to these three, the following "helper" functions are also
 available. They may be imported explicitly, or via a tag of C<:types>:
 
-    RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_DATETIME_ISO8601
-    RPC_BASE64 RPC_STRING
+    RPC_BOOLEAN RPC_INT RPC_I4 RPC_I8 RPC_DOUBLE
+    RPC_DATETIME_ISO8601 RPC_BASE64 RPC_STRING
 
 Each creates a data object of the appropriate type from a single value. They
 are merely short-hand for calling the constructors of the data classes
@@ -1451,6 +1469,12 @@ argument.
 This is like the C<int> class. Note that services written in strictly-typed
 languages such as C, C++ or Java may consider the C<i4> and C<int> types as
 distinct and different.
+
+=item RPC::XML::i8
+
+This represents an 8-byte integer, and is not officially supported by the
+XML-RPC specification. This has been added to accommodate services already
+in use that have chosen to add this extension.
 
 =item RPC::XML::double
 

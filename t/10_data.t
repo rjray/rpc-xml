@@ -6,7 +6,7 @@
 use strict;
 use vars qw($val $obj $class %val_tbl @values);
 
-use Test::More tests => 178;
+use Test::More tests => 186;
 use RPC::XML ':all';
 
 # First, the most basic data-types
@@ -315,7 +315,8 @@ ok($obj->is_fault, 'fault response creation is_fault test');
 {
     my %map = (
         256         => 'int',
-        256**4+1    => 'double',    # will do *-1 as well
+        256**4+1    => 'i8',    # will do *-1 as well
+        256**8+1    => 'double',
         1e37+1      => 'string',
     );
 
