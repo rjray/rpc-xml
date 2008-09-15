@@ -72,6 +72,17 @@
         specification. Documentation and tests included.
       </description>
     </change>
+    <change>
+      <fileset>
+        <file path="t/40_server.t" revision="352" />
+        <file path="t/60_net_server.t" revision="352" />
+      </fileset>
+      <description>
+        Some of the work in armoring the test suites against server-death
+        changed the counts on tests and on call-counts in the system.status
+        method. Some explicit re-starts didn't help.
+      </description>
+    </change>
   </release>
   <release version="0.60" tag="v0_60" date="2008-04-09T03:01:07-07:00">
     <change>

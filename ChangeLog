@@ -35,6 +35,12 @@ Revision history for Perl extension RPC::XML.
 	XML-RPC specification. Documentation and tests included. THIS SHOULD BE
 	CONSIDERED EXPERIMENTAL.
 
+	t/40_server.t:
+	t/60_net_server.t:
+	Some of the work in armoring the test suites against server-death
+	changed the counts on tests and on call-counts in the system.status
+	method. Some explicit re-starts didn't help.
+
 0.60	Wed Apr  9 03:01:07 PDT 2008
 
 	t/00_load.t:

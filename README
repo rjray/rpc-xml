@@ -98,3 +98,9 @@ Per RT ticket #30354 and specific request from a large agency using
 this package, implemented an "i8" type as an extension to the official
 XML-RPC specification. Documentation and tests included. THIS SHOULD BE
 CONSIDERED EXPERIMENTAL.
+
+t/40_server.t:
+t/60_net_server.t:
+Some of the work in armoring the test suites against server-death changed
+the counts on tests and on call-counts in the system.status method. Some
+explicit re-starts didn't help.
