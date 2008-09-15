@@ -86,7 +86,7 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.60',
+              VERSION   => '0.61',
               AUTHOR    => 'Randy J. Ray',
               ABSTRACT  => 'Data, client and server classes for XML-RPC',
               EXE_FILES => \@scripts,

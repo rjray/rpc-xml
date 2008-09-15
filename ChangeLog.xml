@@ -17,6 +17,62 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release version="0.61" tag="v0_61" date="2008-09-15T01:38:44-07:00">
+    <change>
+      <file path="t/00_load.t" revision="346" />
+      <description>
+        Converted to Test::More due to some cpan-testers reports that showed
+        test 2 failing. Hoping this might provide better feedback if it
+        continues to fail.
+      </description>
+    </change>
+    <change>
+      <file path="t/40_server.t" revision="347" />
+      <description>
+        Changed a test for "localhost:$port" in the server URL method to
+        optionally allow localhost.localdomain, for those systems whose
+        /etc/hosts cause the former to convert to the latter. Was causing
+        false failures.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="t/40_server.t" revision="348" />
+        <file path="t/50_client.t" revision="348" />
+        <file path="t/60_net_server.t" revision="348" />
+      </fileset>
+      <description>
+        Test suites armored against server processes that die as a result of
+        croak() or other calls within 3rd-party modules. The client and
+        net_server suites were also converted to Test::More at this time.
+      </description>
+    </change>
+    <change>
+      <file path="t/40_server.t" revision="349" />
+      <description>
+        Fix for
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=36078">RT ticket #36078</xhtml:a>,
+        fix the URL testing on the server object to be less strict. Instead of
+        only allowing "localhost", now also allows "localhost.localdomain" and
+        does a look-up of "localhost" for the 127.* IP address and permits
+        that as well. In essence, this extends and supercedes the second change
+        listed above after more invariant cases were discovered.
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="lib/RPC/XML.pm" revision="350" />
+        <file path="t/10_data.t" revision="350" />
+      </fileset>
+      <description>
+        Per
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30354">RT ticket #30354</xhtml:a>
+        and specific request from a large agency using this package,
+        implemented an "i8" type as an extension to the official XML-RPC
+        specification. Documentation and tests included.
+      </description>
+    </change>
+  </release>
   <release version="0.60" tag="v0_60" date="2008-04-09T03:01:07-07:00">
     <change>
       <fileset>

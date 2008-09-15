@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.60
+Version: 0.61
 
 WHAT IS IT
 
@@ -61,109 +61,40 @@ SEE ALSO
 
 XML-RPC:          http://www.xmlrpc.com/spec
 The Artistic 2.0: http://www.opensource.org/licenses/artistic-license-2.0.php
-The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-license.php
+The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 
 CHANGES
 
 t/00_load.t:
-t/01_pod.t:
-t/02_pod_coverage.t:
-t/10_data.t:
-t/11_base64_fh.t:
-t/15_serialize.t:
-t/20_parser.t:
-t/30_method.t:
+Converted to Test::More due to some cpan-testers reports that showed
+test 2 failing. Hoping this might provide better feedback if it
+continues to fail.
+
+t/40_server.t:
+Changed a test for "localhost:$port" in the server URL method to
+optionally allow localhost.localdomain, for those systems whose
+/etc/hosts cause the former to convert to the latter. Was causing
+false failures.
+
 t/40_server.t:
 t/50_client.t:
 t/60_net_server.t:
-Related to the main change of RT ticket #30849, fixes potential
-problem in the creation of temporary file names if a test script is
-run directly from the "t" directory. While at it, added a line with
-the Subversion "Id" keyword and set the "svn:keywords" property on
-all test scripts. The code-fix is based on suggestions from Jörg
-Meltzer <joerg@joergmeltzer.de>.
+Test suites armored against server processes that die as a result of
+croak() or other calls within 3rd-party modules. The client and
+net_server suites were also converted to Test::More at this time.
 
-lib/RPC/XML/Client.pm:
-Per RT ticket #30849, fix problem caused by having colons in
-temp-file names. Fix largely from patch suggested by Jörg Meltzer
-<joerg@joergmeltzer.de>.
-
-lib/RPC/XML/Server.pm:
-Applied a modified form of a patch submitted by Mike Rylander
-<miker@n2bb.com> to make things work under SSL.
-
-lib/RPC/XML/Server.pm:
-t/41_server_hang.t:
-Fixed the bug in RPC::XML::Server::process_request() could lead to an
-infinite loop if the client shuts down the socket before the full
-request is sent. Added a test script specific to this bug, to catch it
-if it reappears.
+t/40_server.t:
+Fix for RT ticket #36078, fix the URL testing on the server object to
+be less strict. Instead of only allowing "localhost", now also allows
+"localhost.localdomain" and does a look-up of "localhost" for the 127.*
+IP address and permits that as well. In essence, this extends and
+supercedes the second change listed above after more invariant cases
+were discovered.
 
 lib/RPC/XML.pm:
 t/10_data.t:
-Per RT ticket #30042, made a do-nothing branch in
-RPC::XML::smart_encode actually die with an error when a
-reference-type is passed in that cannot be converted.  Added two
-tests to cover this, and took the opportunity to convert 10_data.t
-to Test::More.
-
-t/40_server.t:
-t/50_client.t:
-Applied a patch from Chris Darroch to make the spawning of servers
-work in some corner-cases that were failing. All that was required
-was explicit specification of 'localhost' in the instantiation.
-
-lib/RPC/XML/Parser.pm:
-t/20_parser.t:
-Applied a patch from Masatake Daimon (大門正岳) to improve
-the performance of the parser by reducing the (vast) number of
-string-concat operations.  During this change, re-wrote the parser
-tests to use Test::More and have better diagnostics.
-
-lib/RPC/XML/Server.pm:
-t/40_server.t:
-Per RT ticket #29351, fixed a bug that caused a server to incorrectly
-report the location and cause of an XML parsing error in the
-request. The actual bug and solution were different than initially
-reported in the ticket.
-
-lib/RPC/XML.pm:
-t/10_data.t:
-Per RT ticket #31818, fix to the XML serialization of double values
-to conform to the XML-RPC spec, as it does not allow for exponential
-notation. This also required changes to the tests, as values were
-no longer being auto-truncated at 5 decimal places. Also finished
-cleaning up the t/10_data.t test suite with diagnostic messages on
-the tests that had not previously gotten them.
-
-lib/RPC/XML.pm:
-t/20_parser.t:
-In response to concerns raised by a report of parsing problems,
-added XML entity encoding for ' and " (&apos; and &quot;) to the base
-RPC::XML module, and added a test to the parser suite to make sure
-it is correctly turning all core XML entities back into characters
-during the parsing process.
-
-lib/Apache/RPC/Server.pm:
-lib/RPC/XML/Server.pm:
-t/40_server.t:
-RT ticket #34557: Provide access to client-side connection info to
-methods called on the server, by placing the data from get_peeraddr()
-(as abstracted through existing methods in HTTP::Daemon::ClientConn
-and Apache::Connection) into localized keys on the server object, as
-is already done with the method_name and signature pseudo-keys. Tests
-added to 40_server.t and docs updated.
-
-etc/make_method:
-lib/Apache/RPC/Server.pm:
-lib/Apache/RPC/Status.pm:
-lib/RPC/XML/Client.pm:
-lib/RPC/XML/Function.pm:
-lib/RPC/XML/Method.pm:
-lib/RPC/XML/Parser.pm:
-lib/RPC/XML/Procedure.pm:
-lib/RPC/XML/Server.pm:
-lib/RPC/XML.pm:
-Updated all copyright/redistribution information with current year
-and correct/current URLs for Artistic and LGPL licenses.
+Per RT ticket #30354 and specific request from a large agency using
+this package, implemented an "i8" type as an extension to the official
+XML-RPC specification. Documentation and tests included. THIS SHOULD BE
+CONSIDERED EXPERIMENTAL.
