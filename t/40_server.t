@@ -360,7 +360,7 @@ SKIP: {
                total_requests methods_known);
     is(scalar(grep(defined $res->{$_}, @keys)), @keys,
        'system.status hash has correct keys');
-    is($res->{total_requests}, 5,
+    is($res->{total_requests}, 4,
        'system.status reports correct total_requests');
 }
 
@@ -386,7 +386,7 @@ $res = ($res->is_error) ? '' : $parser->parse($res->content);
 SKIP: {
     skip "Server response was error, cannot test", 1 unless $res;
     $res = $res->value->value;
-    is($res->{total_requests}, 5,
+    is($res->{total_requests}, 4,
        'system.status reports correct total_requests ("true" call)');
 }
 
@@ -710,7 +710,7 @@ $res = ($res->is_error) ? '' : $parser->parse($res->content);
 SKIP: {
     skip "Server response was error, cannot test", 1 unless $res;
     $res = $res->value->value;
-    is($res->{total_requests}, 21, 'system.status, final request tally');
+    is($res->{total_requests}, 20, 'system.status, final request tally');
 }
 
 # Don't leave any children laying around

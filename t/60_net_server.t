@@ -18,7 +18,7 @@ eval "use Net::Server";
 # If they do not have Net::Server, quietly skip
 plan skip_all => 'Net::Server not available' if $@;
 # otherwise...
-plan tests => 29;
+plan tests => 30;
 
 require RPC::XML::Server;
 require RPC::XML::Client;
@@ -43,7 +43,7 @@ isa_ok($srv, 'RPC::XML::Server');
 # All of these parameters are passed to the run() method of
 # Net::Server::MultiType
 start_server($srv,
-             server_type => 'Fork',
+             server_type => 'Single',
              log_file    => $log_file,
              log_level   => 4,
              pid_file    => $pid_file,
