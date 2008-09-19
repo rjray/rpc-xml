@@ -17,6 +17,23 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2008-09-19T02:12:02-07:00" version="0.62" tag="v0_62">
+    <change>
+      <file path="t/40_server.t" revision="355" />
+      <description>
+        Extended the die message when $srv fails to allocate. Some testers are
+        getting a failure here but I have no idea how or why.
+      </description>
+    </change>
+    <change>
+      <file path="lib/RPC/XML.pm" revision="356" />
+      <description>
+        Testers-service reports showed that the new i8 type was not auto-boxing
+        correctly on true 64-bit machines. Turns out I had bogus values for
+        the maximums and minimums, not just for 8-byte ints but also for plain
+        4-byte ones as well.
+    </change>
+  </release>
   <release version="0.61" tag="v0_61" date="2008-09-15T01:38:44-07:00">
     <change>
       <file path="t/00_load.t" revision="346" />

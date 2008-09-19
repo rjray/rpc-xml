@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.61
+Version: 0.62
 
 WHAT IS IT
 
@@ -66,41 +66,12 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-t/00_load.t:
-Converted to Test::More due to some cpan-testers reports that showed
-test 2 failing. Hoping this might provide better feedback if it
-continues to fail.
-
 t/40_server.t:
-Changed a test for "localhost:$port" in the server URL method to
-optionally allow localhost.localdomain, for those systems whose
-/etc/hosts cause the former to convert to the latter. Was causing
-false failures.
-
-t/40_server.t:
-t/50_client.t:
-t/60_net_server.t:
-Test suites armored against server processes that die as a result of
-croak() or other calls within 3rd-party modules. The client and
-net_server suites were also converted to Test::More at this time.
-
-t/40_server.t:
-Fix for RT ticket #36078, fix the URL testing on the server object to
-be less strict. Instead of only allowing "localhost", now also allows
-"localhost.localdomain" and does a look-up of "localhost" for the 127.*
-IP address and permits that as well. In essence, this extends and
-supercedes the second change listed above after more invariant cases
-were discovered.
+Extended the die message when $srv fails to allocate. Some testers are
+getting a failure here but I have no idea how or why.
 
 lib/RPC/XML.pm:
-t/10_data.t:
-Per RT ticket #30354 and specific request from a large agency using
-this package, implemented an "i8" type as an extension to the official
-XML-RPC specification. Documentation and tests included. THIS SHOULD BE
-CONSIDERED EXPERIMENTAL.
-
-t/40_server.t:
-t/60_net_server.t:
-Some of the work in armoring the test suites against server-death changed
-the counts on tests and on call-counts in the system.status method. Some
-explicit re-starts didn't help.
+Testers-service reports showed that the new i8 type was not auto-boxing
+correctly on true 64-bit machines. Turns out I had bogus values for
+the maximums and minimums, not just for 8-byte ints but also for plain
+4-byte ones as well.

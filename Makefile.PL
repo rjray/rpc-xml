@@ -86,13 +86,14 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.61',
+              VERSION   => '0.62',
               AUTHOR    => 'Randy J. Ray',
               ABSTRACT  => 'Data, client and server classes for XML-RPC',
               EXE_FILES => \@scripts,
               PM        => \%PM_FILES,
               PREREQ_PM => { XML::Parser => 2.31,
                              File::Spec  => 0.8,
+                             constant    => 1.03,
                              Test::More  => 0,
                              LWP         => 5.801 },
               dist      => { COMPRESS => 'gzip -9f' },
