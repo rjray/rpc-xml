@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.62
+Version: 0.63
 
 WHAT IS IT
 
@@ -66,12 +66,6 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-t/40_server.t:
-Extended the die message when $srv fails to allocate. Some testers are
-getting a failure here but I have no idea how or why.
-
 lib/RPC/XML.pm:
-Testers-service reports showed that the new i8 type was not auto-boxing
-correctly on true 64-bit machines. Turns out I had bogus values for
-the maximums and minimums, not just for 8-byte ints but also for plain
-4-byte ones as well.
+Forgot to increment $VERSION before the previous commit. Won't show up
+in CPAN as an available update otherwise.

@@ -1,5 +1,11 @@
 Revision history for Perl extension RPC::XML.
 
+0.63	Fri Sep 19 02:22:26 PDT 2008
+
+	lib/RPC/XML.pm:
+	Forgot to increment $VERSION before the previous commit. Won't show up
+	in CPAN as an available update otherwise.
+
 0.62	Fri Sep 19 02:12:02 PDT 2008
 
 	t/40_server.t:

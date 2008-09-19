@@ -17,6 +17,15 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2008-09-19T02:23:12-07:00" version="0.63" tag="v0_63">
+    <change>
+      <file path="lib/RPC/XML.pm" revision="359" />
+      <description>
+        Forgot to increment $VERSION before the previous commit. Won't show up
+        in CPAN as an available update otherwise.
+      </description>
+    </change>
+  </release>
   <release date="2008-09-19T02:12:02-07:00" version="0.62" tag="v0_62">
     <change>
       <file path="t/40_server.t" revision="355" />
