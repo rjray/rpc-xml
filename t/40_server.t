@@ -263,7 +263,8 @@ SKIP: {
 
 # Assume $srv is defined, for the rest of the tests (so as to avoid the
 # annoying 'ok(0)' streams like above).
-die "Server allocation failed, cannot continue" unless (ref $srv);
+die "Server allocation failed, cannot continue. Message was: $srv"
+    unless (ref $srv);
 
 kill 'INT', $child;
 
