@@ -57,8 +57,14 @@ $srv = RPC::XML::Server->new(no_default => 1,
 isa_ok($srv, 'RPC::XML::Server', '$srv<2>');
 # Test the URL the server uses. Allow for "localhost", "localhost.localdomain"
 # or the local-net IP address of this host (not always 127.0.0.1).
-my $localIP = join('.', unpack('C4', (gethostbyname('localhost'))[4]));
-like($srv->url, qr{http://(localhost(\.localdomain)?|$localIP):$port},
+# 22/09/2008 - Just allow for anything the user has attached to this address.
+#              Aliases keep causing this test to falsely fail.
+my @localhostinfo = gethostbyname('localhost');
+my $localIP = join('.', unpack('C4', $localhostinfo[4]));
+my @allhosts = ($localIP, $localhostinfo[0], split(' ', $localhostinfo[1]));
+for (@allhosts) { s/\./\\./g }
+my $allhosts = join('|', @allhosts);
+like($srv->url, qr{http://($allhosts):$port},
    'RPC::XML::Server::url method (set)'); # This should be non-null this time
 # Test some of the simpler cases of add_method and get_method
 $res = $srv->add_method({ name      => 'perl.test.suite.test1',
