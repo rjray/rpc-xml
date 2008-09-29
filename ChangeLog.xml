@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?><!-- :tabSize=2:indentSize=2:wrap=hard: -->
 <!--
     The schema for this namespace may be found at the following URL:
 
@@ -17,6 +17,31 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2008-09-29T04:15:00-07:00" version="0.64" tag="v0_64">
+    <change>
+      <file path="t/40_server.t" revision="361" />
+      <description>
+        Further flexibility on the test of $srv->url(). This should (finally)
+        catch any variation of 127.* address and/or host/domain naming that
+        aliases to "localhost".
+      </description>
+    </change>
+    <change>
+      <fileset>
+        <file path="lib/RPC/XML/Parser.pm" revision="363" />
+        <file path="t/20_parser.t" revision="363" />
+      </fileset>
+      <description>
+        Lingering problem from
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30354">RT ticket #30354</xhtml:a>,
+        RPC::XML::Parser did not get the change committed that included
+        parser-level support for &lt;i8&gt;. Also added tests for parsing
+        RPC::XML::request objects and all the data-type objects to the parser
+        test suite (had they been there before, I would have caught this
+        myself).
+      </description>
+    </change>
+  </release>
   <release date="2008-09-19T02:23:12-07:00" version="0.63" tag="v0_63">
     <change>
       <file path="lib/RPC/XML.pm" revision="359" />
@@ -41,6 +66,7 @@
         correctly on true 64-bit machines. Turns out I had bogus values for
         the maximums and minimums, not just for 8-byte ints but also for plain
         4-byte ones as well.
+      </description>
     </change>
   </release>
   <release version="0.61" tag="v0_61" date="2008-09-15T01:38:44-07:00">

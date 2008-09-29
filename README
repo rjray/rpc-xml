@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.63
+Version: 0.64
 
 WHAT IS IT
 
@@ -66,6 +66,15 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-lib/RPC/XML.pm:
-Forgot to increment $VERSION before the previous commit. Won't show up
-in CPAN as an available update otherwise.
+t/40_server.t:
+Further flexibility on the test of $srv->url(). This should (finally)
+catch any variation of 127.* address and/or host/domain naming that
+aliases to "localhost".
+
+lib/RPC/XML/Parser.pm:
+t/20_parser.t:
+Lingering problem from RT ticket #30354, RPC::XML::Parser did not get
+the change committed that included parser-level support for <i8>. Also
+added tests for parsing RPC::XML::request objects and all the data-type
+objects to the parser test suite (had they been there before, I would
+have caught this myself).

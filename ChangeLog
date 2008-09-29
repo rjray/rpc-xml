@@ -1,5 +1,20 @@
 Revision history for Perl extension RPC::XML.
 
+0.64	Mon Sep 29 04:20:02 PDT 2008
+
+	t/40_server.t:
+	Further flexibility on the test of $srv->url(). This should (finally)
+	catch any variation of 127.* address and/or host/domain naming that
+	aliases to "localhost".
+
+	lib/RPC/XML/Parser.pm:
+	t/20_parser.t:
+	Lingering problem from RT ticket #30354, RPC::XML::Parser did not get
+	the change committed that included parser-level support for <i8>. Also
+	added tests for parsing RPC::XML::request objects and all the data-type
+	objects to the parser test suite (had they been there before, I would
+	have caught this myself).
+
 0.63	Fri Sep 19 02:22:26 PDT 2008
 
 	lib/RPC/XML.pm:
