@@ -159,7 +159,9 @@ sub parse
 {
     my ($self, $stream) = @_;
 
-    my $parser = XML::Parser->new(Namespaces => 0, ParseParamEnt => 0,
+    my $parser = XML::Parser->new(Namespaces => 0,
+                                  ParseParamEnt => 0,
+                                  ErrorContext => 1,
                                   Handlers =>
                                   {
                                    Init      => sub { message_init $self, @_ },

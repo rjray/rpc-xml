@@ -832,7 +832,8 @@ sub load_XPL_file
     $data->{called} = 0;
     open(F, "< $file") or return "$me: Error opening $file for reading: $!";
     $P = XML::Parser
-        ->new(Handlers => {Char  => sub { $accum .= $_[1] },
+        ->new(ErrorContext => 1,
+              Handlers => {Char  => sub { $accum .= $_[1] },
                            Start => sub { %attr = splice(@_, 2) },
                            End   =>
                            sub {
