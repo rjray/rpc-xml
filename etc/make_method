@@ -2,13 +2,12 @@
 ###############################################################################
 #
 # This file copyright (c) 2001-2008 Randy J. Ray, all rights reserved
-# $Id$
 #
 # See "LICENSE" in the documentation for licensing and redistribution terms.
 #
 ###############################################################################
 #
-#   $Id$
+#   $Id: make_method 343 2008-04-09 09:54:36Z  $
 #
 #   Description:    Simple tool to turn a Perl routine and the support data
 #                   into the simple XML representation that RPC::XML::Server
@@ -31,7 +30,8 @@
 use 5.005;
 use strict;
 use vars qw($cmd $USAGE $VERSION $revision %opts $ifh $ofh $path
-            $helptxt $codetxt @siglist $name $type $version $hidden $lang);
+            $helptxt $codetxt @siglist $name $namespace $type $version $hidden
+            $lang);
 use subs qw(read_external write_file);
 
 use Config;
@@ -48,6 +48,7 @@ Where:
 --help        Generate this message.
 
 --name        Specifies the external (published) name of the method.
+--namespace   Specify an explicit namespace for the method to be created in
 --type        Specify whether this defines a PROCEDURE, a METHOD or a
                 FUNCTION (case-free)
 --version     Gives the version that should be attached to the method.
@@ -72,7 +73,7 @@ Where:
 GetOptions(\%opts,
            qw(help
               base=s
-              name=s type=s version=s hidden signature=s@ helptext=s
+              name=s namespace=s type=s version=s hidden signature=s@ helptext=s
               helpfile=s code=s
               output=s))
     or die "$USAGE\n\nStopped";
@@ -96,7 +97,7 @@ if ($opts{base})
     $type = 'm'; # Default the type to 'm'ethod.
     $codetxt = {};
 
-    $ifh = new IO::File "< $opts{base}.base";
+    $ifh = IO::File->new("< $opts{base}.base");
     die "Error opening $opts{base}.base for reading: $!\nStopped"
         unless ($ifh);
     while (defined($_ = <$ifh>))
@@ -106,6 +107,10 @@ if ($opts{base})
         if (/^name:\s+([\w\.]+)$/i)
         {
             $name = $1;
+        }
+        elsif (/^namespace:\s+([\w\.]+)$/i)
+        {
+            $namespace = $1;
         }
         elsif (/^type:\s+(\S+)$/i)
         {
@@ -138,7 +143,7 @@ if ($opts{base})
     die "Error: no signatures found in $opts{base}.base, stopped"
         unless (@siglist);
 
-    $ofh = new IO::File "> $opts{base}.xpl";
+    $ofh = IO::File->new("> $opts{base}.xpl");
     die "Error opening $opts{base}.xpl for writing: $!\nStopped"
         unless ($ofh);
 }
@@ -153,9 +158,10 @@ else
         die 'No name was specified for the published routine, stopped';
     }
 
-    $type =    $opts{type}    || 'm';
-    $hidden =  $opts{hidden}  || 0;
-    $version = $opts{version} || '';
+    $namespace = $opts{namespace} || '';
+    $type      = $opts{type}      || 'm';
+    $hidden    = $opts{hidden}    || 0;
+    $version   = $opts{version}   || '';
 
     if ($opts{signature})
     {
@@ -190,7 +196,7 @@ else
 
     if ($opts{output})
     {
-        $ofh = new IO::File "> $opts{output}";
+        $ofh = IO::File->new("> $opts{output}");
         die "Unable to open $opts{output} for writing: $!\nStopped"
             unless ($ofh);
     }
@@ -201,7 +207,8 @@ else
 }
 
 write_file($ofh,
-           $name, $type, $version, $hidden, $codetxt, $helptxt, \@siglist);
+           $name, $namespace, $type, $version, $hidden, $codetxt, $helptxt,
+           \@siglist);
 
 exit;
 
@@ -227,7 +234,7 @@ sub read_external
 {
     my $file = shift;
 
-    my $fh = new IO::File "< $file";
+    my $fh = IO::File->new("< $file");
     die "Cannot open file $file for reading: $!, stopped" unless ($fh);
 
     my $tmp = join('', <$fh>);
@@ -243,6 +250,7 @@ sub read_external
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $fh       in      IO        Filehandle to write to
 #                   $name     in      scalar    Name (external) of method
+#                   $namespace in     scalar    Namespace (if any) for method
 #                   $type     in      scalar    Identifies outer tag to use
 #                   $version  in      scalar    Version string (if any)
 #                   $hidden   in      scalar    Boolean whether to hide it
@@ -261,7 +269,8 @@ sub read_external
 ###############################################################################
 sub write_file
 {
-    my ($fh, $name, $type, $version, $hidden, $code, $help, $sigs) = @_;
+    my ($fh, $name, $namespace, $type, $version, $hidden, $code, $help,
+        $sigs) = @_;
 
     my $date = scalar localtime;
     my %typemap = ( 'm' => 'method',
@@ -270,7 +279,7 @@ sub write_file
     my $tag  = "$typemap{$type}def";
 
     # Armor against XML confusion
-    foreach ($name, $$help)
+    foreach ($name, $namespace, $version, $$help)
     {
         s/&/&amp;/g;
         s/</&lt;/g;
@@ -296,7 +305,7 @@ sub write_file
 <?xml version="1.0" encoding="iso-8859-1"?>
 <!DOCTYPE $tag SYSTEM "rpc-method.dtd">
 <!--
-    Generated automatically by $cmd v$VERSION, $date
+    Generated automatically by $cmd $VERSION on $date
 
     Any changes made here will be lost.
 -->
@@ -304,13 +313,14 @@ sub write_file
 EO_HDR
 
     print $ofh "<name>$name</name>\n";
+    print $ofh "<namespace>$namespace</namespace>\n" if $namespace;
     print $ofh "<version>$version</version>\n" if $version;
     print $ofh "<hidden />\n" if $hidden;
     print $ofh map { "<signature>$_</signature>\n" } @$sigs;
     print $ofh "<help>\n$$help</help>\n" if ($$help);
     for (sort keys %$code)
     {
-        print $ofh qq{<code language="perl">\n$ {$code->{$_}}</code>\n};
+        print $ofh qq{<code language="perl">\n${$code->{$_}}</code>\n};
     }
 
     print $ofh "</$tag>\n";
@@ -362,6 +372,10 @@ Prints a short summary of the options.
 
 Specifies the published name of the method being encoded. This is the name by
 which it will be visible to clients of the server.
+
+=item --namespace=STRING
+
+
 
 =item --type=STRING
 
@@ -576,7 +590,7 @@ License 2.0
 (http://www.opensource.org/licenses/artistic-license-2.0.php). This code may
 be redistributed under either the Artistic License or the GNU Lesser General
 Public License (LGPL) version 2.1
-(http://www.opensource.org/licenses/lgpl-license.php).
+(http://www.opensource.org/licenses/lgpl-2.1.php).
 
 =head1 SEE ALSO
 

@@ -6,8 +6,6 @@
 #
 ###############################################################################
 #
-#   $Id$
-#
 #   Description:    This class abstracts out all the procedure-related
 #                   operations from the RPC::XML::Server class
 #
@@ -48,7 +46,7 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = '1.15';
+$VERSION = '1.16';
 
 ###############################################################################
 #
@@ -189,6 +187,7 @@ sub make_sig_table
 # These are basic accessor/setting functions for the various attributes
 #
 sub name      { $_[0]->{name}; } # "name" cannot be changed at this level
+sub namespace { $_[0]->{namespace} || ''; } # Nor can "namespace"
 sub help      { $_[1] and $_[0]->{help}    = $_[1]; $_[0]->{help};    }
 sub version   { $_[1] and $_[0]->{version} = $_[1]; $_[0]->{version}; }
 sub hidden    { $_[1] and $_[0]->{hidden}  = $_[1]; $_[0]->{hidden};  }
@@ -356,6 +355,14 @@ persist. However, the other elements may be used in the creation of a new
 object, which may then be added to the server, if the name absolutely must
 change.
 
+=item namespace
+
+If the procedure object was created from a file, or if the instantiation
+included namespace information, this accessor will return the namespace that
+the underlying code executes in. Otherwise, it returns an empty string. This
+cannot be altered (even if the B<code> method is used to replace the code
+routine).
+
 =item code([NEW])
 
 Returns or sets the code-reference that will receive calls as marshalled by
@@ -457,6 +464,14 @@ protected, and the same care should be taken before altering any of them:
 When the method was loaded from a file, this key contains the path to the file
 used.
 
+=item namespace
+
+If the code is loaded from a file, this hash key will reflect what namespace
+the code executes in. If the file specified a namespace, that is the value
+you will get (any occurrence of C<.> in the specified namespace will have been
+converted to C<::>). If no explicit namespace was provided, the namespace
+of the class you called B<new> from will be used. See L</"Namespaces">.
+
 =item mtime
 
 When the method was loaded from a file, this key contains the
@@ -493,11 +508,12 @@ other packages than this one, or useful in other contexts than this one.
 
 The lightweight DTD for the layout can be summarized as:
 
-        <!ELEMENT  proceduredef  (name, version?, hidden?, signature+,
-                                  help?, code)>
-        <!ELEMENT  methoddef  (name, version?, hidden?, signature+,
-                               help?, code)>
+        <!ELEMENT  proceduredef  (name, namespace?, version?, hidden?,
+                                  signature+, help?, code)>
+        <!ELEMENT  methoddef     (name, namespace?, version?, hidden?,
+                                  signature+, help?, code)>
         <!ELEMENT  name       (#PCDATA)>
+        <!ELEMENT  namespace  (#PCDATA)>
         <!ELEMENT  version    (#PCDATA)>
         <!ELEMENT  hidden     EMPTY>
         <!ELEMENT  signature  (#PCDATA)>
@@ -505,8 +521,8 @@ The lightweight DTD for the layout can be summarized as:
         <!ELEMENT  code       (#PCDATA)>
         <!ATTLIST  code       language (#PCDATA)>
 
-The containing tag is always one of C<E<lt>methoddefE<gt>> or
-C<E<lt>proceduredefE<gt>>. The tags that specify name, signatures and the code
+The containing tag is always one of C<< <methoddef> >> or
+C<< <proceduredef> >>. The tags that specify name, signatures and the code
 itself must always be present. Some optional information may also be
 supplied. The "help" text, or what an introspection API would expect to use to
 document the method, is also marked as optional.  Having some degree of
@@ -515,7 +531,7 @@ however.
 
 The default methods that this package provides are turned into XPL files by
 the B<make_method> tool (see L<make_method>). The final forms of these may
-serve as direct examples of what the file should look like.
+serve as examples of what the file should look like.
 
 =item Information used only for book-keeping
 
@@ -531,16 +547,16 @@ to do so.
 =item The information crucial to the method
 
 The name, signatures and code must be present for obvious reasons. The
-C<E<lt>nameE<gt>> tag tells the server what external name this procedure is
-known by. The C<E<lt>signatureE<gt>> tag, which may appear more than once,
+C<< <name> >> tag tells the server what external name this procedure is
+known by. The C<< <signature> >> tag, which may appear more than once,
 provides the definition of the interface to the function in terms of what
 types and quantity of arguments it will accept, and for a given set of
 arguments what the type of the returned value is. Lastly is the
-C<E<lt>codeE<gt>> tag, without which there is no procedure to remotely call.
+C<< <code> >> tag, without which there is no procedure to remotely call.
 
 =item Why the <code> tag allows multiple languages
 
-Note that the C<E<lt>codeE<gt>> tag is the only one with an attribute, in this
+Note that the C<< <code> >> tag is the only one with an attribute, in this
 case "language". This is designed to allow for one XPL file to provide a given
 method in multiple languages. Why, one might ask, would there be a need for
 this?
@@ -556,7 +572,9 @@ implementations in all four of the above languages, the name, help text,
 signature and even hidden status would likely be identical. So, why not share
 the non-language-specific elements in the spirit of re-use?
 
-=item The "make_method" utility
+=back
+
+=head2 The C<make_method> Utility
 
 The utility script C<make_method> is provided as a part of this software
 suite. It allows for the automatic creation of XPL files from either
@@ -567,7 +585,26 @@ automatic generation of XPL files and their delivery as a part of the normal
 Perl module build process. Using this tool is highly recommended over managing
 XPL files directly. For the full details, see L<make_method>.
 
-=back
+=head1 NAMESPACES
+
+As default behavior, Perl code that is passed to C<eval> when a XPL file is
+loaded gets put into the same namespace as the package used to load the XPL.
+It is not an issue when you create your own B<RPC::XML::Procedure> (or
+B<::Method> or B<::Function>) objects, as the code is already instantiated
+into a given namespace.  This can be important if your code expects to call
+routines in other loaded packages, utilize package-level globals, etc.
+
+To give developers control over the namespace in XPL code, a new optional
+tag C<< <namespace> >> was added in the 0.65 release. If this tag is present
+in the XPL being read, it defines the namespace that the C<< <code> >> block
+is evaluated in.
+
+The value of the namespace tag is a string providing the namespace in either
+the Perl-style of hierarchy parts separated by C<::>, or the style used by
+Java, Perl6, etc., in which the parts are separated by C<.>. The latter
+form is converted to Perl style for the evaluation of the code. If there is
+no namespace declaration in a XPL file, the namespace of the class that
+loads the XPL is used.
 
 =head1 DIAGNOSTICS
 
@@ -596,7 +633,7 @@ L<RPC::XML::Server>, L<make_method>
 
 =head1 AUTHOR
 
-Randy J. Ray <rjray@blackperl.com>
+Randy J. Ray C<< <rjray@blackperl.com> >>
 
 =cut
 
@@ -875,9 +912,25 @@ sub load_XPL_file
     return "$me: Error parsing $file: $@" if $@;
 
     # Try to normalize $codetext before passing it to eval
-    my $class = __PACKAGE__; # token won't expand in the s/// below
+
+    # First step is set the namespace the code will live in. The default is
+    # the package that we're in (be it ::Procedure, ::Method, etc.). If they
+    # specify one, use it instead.
+    if ($data->{namespace})
+    {
+        # Fudge a little and let them '.' as a synonym for '::' in the
+        # namespace hierarchy.
+        $data->{namespace} =~ s{\.}{::}g;
+    }
+    else
+    {
+        $data->{namespace} = __PACKAGE__;
+    }
+
+    # Next step is to munge away any actual subroutine name so that the eval
+    # yields an anonymous sub. Also insert the namespace declaration.
     ($codetext = $data->{code}) =~
-        s/sub[\s\n]+([\w:]+)?[\s\n]*\{/sub \{ package $class; /;
+        s/sub[\s\n]+([\w:]+)?[\s\n]*\{/sub \{ package $data->{namespace}; /;
     $code = eval $codetext;
     return "$me: Error creating anonymous sub: $@" if $@;
 

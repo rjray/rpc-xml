@@ -1,27 +1,28 @@
 <!--
-        $Id: rpc-method.dtd,v 1.7 2004/12/09 08:50:17 rjray Exp $
+    This is a very simple DTD for the specification of a published RPC
+    method/procedure. This is here as a reference, and possibly for use
+    with an XML editor in order to troubleshoot files.
 
-        This is a very simple DTD for the specification of a published RPC
-        method/procedure. This is here as a reference, and possibly for use
-	with an XML editor in order to troubleshoot files.
-
-        Copyright (c) 2001, Randy J. Ray (rjray@blackperl.com)
-        Freely usable and redistributable under the terms of the
-        Artistic License as applied to the Perl Programming Language.
-        See http://www.opensource.org/licenses/artistic-license.php
+    Copyright (c) 2001-2009, Randy J. Ray (rjray@blackperl.com)
+    Freely usable and redistributable under the terms of the Artistic
+    License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php).
+    This may be redistributed under either the Artistic License or the GNU
+    Lesser General Public License (LGPL) version 2.1
+    (http://www.opensource.org/licenses/lgpl-2.1.php).
 -->
 
-<!ENTITY % container    '(name, version?, hidden?, signature+,
-                          help?, package?, code)'                    >
+<!ENTITY % container    '(name, namespace?, version?, hidden?,
+                          signature+, help?, package?, code)'        >
 
 <!ELEMENT  proceduredef  %container;                                 >
 <!ELEMENT  methoddef     %container;                                 >
 <!ELEMENT  functiondef   %container;                                 >
 
 <!ELEMENT  name          (#PCDATA)                                   >
+<!ELEMENT  namespace     (#PCDATA)                                   >
 <!ELEMENT  version       (#PCDATA)                                   >
 <!ELEMENT  hidden        EMPTY                                       >
 <!ELEMENT  signature     (#PCDATA)                                   >
 <!ELEMENT  help          (#PCDATA)                                   >
 <!ELEMENT  code          (#PCDATA)                                   >
-<!ATTLIST  code          language CDATA #IMPLIED                     >
+<!ATTLIST  code          language  CDATA #IMPLIED                    >
