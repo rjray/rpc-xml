@@ -7,8 +7,6 @@
 #
 ###############################################################################
 #
-#   $Id: make_method 343 2008-04-09 09:54:36Z  $
-#
 #   Description:    Simple tool to turn a Perl routine and the support data
 #                   into the simple XML representation that RPC::XML::Server
 #                   understands.
@@ -39,7 +37,7 @@ use Getopt::Long;
 use IO::File;
 use File::Spec;
 
-$VERSION = '1.12';
+$VERSION = '1.13';
 ($cmd = $0) =~ s|.*/||;
 $USAGE = "$cmd [ --options ]
 
@@ -375,7 +373,8 @@ which it will be visible to clients of the server.
 
 =item --namespace=STRING
 
-
+Specifies a namespace that the code of the method will be evaluated in,
+when the XPL file is loaded by a server instance.
 
 =item --type=STRING
 
