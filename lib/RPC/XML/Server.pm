@@ -6,8 +6,6 @@
 #
 ###############################################################################
 #
-#   $Id$
-#
 #   Description:    This class implements an RPC::XML server, using the core
 #                   XML::RPC transaction code. The server may be created with
 #                   or without an HTTP::Daemon object instance to answer the
@@ -71,6 +69,14 @@ use Carp 'carp';
 use AutoLoader 'AUTOLOAD';
 use File::Spec;
 
+use HTTP::Status;
+use HTTP::Response;
+use URI;
+
+use RPC::XML;
+use RPC::XML::Parser;
+use RPC::XML::Procedure;
+
 BEGIN {
     $INSTALL_DIR = (File::Spec->splitpath(__FILE__))[1];
     @XPL_PATH = ($INSTALL_DIR, File::Spec->curdir);
@@ -82,15 +88,7 @@ BEGIN {
     $IO_SOCKET_SSL_HACK_NEEDED = 1;
 }
 
-use HTTP::Status;
-require HTTP::Response;
-require URI;
-
-use RPC::XML 'bytelength';
-require RPC::XML::Parser;
-require RPC::XML::Procedure;
-
-$VERSION = '1.48';
+$VERSION = '1.49';
 
 ###############################################################################
 #
@@ -1428,6 +1426,7 @@ sub process_request
             {
                 # Technically speaking, we're not supposed to honor chunked
                 # transfer-encoding...
+                die "$me: 'chunked' content-encoding not (yet) supported";
             }
             else
             {
@@ -1640,9 +1639,11 @@ sub process_request
             {
                 # Treat the content strictly in-memory
                 $buf = $respxml->as_string;
+                RPC::XML::utf8_downgrade($buf);
                 $buf = Compress::Zlib::compress($buf) if $do_compress;
                 $resp->content($buf);
-                $resp->content_length($respxml->length);
+                # With $buf force-downgraded to octets, length() should work
+                $resp->content_length(length $buf);
             }
 
             $conn->send_response($resp);

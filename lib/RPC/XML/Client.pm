@@ -304,9 +304,11 @@ sub send_request
     {
         # Treat the content strictly in-memory
         $content = $req->as_string;
+        RPC::XML::utf8_downgrade($content);
         $content = Compress::Zlib::compress($content) if $do_compress;
         $reqclone->content($content);
-        $reqclone->content_length(bytelength($content));
+        # Because $content has been force-downgraded, length() should work
+        $reqclone->content_length(length($content));
     }
 
     # Content used to be handled as an in-memory string. Now, to avoid eating

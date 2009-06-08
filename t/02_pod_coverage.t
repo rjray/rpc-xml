@@ -30,7 +30,8 @@ pod_coverage_ok(RPC::XML::Procedure =>
                 'RPC::XML::Procedure');
 pod_coverage_ok(RPC::XML::Server => { also_private => [ 'compress_re' ] } =>
                 'RPC::XML::Server');
-pod_coverage_ok(RPC::XML => { also_private => [ qr/^RPC_/ ] } =>
+pod_coverage_ok(RPC::XML =>
+                { also_private => [ qr/^RPC_/, 'utf8_downgrade' ] },
                 'RPC::XML');
 
 exit;

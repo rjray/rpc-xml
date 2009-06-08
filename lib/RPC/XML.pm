@@ -6,8 +6,6 @@
 #
 ###############################################################################
 #
-#   $Id$
-#
 #   Description:    This module provides the core XML <-> RPC conversion and
 #                   structural management.
 #
@@ -26,7 +24,9 @@ use 5.005;
 use strict;
 use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR
             %xmlmap $xmlre $ENCODING $FORCE_STRING_ENCODING);
-use subs qw(time2iso8601 smart_encode bytelength);
+use subs qw(time2iso8601 smart_encode bytelength encoding);
+
+use Encode 2.12 qw(encode decode);
 
 # The following is cribbed from SOAP::Lite, tidied up to suit my tastes
 BEGIN
@@ -55,6 +55,11 @@ BEGIN
 
     # force strings?
     $FORCE_STRING_ENCODING = 0;
+
+    # Cribbed from the UTF-8 fixes in HTTP::Message, this may be discardable
+    # once full encoding support is in place:
+    *utf8_downgrade = defined(&utf8::downgrade) ?
+        \&utf8::downgrade : sub { };
 }
 
 require Exporter;
@@ -67,7 +72,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.41';
+$VERSION = '1.42';
 
 # Global error string
 $ERROR = '';
@@ -257,7 +262,10 @@ sub serialize
 {
     my ($self, $fh) = @_;
 
-    print $fh $self->as_string;
+    my $str = $self->as_string;
+    RPC::XML::utf8_downgrade($str);
+
+    print $fh $str;
 }
 
 # The switch to serialization instead of in-memory strings means having to
@@ -602,6 +610,7 @@ sub serialize
     for (keys %$self)
     {
         ($key = $_) =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
+	RPC::XML::utf8_downgrade($key);
         print $fh "<member><name>$key</name><value>";
         $self->{$_}->serialize($fh);
         print $fh '</value></member>';
@@ -768,6 +777,8 @@ sub as_string
 
 # If it weren't for Tellme and their damnable WAV files, and ViAir and their
 # half-baked XML-RPC server, I wouldn't have to do any of this...
+#
+# (On the plus side, at least here I don't have to worry about encodings...)
 sub serialize
 {
     my ($self, $fh) = @_;
@@ -1126,10 +1137,12 @@ sub as_string
 sub serialize
 {
     my ($self, $fh) = @_;
+    my $name = $self->{name};
+    RPC::XML::utf8_downgrade($name);
 
     print $fh qq(<?xml version="1.0" encoding="$RPC::XML::ENCODING"?>);
 
-    print $fh "<methodCall><methodName>$self->{name}</methodName><params>";
+    print $fh "<methodCall><methodName>$name</methodName><params>";
     for (@{$self->{args}})
     {
         print $fh '<param><value>';
@@ -1283,7 +1296,7 @@ sub serialize
     {
         # This also bypasses a un-needed call to serialize in the struct
         # package, since we know by definition that there is no base64 data
-        # in a fault.
+        # in a fault, or UTF-8 issues.
         print $fh $self->{value}->as_string;
     }
     else
