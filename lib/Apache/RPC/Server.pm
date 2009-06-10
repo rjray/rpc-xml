@@ -1,12 +1,10 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2008 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
 #
 # See "LICENSE" in the documentation for licensing and redistribution terms.
 #
 ###############################################################################
-#
-#   $Id$
 #
 #   Description:    This package implements a RPC server as an Apache/mod_perl
 #                   content handler. It uses the RPC::XML::Server package to
@@ -38,7 +36,7 @@ use Apache;
 use Apache::File; # For ease-of-use methods like set_last_modified
 use Apache::Constants ':common';
 
-use RPC::XML 'bytelength';
+use RPC::XML;
 use RPC::XML::Server;
 @Apache::RPC::Server::ISA = qw(RPC::XML::Server);
 
@@ -48,7 +46,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = '1.30';
+$Apache::RPC::Server::VERSION = '1.31';
 
 sub version { $Apache::RPC::Server::VERSION }
 

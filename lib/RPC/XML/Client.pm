@@ -1,12 +1,10 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2008 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
 #
 # See "LICENSE" in the documentation for licensing and redistribution terms.
 #
 ###############################################################################
-#
-#   $Id$
 #
 #   Description:    This class implements an RPC::XML client, using LWP to
 #                   manage the underlying communication protocols. It relies
@@ -40,10 +38,10 @@ require LWP::UserAgent;
 require HTTP::Request;
 require URI;
 
-use RPC::XML 'bytelength';
+use RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = '1.24';
+$VERSION = '1.25';
 
 ###############################################################################
 #

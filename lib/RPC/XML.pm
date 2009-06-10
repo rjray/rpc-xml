@@ -274,7 +274,8 @@ sub length
 {
     my $self = shift;
 
-    length($self->as_string);
+    RPC::XML::utf8_downgrade(my $str = $self->as_string);
+    length($str);
 }
 
 ###############################################################################
@@ -371,14 +372,6 @@ sub as_string
         =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
 
     "<$class>$value</$class>";
-}
-
-# Overloaded from simple_type, so that we can apply bytelength to the body
-sub length
-{
-    my $self = shift;
-
-    RPC::XML::bytelength($self->as_string);
 }
 
 ###############################################################################
@@ -610,7 +603,7 @@ sub serialize
     for (keys %$self)
     {
         ($key = $_) =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
-	RPC::XML::utf8_downgrade($key);
+        RPC::XML::utf8_downgrade($key);
         print $fh "<member><name>$key</name><value>";
         $self->{$_}->serialize($fh);
         print $fh '</value></member>';
@@ -624,11 +617,12 @@ sub length
     my $self = shift;
 
     my $len = 17; # <struct></struct>
-    for (keys %$self)
+    for my $key (keys %$self)
     {
         $len += 45; # For all the constant XML presence
-        $len += length($_);
-        $len += $self->{$_}->length;
+        $len += $self->{$key}->length;
+        RPC::XML::utf8_downgrade($key);
+        $len += length($key);
     }
 
     $len;
@@ -1001,15 +995,22 @@ sub as_string
     '<fault><value>' . $self->SUPER::as_string . '</value></fault>';
 }
 
+# Again, only differs from struct in that it has some extra wrapped around it.
+sub serialize
+{
+    my ($self, $fh) = @_;
+
+    print $fh '<fault><value>';
+    $self->SUPER::serialize($fh);
+    print $fh '</value></fault>';
+}
+
 # Because of the slight diff above, length() has to be different from struct
 sub length
 {
     my $self = shift;
 
-    my $len = 30; # Constant XML content
-    $len += $self->SUPER::length;
-
-    $len;
+    $self->SUPER::length + 30; # For constant XML content
 }
 
 # Convenience methods:
@@ -1294,10 +1295,8 @@ sub serialize
     print $fh '<methodResponse>';
     if ($self->{value}->isa('RPC::XML::fault'))
     {
-        # This also bypasses a un-needed call to serialize in the struct
-        # package, since we know by definition that there is no base64 data
-        # in a fault, or UTF-8 issues.
-        print $fh $self->{value}->as_string;
+        # A fault lacks the params-boilerplate
+        $self->{value}->serialize($fh);
     }
     else
     {
