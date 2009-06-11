@@ -1,12 +1,10 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2008 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
 #
 # See "LICENSE" in the documentation for licensing and redistribution terms.
 #
 ###############################################################################
-#
-#   $Id$
 #
 #   Description:    This is the RPC::XML::Parser class, a container for the
 #                   XML::Parser class. It was moved here from RPC::XML in
@@ -97,7 +95,7 @@ require File::Spec;
 
 require RPC::XML;
 
-$VERSION = '1.16';
+$VERSION = '1.17';
 
 ###############################################################################
 #
@@ -220,7 +218,9 @@ sub tag_start
     {
         push(@{$robj->[M_STACK]}, TAG2TOKEN->{$elem});
     }
-    elsif (VALIDTYPES->{$elem})
+    # Note that the <nil /> element is not in VALIDTYPES, as it is only valid
+    # when $RPC::XML::ALLOW_NIL is true.
+    elsif (VALIDTYPES->{$elem} || ($RPC::XML::ALLOW_NIL && $elem eq 'nil'))
     {
         # All datatypes are represented on the stack by this generic token
         push(@{$robj->[M_STACK]}, DATATYPE);
@@ -303,7 +303,9 @@ sub tag_end
     }
 
     # Decide what to do from here
-    if (VALIDTYPES->{$elem})
+    # Note that the <nil /> element is not in VALIDTYPES, as it is only valid
+    # when $RPC::XML::ALLOW_NIL is true.
+    if (VALIDTYPES->{$elem} || ($elem eq 'nil' && $RPC::XML::ALLOW_NIL))
     {
         # This is the closing tag of one of the data-types.
         $class = $elem;
@@ -321,6 +323,13 @@ sub tag_end
                 unless ($cdata =~
                         # Taken from perldata(1)
                         /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/);
+        }
+        elsif ($class eq 'nil')
+        {
+            # We passed the earlier test, so we know that <nil /> is allowed.
+            # By definition though, it must be, well... nil.
+            return error($robj, $self, '<nil /> element must be empty')
+                if ($cdata !~ /^\s*$/);
         }
 
         $class = "RPC::XML::$class";

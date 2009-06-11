@@ -11,7 +11,7 @@ use Test::More;
 
 use RPC::XML::Procedure;
 
-plan tests => 25;
+plan tests => 37;
 
 (undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 
@@ -126,4 +126,69 @@ is($obj->delete_signature('int int'), $obj, 'Test delete_signature()');
 # Which means checking the count again
 is(scalar(@{$obj->{signature}}), 1, 'Correct signature count after delete');
 
-exit;
+# Test procedures that utilize nil data-types
+use RPC::XML qw($ALLOW_NIL RPC_INT);
+$ALLOW_NIL = 1;
+
+# First a simple nil-return
+$obj = RPC::XML::Procedure->new({ name      => 'test.test_nil',
+                                  signature => [ 'nil' ],
+                                  code      => sub { return; } });
+isa_ok($obj, 'RPC::XML::Procedure');
+SKIP: {
+    skip 'Cannot test without object', 2
+        unless (ref($obj) eq 'RPC::XML::Procedure');
+
+    my $val;
+    eval { $val = $obj->call({}); };
+    ok(! $@, 'Calling test.test_nil');
+    isa_ok($val, 'RPC::XML::nil', 'Return value');
+}
+
+# Nil return from a proc with argument(s)
+$obj = RPC::XML::Procedure->new({ name      => 'test.test_nil2',
+                                  signature => [ 'nil int' ],
+                                  code      =>
+                                  sub { my $int = shift; return; } });
+isa_ok($obj, 'RPC::XML::Procedure');
+SKIP: {
+    skip 'Cannot test without object', 2
+        unless (ref($obj) eq 'RPC::XML::Procedure');
+
+    my $val;
+    eval { $val = $obj->call({}, RPC_INT 1); };
+    ok(! $@, 'Calling test.test_nil2');
+    isa_ok($val, 'RPC::XML::nil', 'Return value');
+}
+
+# Return value properly ignored when the signature types it as nil
+$obj = RPC::XML::Procedure->new({ name      => 'test.test_nil3',
+                                  signature => [ 'nil' ],
+                                  code      => sub { 1; } });
+isa_ok($obj, 'RPC::XML::Procedure');
+SKIP: {
+    skip 'Cannot test without object', 2
+        unless (ref($obj) eq 'RPC::XML::Procedure');
+
+    my $val;
+    eval { $val = $obj->call({}); };
+    ok(! $@, 'Calling test.test_nil3');
+    isa_ok($val, 'RPC::XML::nil', 'Return value');
+}
+
+# Make sure that the presence of nil in a signature doesn't interfere with
+# proper look-ups
+$obj = RPC::XML::Procedure->new({ name      => 'test.test_nil4',
+                                  signature => [ 'nil int' ],
+                                  code      => sub { return; } });
+isa_ok($obj, 'RPC::XML::Procedure');
+SKIP: {
+    skip 'Cannot test without object', 2
+        unless (ref($obj) eq 'RPC::XML::Procedure');
+
+    is($obj->match_signature('int'), 'nil', 'Test match_signature() with nil');
+    ok(! $obj->match_signature('string'),
+       'Test match_signature() with nil [2]');
+}
+
+exit 0;

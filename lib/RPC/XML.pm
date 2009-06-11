@@ -23,28 +23,13 @@ package RPC::XML;
 use 5.005;
 use strict;
 use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR
-            %xmlmap $xmlre $ENCODING $FORCE_STRING_ENCODING);
-use subs qw(time2iso8601 smart_encode bytelength encoding);
-
-use Encode 2.12 qw(encode decode);
+            %xmlmap $xmlre $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);
+use subs qw(time2iso8601 smart_encode);
 
 # The following is cribbed from SOAP::Lite, tidied up to suit my tastes
 BEGIN
 {
     no strict 'refs';
-
-    eval "use bytes";
-    # Re-worked this passage to continue supporting perl 5.005. It tried to
-    # compile the "use bytes" in the second block even if the conditional never
-    # travelled that path. So, explicit eval strings for everyone.
-    if ($@)
-    {
-        eval 'sub bytelength { length(@_ ? $_[0] : $_) }';
-    }
-    else
-    {
-        eval 'sub bytelength { use bytes; length(@_ ? $_[0] : $_) }';
-    }
 
     %xmlmap = ( '>' => '&gt;',   '<' => '&lt;', '&' => '&amp;',
                 '"' => '&quot;', "'" => '&apos;');
@@ -56,6 +41,9 @@ BEGIN
     # force strings?
     $FORCE_STRING_ENCODING = 0;
 
+    # Allow the <nil /> extension?
+    $ALLOW_NIL = 0;
+
     # Cribbed from the UTF-8 fixes in HTTP::Message, this may be discardable
     # once full encoding support is in place:
     *utf8_downgrade = defined(&utf8::downgrade) ?
@@ -65,11 +53,12 @@ BEGIN
 require Exporter;
 
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(time2iso8601 smart_encode bytelength
+@EXPORT_OK = qw(time2iso8601 smart_encode
                 RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_DATETIME_ISO8601
-                RPC_BASE64 RPC_STRING $ENCODING $FORCE_STRING_ENCODING);
+                RPC_BASE64 RPC_STRING RPC_NIL
+                $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);
 %EXPORT_TAGS = (types => [ qw(RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_STRING
-                              RPC_DATETIME_ISO8601 RPC_BASE64) ],
+                              RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
 $VERSION = '1.42';
@@ -78,14 +67,15 @@ $VERSION = '1.42';
 $ERROR = '';
 
 # All of the RPC_* functions are convenience-encoders
-sub RPC_STRING           ( $ ) { RPC::XML::string->new($_[0]) }
-sub RPC_BOOLEAN          ( $ ) { RPC::XML::boolean->new($_[0]) }
-sub RPC_INT              ( $ ) { RPC::XML::int->new($_[0]) }
-sub RPC_I4               ( $ ) { RPC::XML::i4->new($_[0]) }
-sub RPC_I8               ( $ ) { RPC::XML::i8->new($_[0]) }
-sub RPC_DOUBLE           ( $ ) { RPC::XML::double->new($_[0]) }
-sub RPC_DATETIME_ISO8601 ( $ ) { RPC::XML::datetime_iso8601->new($_[0]) }
-sub RPC_BASE64           ( $ ) { RPC::XML::base64->new($_[0]) }
+sub RPC_STRING           ($)   { RPC::XML::string->new($_[0]) }
+sub RPC_BOOLEAN          ($)   { RPC::XML::boolean->new($_[0]) }
+sub RPC_INT              ($)   { RPC::XML::int->new($_[0]) }
+sub RPC_I4               ($)   { RPC::XML::i4->new($_[0]) }
+sub RPC_I8               ($)   { RPC::XML::i8->new($_[0]) }
+sub RPC_DOUBLE           ($)   { RPC::XML::double->new($_[0]) }
+sub RPC_DATETIME_ISO8601 ($)   { RPC::XML::datetime_iso8601->new($_[0]) }
+sub RPC_BASE64           ($;$) { RPC::XML::base64->new(@_) }
+sub RPC_NIL              ()    { RPC::XML::nil->new() }
 
 # This is a dead-simple ISO8601-from-UNIX-time stringifier. Always expresses
 # time in UTC.
@@ -125,9 +115,10 @@ sub time2iso8601
 
         @values = map
         {
-            if (!defined $_)
+            if (! defined $_)
             {
-                $type = RPC::XML::string->new('');
+                $type = $ALLOW_NIL ?
+                    RPC::XML::nil->new() : RPC::XML::string->new('');
             }
             elsif (ref $_)
             {
@@ -429,6 +420,49 @@ use vars qw(@ISA);
 @ISA = qw(RPC::XML::simple_type);
 
 sub type { 'dateTime.iso8601' };
+
+###############################################################################
+#
+#   Package:        RPC::XML::nil
+#
+#   Description:    The "nil" type-class extension
+#
+###############################################################################
+package RPC::XML::nil;
+
+use strict;
+use vars qw(@ISA);
+
+@ISA = qw(RPC::XML::simple_type);
+
+# no value need be passed to this method
+sub new
+{
+    my $class = shift;
+    my $value = undef;
+
+    unless ($RPC::XML::ALLOW_NIL)
+    {
+        $RPC::XML::ERROR = "${class}::new: \$RPC::XML::ALLOW_NIL must be set" .
+            'for RPC::XML::nil objects to be supported';
+        return undef;
+    }
+
+    bless \$value, $class;
+}
+
+# Stringification and serialsation are trivial..
+sub as_string
+{
+    '<nil/>';
+}
+
+sub serialize
+{
+    my ($self, $fh) = @_;
+
+    print $fh $self->as_string; # In case someone sub-classes this
+}
 
 ###############################################################################
 #
@@ -1388,25 +1422,17 @@ time value, base-64 data, etc., the program must still explicitly encode it.
 However, this routine will hopefully simplify things a little bit for a
 majority of the usage cases.
 
-=item bytelength([$string])
-
-Returns the length of the string passed in, in bytes rather than characters.
-In Perl prior to 5.6.0 when there was little or no Unicode support, this has
-no difference from the C<length> function. if the B<bytes> pragme is
-available, then the length measured is raw bytes, even when faced with
-multi-byte characters. If no argument is passed in, operates on C<$_>.
-
 =back
 
 In addition to these three, the following "helper" functions are also
 available. They may be imported explicitly, or via a tag of C<:types>:
 
     RPC_BOOLEAN RPC_INT RPC_I4 RPC_I8 RPC_DOUBLE
-    RPC_DATETIME_ISO8601 RPC_BASE64 RPC_STRING
+    RPC_DATETIME_ISO8601 RPC_BASE64 RPC_STRING RPC_NIL
 
-Each creates a data object of the appropriate type from a single value. They
-are merely short-hand for calling the constructors of the data classes
-directly.
+Each creates a data object of the appropriate type from a single value
+(or, in the case of B<RPC_NIL>, from no value). They are merely short-
+hand for calling the constructors of the data classes directly.
 
 All of the above (helpers and the first three functions) may be imported via
 the tag C<:all>.
@@ -1509,6 +1535,16 @@ program may specify any of: C<0>, C<no>, C<false>, C<1>, C<yes>, C<true>.
 
 Creates an instance of the XML-RPC C<dateTime.iso8601> type. The specification
 for ISO 8601 may be found elsewhere. No processing is done to the data.
+
+=item RPC::XML::nil
+
+Creates a C<nil> value. The value returned will always be B<undef>. No value
+should be passed when calling the constructor.
+
+Note that nil is an extension to B<XML-RPC>, which is not supported by
+all implementations. B<$RPC::XML::ALLOW_NIL> must be set to a non-false
+value before objects of this type can be constructed. See
+L</"The nil Datatype">.
 
 =item RPC::XML::base64
 
@@ -1704,7 +1740,25 @@ will do just that.
 
 Defaults to C<false>.
 
+=item $ALLOW_NIL
+
+By default, the XML-RPC C<nil> extension is not supported. Set this to a
+non-false value to allow use of nil values. Data objects that are C<nil>
+are represented as B<undef> by Perl. See L</"The nil Datatype">.
+
 =back
+
+=head1 EXTENSIONS TO XML-RPC
+
+Starting with release 0.64 of this package, some small extensions to the
+core B<XML-RPC> standard have been supported. These are summarized here,
+with additional caveats as appropriate.
+
+=head2 XML Document Encoding
+
+=head2 The i8 Datatype
+
+=head2 The nil Datatype
 
 =head1 CAVEATS
 
