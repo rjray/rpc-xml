@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# $Id$
 
 # Test the RPC::XML::Server class
 
@@ -25,6 +24,10 @@ require RPC::XML::Parser;
 
 (undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 require File::Spec->catfile($dir, 'util.pl');
+
+# Per RT 27778, use 'KILL' instead of 'INT' as the stop-server signal for
+# MSWin platforms:
+my $SIGNAL = ($^O eq "MSWin32") ? 'KILL' : 'INT';
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -63,6 +66,9 @@ my @localhostinfo = gethostbyname('localhost');
 my $localIP = join('.', unpack('C4', $localhostinfo[4]));
 my @allhosts = ($localIP, $localhostinfo[0], split(' ', $localhostinfo[1]));
 for (@allhosts) { s/\./\\./g }
+# Per RT 27778: For some reason gethostbyname('localhost') does not return
+# "localhost" on win32
+push @allhosts, 'localhost' if ($^O eq 'MSWin32');
 my $allhosts = join('|', @allhosts);
 like($srv->url, qr{http://($allhosts):$port},
    'RPC::XML::Server::url method (set)'); # This should be non-null this time
@@ -104,7 +110,7 @@ SKIP: {
         is($res->value->value, 1, 'First live req: $res value test');
     }
 }
-kill 'INT', $child;
+kill $SIGNAL, $child;
 
 # Try deleting the method
 ok(ref $srv->delete_method('perl.test.suite.test1'),
@@ -148,7 +154,7 @@ SKIP: {
              'Second live request: correct faultString');
     }
 }
-kill 'INT', $child;
+kill $SIGNAL, $child;
 
 # Start the server again
 sleep 1; # To allow the old sockets time enough to go away
@@ -178,7 +184,7 @@ SKIP: {
            'Third request: pack_sockaddr_in validates all');
     }
 }
-kill 'INT', $child;
+kill $SIGNAL, $child;
 
 # Start the server again
 sleep 1; # To allow the old sockets time enough to go away
@@ -217,7 +223,7 @@ SKIP: {
              'RT29351 live request: correct faultString');
     }
 }
-kill 'INT', $child;
+kill $SIGNAL, $child;
 
 # OK-- At this point, basic server creation and accessors have been validated.
 # We've run a remote method and we've correctly failed to run an unknown remote
@@ -272,7 +278,7 @@ SKIP: {
 die "Server allocation failed, cannot continue. Message was: $srv"
     unless (ref $srv);
 
-kill 'INT', $child;
+kill $SIGNAL, $child;
 
 # Start the server again
 sleep 1; # To allow the old sockets time enough to go away
@@ -301,7 +307,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -325,7 +331,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -347,7 +353,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -375,7 +381,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -401,7 +407,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -426,7 +432,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -453,7 +459,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -479,7 +485,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -507,7 +513,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -533,7 +539,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -582,7 +588,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -613,7 +619,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -643,7 +649,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -673,7 +679,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -701,7 +707,7 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    kill 'INT', $child;
+    kill $SIGNAL, $child;
 
     # Start the server again
     sleep 1; # To allow the old sockets time enough to go away
@@ -721,5 +727,5 @@ SKIP: {
 }
 
 # Don't leave any children laying around
-kill 'INT', $child;
+kill $SIGNAL, $child;
 exit;
