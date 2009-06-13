@@ -6,7 +6,7 @@
 use strict;
 use vars qw($val $obj $class %val_tbl @values);
 
-use Test::More tests => 186;
+use Test::More tests => 188;
 use RPC::XML ':all';
 
 # First, the most basic data-types
@@ -56,6 +56,15 @@ for (sort keys %val_tbl)
     is(length($obj->as_string), $obj->length,
        "Data objects from blessed scalar refs, type $_, length() method test");
 }
+
+# A few extra tests for RPC::XML::double to make sure the stringification
+# doesn't lead to wonky values:
+$obj = RPC::XML::double->new(10.0);
+is($obj->as_string, '<double>10.0</double>',
+   'RPC::XML::double stringification [1]');
+$obj = RPC::XML::double->new(0.50);
+is($obj->as_string, '<double>0.5</double>',
+   'RPC::XML::double stringification [2]');
 
 # Another little test for RPC::XML::string, to check encoding
 $val = 'Subroutine &bogus not defined at <_> line -NaN';

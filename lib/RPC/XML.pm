@@ -329,9 +329,8 @@ sub as_string
 {
     my $self = shift;
 
-    return unless (my $class = ref($self));
-    $class =~ s/^.*\://;
-    (my $value = sprintf("%.20f", $$self)) =~ s/0+$//;
+    return unless (my $class = $self->type);
+    (my $value = sprintf("%.20f", $$self)) =~ s/(\.\d+?)0+$/$1/;
 
     "<$class>$value</$class>";
 }
