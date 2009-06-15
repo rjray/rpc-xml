@@ -464,7 +464,10 @@ sub tag_end
         }
         # Now that we see something ! DATAOBJECT, it needs to be ARRAY
         return stack_error($robj, $self, $elem) unless ($op == ARRAY);
-        $obj = RPC::XML::array->new($list);
+        # Use the special-form of the constructor, for when a listref should
+        # be dereferenced by the constructor (to avoid doing it here and
+        # possibly creating a huge stack):
+        $obj = RPC::XML::array->new(from => $list);
         return error($robj, $self,
                      'Error creating a RPC::XML::array object: ' .
                      $RPC::XML::ERROR)

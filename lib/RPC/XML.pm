@@ -24,9 +24,8 @@ use 5.005;
 use strict;
 use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR
             %xmlmap $xmlre $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);
-use subs qw(time2iso8601 smart_encode);
+use subs qw(time2iso8601 smart_encode utf8_downgrade);
 
-# The following is cribbed from SOAP::Lite, tidied up to suit my tastes
 BEGIN
 {
     no strict 'refs';
@@ -50,6 +49,7 @@ BEGIN
         \&utf8::downgrade : sub { };
 }
 
+use Scalar::Util qw(blessed reftype);
 require Exporter;
 
 @ISA = qw(Exporter);
@@ -123,19 +123,24 @@ sub time2iso8601
             elsif (ref $_)
             {
                 # Skip any that have already been encoded
-                if (UNIVERSAL::isa($_, 'RPC::XML::datatype'))
+                if (blessed $_ and $_->isa('RPC::XML::datatype'))
                 {
                     $type = $_;
                 }
-                elsif (UNIVERSAL::isa($_, 'HASH'))
+                elsif (reftype($_) eq 'HASH')
                 {
                     $type = RPC::XML::struct->new($_);
                 }
-                elsif (UNIVERSAL::isa($_, 'ARRAY'))
+                elsif (reftype($_) eq 'ARRAY')
                 {
-                    $type = RPC::XML::array->new($_);
+                    # This is a somewhat-ugly approach, but I don't want to
+                    # dereference @$_, but I also want people to be able to
+                    # pass array-refs in to this constructor and have them
+                    # be treated as single elements, as one would expect
+                    # (see RT 35106)
+                    $type = RPC::XML::array->new(from => $_);
                 }
-                elsif (UNIVERSAL::isa($_, 'SCALAR'))
+                elsif (reftype($_) eq 'SCALAR')
                 {
                     # This is a rare excursion into recursion, since the scalar
                     # nature (de-refed from the object, so no longer magic)
@@ -146,7 +151,8 @@ sub time2iso8601
                 {
                     # If the user passed in a reference that didn't pass one
                     # of the above tests, we can't do anything with it:
-                    die "Un-convertable reference: $_, cannot use";
+                    my $type = reftype $_;
+                    die "Un-convertable reference/type: $type, cannot use";
                 }
             }
             # You have to check ints first, because they match the
@@ -180,8 +186,6 @@ sub time2iso8601
 # This is a (mostly) empty class used as a common superclass for simple and
 # complex types, so that their derivatives may be universally type-checked.
 package RPC::XML::datatype;
-use vars qw(@ISA);
-@ISA = ();
 
 sub type { my $class = ref($_[0]) || $_[0]; $class =~ s/.*://; $class }
 sub is_fault { 0 }
@@ -197,9 +201,9 @@ sub is_fault { 0 }
 package RPC::XML::simple_type;
 
 use strict;
-use vars qw(@ISA);
+use base 'RPC::XML::datatype';
 
-@ISA = qw(RPC::XML::datatype);
+use Scalar::Util 'reftype';
 
 # new - a generic constructor that presumes the value being stored is scalar
 sub new
@@ -212,7 +216,7 @@ sub new
     if (ref $value)
     {
         # If it is a scalar reference, just deref
-        if (UNIVERSAL::isa($value, 'SCALAR'))
+        if (reftype($value) eq 'SCALAR')
         {
             $value = $$value;
         }
@@ -279,9 +283,7 @@ sub length
 package RPC::XML::int;
 
 use strict;
-use vars qw(@ISA);
-
-@ISA = qw(RPC::XML::simple_type);
+use base 'RPC::XML::simple_type';
 
 ###############################################################################
 #
@@ -293,9 +295,7 @@ use vars qw(@ISA);
 package RPC::XML::i4;
 
 use strict;
-use vars qw(@ISA);
-
-@ISA = qw(RPC::XML::simple_type);
+use base 'RPC::XML::simple_type';
 
 ###############################################################################
 #
@@ -307,9 +307,7 @@ use vars qw(@ISA);
 package RPC::XML::i8;
 
 use strict;
-use vars qw(@ISA);
-
-@ISA = qw(RPC::XML::simple_type);
+use base 'RPC::XML::simple_type';
 
 ###############################################################################
 #
@@ -321,9 +319,7 @@ use vars qw(@ISA);
 package RPC::XML::double;
 
 use strict;
-use vars qw(@ISA);
-
-@ISA = qw(RPC::XML::simple_type);
+use base 'RPC::XML::simple_type';
 
 sub as_string
 {
@@ -345,9 +341,7 @@ sub as_string
 package RPC::XML::string;
 
 use strict;
-use vars qw(@ISA);
-
-@ISA = qw(RPC::XML::simple_type);
+use base 'RPC::XML::simple_type';
 
 # as_string - return the value as an XML snippet
 sub as_string
@@ -374,9 +368,7 @@ sub as_string
 package RPC::XML::boolean;
 
 use strict;
-use vars qw(@ISA);
-
-@ISA = qw(RPC::XML::simple_type);
+use base 'RPC::XML::simple_type';
 
 # This constructor allows any of true, false, yes or no to be specified
 sub new
@@ -414,9 +406,7 @@ sub new
 package RPC::XML::datetime_iso8601;
 
 use strict;
-use vars qw(@ISA);
-
-@ISA = qw(RPC::XML::simple_type);
+use base 'RPC::XML::simple_type';
 
 sub type { 'dateTime.iso8601' };
 
@@ -430,9 +420,7 @@ sub type { 'dateTime.iso8601' };
 package RPC::XML::nil;
 
 use strict;
-use vars qw(@ISA);
-
-@ISA = qw(RPC::XML::simple_type);
+use base 'RPC::XML::simple_type';
 
 # no value need be passed to this method
 sub new
@@ -474,22 +462,29 @@ sub serialize
 package RPC::XML::array;
 
 use strict;
-use vars qw(@ISA);
+use base 'RPC::XML::datatype';
 
-@ISA = qw(RPC::XML::datatype);
+use Scalar::Util qw(blessed reftype);
 
 # The constructor for this class mainly needs to sanity-check the value data
 sub new
 {
-    my $class = shift;
-    my @args = (UNIVERSAL::isa($_[0], 'ARRAY')) ? @{$_[0]} : @_;
+    my ($class, @args) = @_;
+
+    # Special-case time: If the args-list has exactly two elements, and the
+    # first element is "from" and the second element is an array-ref (or a
+    # type derived from), then copy the ref's contents into @args.
+    if ((2 == @args) && ($args[0] eq 'from') && (reftype($args[1]) eq 'ARRAY'))
+    {
+        @args = @{$args[1]};
+    }
 
     # First ensure that each argument passed in is itself one of the data-type
     # class instances.
     for (@args)
     {
         $_ = RPC::XML::smart_encode($_)
-            unless (UNIVERSAL::isa($_, 'RPC::XML::datatype'));
+            unless (blessed($_) && $_->isa('RPC::XML::datatype'));
     }
 
     bless \@args, $class;
@@ -568,22 +563,22 @@ sub length
 package RPC::XML::struct;
 
 use strict;
-use vars qw(@ISA);
+use base 'RPC::XML::datatype';
 
-@ISA = qw(RPC::XML::datatype);
+use Scalar::Util qw(blessed reftype);
 
 # The constructor for this class mainly needs to sanity-check the value data
 sub new
 {
     my $class = shift;
-    my %args = (UNIVERSAL::isa($_[0], 'HASH')) ? %{$_[0]} : @_;
+    my %args = (ref($_[0]) and reftype($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
     # First ensure that each argument passed in is itself one of the data-type
     # class instances.
     for (keys %args)
     {
         $args{$_} = RPC::XML::smart_encode($args{$_})
-            unless (UNIVERSAL::isa($args{$_}, 'RPC::XML::datatype'));
+            unless (blessed $args{$_} && $args{$_}->isa('RPC::XML::datatype'));
     }
 
     bless \%args, $class;
@@ -673,9 +668,9 @@ sub length
 package RPC::XML::base64;
 
 use strict;
-use vars qw(@ISA);
+use base 'RPC::XML::datatype';
 
-@ISA = qw(RPC::XML::datatype);
+use Scalar::Util 'reftype';
 
 sub new
 {
@@ -691,7 +686,7 @@ sub new
 
     # First, determine if the call sent actual data, a reference to actual
     # data, or an open filehandle.
-    if (ref($value) and UNIVERSAL::isa($value, 'GLOB'))
+    if (ref($value) and reftype($value) eq 'GLOB')
     {
         # This is a seekable filehandle (or acceptable substitute thereof).
         # This assignment increments the ref-count, and prevents destruction
@@ -897,7 +892,7 @@ sub to_file
 
     my ($fh, $buf, $do_close, $count) = (undef, '', 0, 0);
 
-    if (ref $file and UNIVERSAL::isa($file, 'GLOB'))
+    if (ref $file and retype($file) eq 'GLOB')
     {
         $fh = $file;
     }
@@ -974,9 +969,9 @@ sub to_file
 package RPC::XML::fault;
 
 use strict;
-use vars qw(@ISA);
+use base 'RPC::XML::struct';
 
-@ISA = qw(RPC::XML::struct);
+use Scalar::Util 'blessed';
 
 # For our new(), we only need to ensure that we have the two required members
 sub new
@@ -987,7 +982,7 @@ sub new
     my ($self, %args);
 
     $RPC::XML::ERROR = '';
-    if (ref($args[0]) and UNIVERSAL::isa($args[0], 'RPC::XML::struct'))
+    if (blessed $args[0] and $args[0]->isa('RPC::XML::struct'))
     {
         # Take the keys and values from the struct object as our own
         %args = %{$args[0]->value('shallow')};
@@ -1071,7 +1066,8 @@ sub is_fault { 1 }
 package RPC::XML::request;
 
 use strict;
-use vars qw(@ISA);
+
+use Scalar::Util 'blessed';
 
 ###############################################################################
 #
@@ -1108,7 +1104,7 @@ sub new
         return undef;
     }
 
-    if (UNIVERSAL::isa($argz[0], 'RPC::XML::request'))
+    if (blessed $argz[0] and $argz[0]->isa('RPC::XML::request'))
     {
         # Maybe this will be a clone operation
     }
@@ -1218,7 +1214,8 @@ sub length
 package RPC::XML::response;
 
 use strict;
-use vars qw(@ISA);
+
+use Scalar::Util 'blessed';
 
 ###############################################################################
 #
@@ -1252,9 +1249,9 @@ sub new
         $RPC::XML::ERROR = 'RPC::XML::response::new: One of a datatype, ' .
             'value or a fault object must be specified';
     }
-    elsif (UNIVERSAL::isa($argz[0], 'RPC::XML::response'))
+    elsif (blessed $argz[0] and $argz[0]->isa('RPC::XML::response'))
     {
-        # This will eventually be a clone-operation. For now, just return in
+        # This will eventually be a clone-operation. For now, just return it
         $self = $argz[0];
     }
     elsif (@argz > 1)

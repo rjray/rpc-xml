@@ -46,7 +46,9 @@ use subs qw(new is_valid name code signature help version hidden
 use AutoLoader 'AUTOLOAD';
 require File::Spec;
 
-$VERSION = '1.16';
+use Scalar::Util 'blessed';
+
+$VERSION = '1.17';
 
 ###############################################################################
 #
@@ -1001,17 +1003,15 @@ sub call
     # transform Perl-level error/failure into such an object
     if ($@)
     {
-        return UNIVERSAL::isa($@, 'RPC::XML::fault') ?
-            $@ :
-            RPC::XML::fault->new(302, "Method $name returned error: $@");
+        return (blessed $@ and $@->isa('RPC::XML::fault')) ?
+            $@ : RPC::XML::fault->new(302, "Method $name returned error: $@");
     }
 
     $self->{called}++ unless $noinc;
     # Create a suitable return value
-    if ((! ref($response)) && UNIVERSAL::can("RPC::XML::$resptype", 'new'))
+    if ((! ref($response)) && "RPC::XML::$resptype"->can('new'))
     {
-        my $class = "RPC::XML::$resptype";
-        $response = $class->new($response);
+        $response = "RPC::XML::$resptype"->new($response);
     }
 
     $response;

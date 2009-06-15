@@ -72,6 +72,7 @@ use File::Spec;
 use HTTP::Status;
 use HTTP::Response;
 use URI;
+use Scalar::Util 'blessed';
 
 use RPC::XML;
 use RPC::XML::Parser;
@@ -88,7 +89,7 @@ BEGIN {
     $IO_SOCKET_SSL_HACK_NEEDED = 1;
 }
 
-$VERSION = '1.49';
+$VERSION = '1.50';
 
 ###############################################################################
 #
@@ -335,7 +336,7 @@ sub add_method
         my $class = 'RPC::XML::' . ucfirst ($meth->{type} || 'method');
         $meth = $class->new($meth);
     }
-    elsif (! UNIVERSAL::isa($meth, 'RPC::XML::Procedure'))
+    elsif (! (blessed $meth and $meth->isa('RPC::XML::Procedure')))
     {
         return "$me: Method argument must be a file name, a hash " .
             'reference or an object derived from RPC::XML::Procedure';
@@ -1755,14 +1756,12 @@ sub call
 
     my $meth;
 
-    #
     # Two VERY important notes here: The values in @args are not pre-treated
     # in any way, so not only should the receiver understand what they're
     # getting, there's no signature checking taking place, either.
     #
     # Second, if the normal return value is not distinguishable from a string,
     # then the caller may not recognize if an error occurs.
-    #
 
     return $meth unless ref($meth = $self->get_method($name));
     $meth->call($self, @args);
@@ -1937,16 +1936,14 @@ sub share_methods
     $pkg = __PACKAGE__; # So it can go inside quoted strings
 
     return "$me: First arg not derived from $pkg, cannot share"
-        unless ((ref $src_srv) && (UNIVERSAL::isa($src_srv, $pkg)));
+        unless (blessed $src_srv && $src_srv->isa($pkg));
     return "$me: Must specify at least one method name for sharing"
         unless @names;
 
-    #
-    # Scan @names for any regez objects, and if found insert the matches into
+    # Scan @names for any regex objects, and if found insert the matches into
     # the list.
     #
     # Only do this once:
-    #
     @tmp = keys %{$src_srv->{__method_table}};
     for $tmp (@names)
     {
@@ -1962,12 +1959,10 @@ sub share_methods
     # This has the benefit of trimming any redundancies caused by regex's
     @names = keys %tmp;
 
-    #
     # Note that the method refs are saved until we've verified all of them.
     # If we have to return a failure message, I don't want to leave a half-
     # finished job or have to go back and undo (n-1) additions because of one
     # failure.
-    #
     for (@names)
     {
         $meth = $src_srv->get_method($_);
@@ -2026,16 +2021,14 @@ sub copy_methods
     $pkg = __PACKAGE__; # So it can go inside quoted strings
 
     return "$me: First arg not derived from $pkg, cannot copy"
-        unless ((ref $src_srv) && (UNIVERSAL::isa($src_srv, $pkg)));
+        unless (blessed $src_srv && $src_srv->isa($pkg));
     return "$me: Must specify at least one method name/regex for copying"
         unless @names;
 
-    #
     # Scan @names for any regez objects, and if found insert the matches into
     # the list.
     #
     # Only do this once:
-    #
     @tmp = keys %{$src_srv->{__method_table}};
     for $tmp (@names)
     {
@@ -2051,12 +2044,10 @@ sub copy_methods
     # This has the benefit of trimming any redundancies caused by regex's
     @names = keys %tmp;
 
-    #
     # Note that the method clones are saved until we've verified all of them.
     # If we have to return a failure message, I don't want to leave a half-
     # finished job or have to go back and undo (n-1) additions because of one
     # failure.
-    #
     for (@names)
     {
         $meth = $src_srv->get_method($_);

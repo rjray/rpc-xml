@@ -34,14 +34,15 @@ use vars qw($VERSION);
 use subs qw(new simple_request send_request uri useragent request
             fault_handler error_handler combined_handler);
 
-require LWP::UserAgent;
-require HTTP::Request;
-require URI;
+use LWP::UserAgent;
+use HTTP::Request;
+use URI;
+use Scalar::Util 'blessed';
 
 use RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = '1.25';
+$VERSION = '1.26';
 
 ###############################################################################
 #
@@ -200,12 +201,11 @@ sub send_request
 
     $me = ref($self) . '::send_request';
 
-    if (! UNIVERSAL::isa($req, 'RPC::XML::request'))
+    unless (blessed $req and $req->isa('RPC::XML::request'))
     {
         # Assume that $req is the name of the routine to be called
-        $req = RPC::XML::request->new($req, @args);
         return "$me: Error creating RPC::XML::request object: $RPC::XML::ERROR"
-            unless ($req); # $RPC::XML::ERROR is already set
+            unless ($req = RPC::XML::request->new($req, @args));
     }
 
     # Start by setting up the request-clone for using in this instance

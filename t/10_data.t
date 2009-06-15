@@ -169,7 +169,7 @@ is(length($obj->as_string), $obj->length,
 
 # Blessed array references
 my $arrayobj = bless [ 1 .. 10 ], "Tmp::Array$$";
-$obj = RPC::XML::array->new($arrayobj);
+$obj = RPC::XML::array->new(from => $arrayobj);
 ok(ref $obj, "RPC::XML::array from blessed arrayref, object is referent");
 is($obj->type, 'array',
    "RPC::XML::array from blessed arrayref, type identification");
