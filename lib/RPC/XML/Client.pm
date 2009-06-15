@@ -34,7 +34,7 @@ use 5.005;
 use strict;
 use vars qw($VERSION);
 use subs qw(new simple_request send_request uri useragent request
-            fault_handler error_handler combined_handler);
+            fault_handler error_handler combined_handler timeout);
 
 use LWP::UserAgent;
 use HTTP::Request;
@@ -44,7 +44,7 @@ use Scalar::Util 'blessed';
 use RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = '1.26';
+$VERSION = '1.27';
 
 ###############################################################################
 #
@@ -389,6 +389,26 @@ sub send_request
 
 ###############################################################################
 #
+#   Sub Name:       timeout
+#
+#   Description:    Get or set the timeout() setting on the underlying
+#                   LWP::UserAgent object.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $time     in      scalar    New timeout value, if passed
+#
+#   Returns:        Return value from LWP::UserAgent->timeout()
+#
+###############################################################################
+sub timeout
+{
+    my $self = shift;
+    $self->useragent->timeout(@_);
+}
+
+###############################################################################
+#
 #   Sub Name:       uri
 #
 #   Description:    Get or set the URI portion of the request
@@ -688,6 +708,14 @@ is protected by Basic Authentication. Note that changing the target URL of the
 client object to a different (protected) location would require calling this
 with new credentials for the new realm (even if the value of C<$realm> is
 identical at both locations).
+
+=item timeout ([INTEGER])
+
+Get or set the current time-out value on the underlying B<LWP::UserAgent>
+object that this object uses for sending requests. This is just a proxy
+through to the method of the same name in the B<LWP::UserAgent> class. The
+return value is the current time-out value (prior to change, if a new value
+is given).
 
 =item message_file_thresh
 

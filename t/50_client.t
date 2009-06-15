@@ -9,8 +9,6 @@ use subs qw(start_server find_port);
 
 use Test::More;
 
-BEGIN { plan tests => 25 }
-
 use LWP;
 require File::Spec;
 
@@ -19,6 +17,8 @@ require RPC::XML::Client;
 
 (undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 require File::Spec->catfile($dir, 'util.pl');
+
+plan tests => 27;
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -59,6 +59,12 @@ ok($cli->error_handler() && ($cli->error_handler() eq $cli->fault_handler()),
 $cli->combined_handler(undef);
 ok(! ($cli->error_handler() or $cli->fault_handler()),
    'combined_handler clears both error_handler and fault_handler');
+
+# Check the getting/setting of the timeout() value on the underlying UA
+is($cli->timeout(), $cli->useragent->timeout(),
+   'Client timeout() method, fetching');
+$cli->timeout(60);
+is($cli->useragent->timeout(), 60, 'Client timeout() method, setting');
 
 # Cool so far. Create and spawn the server.
 $srv = RPC::XML::Server->new(host => 'localhost', port => $port);
