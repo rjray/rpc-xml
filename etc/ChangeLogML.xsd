@@ -1,14 +1,16 @@
 <?xml version="1.0"?>
+<!--
+    :tabSize=2:indentSize=2:wrap=hard:
+    $Id: ChangeLogML.xsd 9 2009-01-21 00:02:06Z rjray $
+-->
 <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-    xmlns:tns="http://www.blackperl.com/XML/ChangeLog"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    targetNamespace="http://www.blackperl.com/XML/ChangeLog"
+    xmlns:tns="http://www.blackperl.com/2009/01/ChangeLogML"
+    targetNamespace="http://www.blackperl.com/2009/01/ChangeLogML"
     elementFormDefault="qualified" attributeFormDefault="unqualified"
-    xsi:schemaLocation="http://www.w3.org/2001/XMLSchema XMLSchema.xsd"
-    version="0.94" id="changelog0.94">
+    id="changelogml">
   <!--
       Refer to this schema using the following namespace:
-      http://www.blackperl.com/XML/ChangeLog
+      http://www.blackperl.com/2009/01/ChangeLogML
   -->
   <xsd:annotation>
     <xsd:documentation>
@@ -17,12 +19,12 @@
       granularity of individual items made up of files that were affected.
     </xsd:documentation>
     <xsd:appinfo xmlns:dc="http://purl.org/dc/elements/1.1/">
-      <dc:creator>Randy J. Ray (rjray@blackperl.com)</dc:creator>
-      <dc:date>2006-01-09</dc:date>
+      <dc:creator>Randy J. Ray &lt;rjray@blackperl.com&gt;</dc:creator>
+      <dc:date>2009-01-01</dc:date>
       <dc:subject>changelog,xml,schema</dc:subject>
       <dc:description>
-        An XML Schema declaration describing an XML vocabulary for software
-        project change-logs.
+        An XML Schema describing an XML vocabulary for software project
+        change-logs.
       </dc:description>
     </xsd:appinfo>
     <xsd:appinfo>
@@ -32,8 +34,8 @@
         <cc:Work rdf:about="">
           <dc:title>XML Schema for Changelogs</dc:title>
           <dc:description>
-            An XML Schema declaration describing an XML vocabulary for software
-            project change-logs.
+            An XML Schema describing an XML vocabulary for software project
+            change-logs.
           </dc:description>
           <dc:creator>
             <cc:Agent>
@@ -60,42 +62,12 @@
     </xsd:appinfo>
   </xsd:annotation>
 
-  <xsd:complexType id="informationType" name="informationType"
-                   mixed="true">
-    <xsd:annotation>
-      <xsd:documentation>
-        An open-ended container type for including version-control information
-        at various levels within the changelog structure. This is the only
-        type which explicitly permits content from foreign namespaces.
-      </xsd:documentation>
-    </xsd:annotation>
-    <xsd:sequence maxOccurs="unbounded" minOccurs="0">
-      <xsd:any processContents="lax" />
-    </xsd:sequence>
-    <xsd:attribute name="source" type="xsd:anyURI" />
-    <xsd:anyAttribute namespace="##other" processContents="lax" />
-  </xsd:complexType>
-
-  <xsd:complexType id="descriptionType" name="descriptionType">
-    <xsd:annotation>
-      <xsd:documentation>
-        A description block is used to document everything from specific change
-        items to the release as a whole.
-      </xsd:documentation>
-    </xsd:annotation>
-    <xsd:simpleContent>
-      <xsd:extension base="xsd:string">
-        <xsd:attribute default="en-US" name="lang" type="xsd:language" />
-      </xsd:extension>
-    </xsd:simpleContent>
-  </xsd:complexType>
-
   <xsd:simpleType id="versionString" name="versionString">
     <xsd:annotation>
       <xsd:documentation>
         The versionString type is applied to attributes that describe simple
-        revision-number strings. It only supports dotted-decimal styled version
-        numbers.
+        revision-number strings. It only supports dotted-decimal styled
+        version numbers.
       </xsd:documentation>
     </xsd:annotation>
     <xsd:restriction base="xsd:string">
@@ -103,43 +75,168 @@
     </xsd:restriction>
   </xsd:simpleType>
 
+  <xsd:complexType id="informationType" name="informationType" mixed="true">
+    <xsd:annotation>
+      <xsd:documentation>
+        An informationType is an open-ended container type that allows
+        mixed-content which can include elements from other XML namespaces.
+        This allows users to include Dublin Core metadata, XHTML tags, etc. as
+        desired within the &lt;description&gt; and similar blocks. It also
+        allows for open-ended extension of ChangeLogML with things such as
+        source-control specification, etc.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence maxOccurs="unbounded" minOccurs="0">
+      <xsd:any processContents="lax" />
+    </xsd:sequence>
+    <xsd:attribute name="source" type="xsd:anyURI" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          The source attribute, if present, is used to refer to any external
+          resource that may be related to the contents of the block-element
+          that has the attribute. The role or relevance of the reference is not
+          specified or constrained. The value of the attribute must be a URI,
+          but may be absolute, relative, or a reference to a fragment. The only
+          restriction is that it be a valid URI.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:anyAttribute namespace="##other" processContents="lax" />
+  </xsd:complexType>
+
+  <xsd:complexType id="descriptionType" name="descriptionType">
+    <xsd:annotation>
+      <xsd:documentation>
+        A descriptionType extends informationType to add a specific attribute,
+        called "lang", that specifies the (human) language the text of the
+        block is written in. This allows for a ChangeLog to have multiple
+        versions of the same &lt;description&gt; block in differing languages,
+        leaving it to processors of the document to choose which one to
+        display.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:simpleContent>
+      <xsd:extension base="tns:informationType">
+        <xsd:attribute default="en-US" name="lang" type="xsd:language">
+          <xsd:annotation>
+            <xsd:documentation>
+              This attribute specifies the language in which the content of
+              the &lt;description&gt; block is written. The value of the
+              attribute should be a language code (generally two characters,
+              possibly followed by an underscore and qualifying country-code
+              when the language is used by several countries), and the
+              default value is "en_US" (American English).
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+
   <xsd:complexType id="fileType" name="fileType">
     <xsd:annotation>
       <xsd:documentation>
-        The fileType definition is used for the file element, a part of the
-        changeType declaration. It is defined separately so that it can be
-        referred to from multiple places.
+        The fileType definition is used for the &lt;file&gt; element, a part
+        of the changeType declaration. It is defined separately so that it can
+        be referred to from multiple places.
       </xsd:documentation>
     </xsd:annotation>
     <xsd:sequence maxOccurs="1" minOccurs="0">
-      <xsd:element name="description" type="tns:descriptionType"
-                   minOccurs="0" maxOccurs="unbounded" />
-      <xsd:element maxOccurs="1" minOccurs="0" name="version-control"
-                   type="tns:informationType" nillable="true" />
+      <xsd:element name="description"
+                   type="tns:descriptionType"
+                   minOccurs="0" maxOccurs="unbounded">
+        <xsd:annotation>
+          <xsd:documentation>
+            The &lt;description&gt; block is optional, and may occur multiple
+            times in different languages (as with all instances of this tag).
+            It is used to describe the function or role of the file, and would
+            generally only be used the first time a file is introduced.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="source-control"
+                   type="tns:informationType"
+                   maxOccurs="1" minOccurs="0" nillable="true">
+        <xsd:annotation>
+          <xsd:documentation>
+            This block is optional, and may occur only once. If present, it is
+            used to introduce source-control information specific to the
+            current file. This can be useful if some elements of the project
+            are spread across different source-control systems.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
     </xsd:sequence>
-    <xsd:attribute name="path" type="xsd:string" use="required" />
-    <xsd:attribute name="revision" type="tns:versionString" use="optional"/>
-    <xsd:attribute name="author" type="xsd:NMTOKEN" use="optional" />
-    <xsd:attribute name="action" use="optional">
+    <xsd:attribute name="path" type="xsd:string" use="required">
+      <xsd:annotation>
+        <xsd:documentation>
+          This attribute provides the path-name of the file. In general, this
+          will be a path that is relative to the base directory of the project
+          itself, though there is no rule prohibiting absolute paths, or
+          presuming that paths are relative to some other location.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="revision" type="tns:versionString" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          An optional attribute, this indicates the revision, or version, of
+          the file as it is being referred to in the current context. Some
+          source-control systems (such as CVS) version files individually,
+          while others (such as Subversion) version files in groups generally
+          referred to as transactions.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="author" type="xsd:NMTOKEN" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          An optional attribute, this allows specification of the author of
+          the current revision of the file being described.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="action" default="CHANGE">
+      <xsd:annotation>
+        <xsd:documentation>
+          This attribute describes what the change to this file represents.
+          The value is restricted to one of the strings: ADD, CHANGE, DELETE,
+          MOVE or RESTORE. The default value is CHANGE, which simply means
+          the file was modified. The other labels represent the states at
+          which a file was added to the project, deleted from the project,
+          moved within the file-system, or restored from a deleted state.
+        </xsd:documentation>
+      </xsd:annotation>
       <xsd:simpleType>
         <xsd:restriction base="xsd:NMTOKEN">
           <xsd:enumeration value="ADD" />
+          <xsd:enumeration value="CHANGE" />
           <xsd:enumeration value="DELETE" />
-          <xsd:enumeration value="RESTORE" />
           <xsd:enumeration value="MOVE" />
+          <xsd:enumeration value="RESTORE" />
         </xsd:restriction>
       </xsd:simpleType>
     </xsd:attribute>
+    <xsd:anyAttribute namespace="##other" processContents="lax" />
   </xsd:complexType>
 
-  <xsd:element id="file" name="file" nillable="true" type="tns:fileType">
+  <xsd:element name="file"
+               type="tns:fileType"
+               nillable="true" id="file">
     <xsd:annotation>
       <xsd:documentation>
-        A file element represents one changed file in the containing "change"
-        element.
+        A file element describes one changed file as part of a containing
+        &lt;change&gt; or &lt;fileset&gt; element.
       </xsd:documentation>
     </xsd:annotation>
     <xsd:unique name="fileDescriptionLangConstraint">
+      <xsd:annotation>
+        <xsd:documentation>
+          This uniqueness-constraint ensures that only one &lt;description&gt;
+          tag with a given value for the "lang" attribute occurs within the
+          enclosing &lt;file&gt;. Note that "lang" defaults to "en_US".
+        </xsd:documentation>
+      </xsd:annotation>
       <xsd:selector xpath="tns:description" />
       <xsd:field xpath="@lang" />
     </xsd:unique>
@@ -148,41 +245,156 @@
   <xsd:complexType id="changeType" name="changeType">
     <xsd:annotation>
       <xsd:documentation>
-        These element blocks define a single change-item within the scope of a
-        given release. A change-item consists of one or more files that were
-        affected, and a description of the change itself.
+        The changeType declaration is used to define the structure of the
+        &lt;change&gt; blocks. Each such block describes a single change to
+        the project; this change may affect only one file, or it may affect
+        many files. What each change has in common, is that it requires the
+        specification of one or more affected files, as well as a description
+        of the change itself.
       </xsd:documentation>
     </xsd:annotation>
     <xsd:sequence>
-      <xsd:element maxOccurs="1" minOccurs="0" name="vc-information"
-                   type="tns:informationType" nillable="true" />
       <xsd:choice minOccurs="1" maxOccurs="1">
-        <xsd:element ref="tns:file" />
+        <xsd:annotation>
+          <xsd:documentation>
+            For specifying the files affected by the change, the document
+            may use one of two options: &lt;file&gt; or &lt;fileset&gt;. If
+            the change affects only one file, a single &lt;file&gt; may be
+            used. Otherwise, multiple files must be contained within an
+            enclosing &lt;fileset&gt;. A &lt;fileset&gt; containing exactly
+            one &lt;file&gt; tag should be considered functionally equivalent
+            to just the stand-alone &lt;file&gt; tag itself.
+          </xsd:documentation>
+        </xsd:annotation>
+        <xsd:element ref="tns:file">
+          <xsd:annotation>
+            <xsd:documentation>
+              When the change affects just one file, this element is used
+              to specify and describe that file.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
         <xsd:element name="fileset" nillable="false">
+          <xsd:annotation>
+            <xsd:documentation>
+              A &lt;fileset&gt; is a container for one or more &lt;file&gt;
+              tags, though it is more efficient to use a single &lt;file&gt;
+              element if there is only one changed file. All files in the
+              container are considered to be part of the same change, and in
+              terms of source-control are regarded as having been committed
+              to the repository at the same time.
+            </xsd:documentation>
+          </xsd:annotation>
           <xsd:complexType>
             <xsd:sequence>
-              <xsd:element maxOccurs="1" minOccurs="0" name="version-control"
-                           type="tns:informationType" nillable="true" />
-              <xsd:element maxOccurs="unbounded" minOccurs="1" ref="tns:file" />
+              <xsd:element name="source-control"
+                           type="tns:informationType"
+                           maxOccurs="1" minOccurs="0" nillable="true">
+                <xsd:annotation>
+                  <xsd:documentation>
+                    This block is optional, and may occur only once. If
+                    present, it is used to introduce source-control
+                    information specific to the fileset/change. As some
+                    source-control systems (such as Subversion) handle groups
+                    of changed files as a single transaction, it may be more
+                    economical to specify source-control information at this
+                    level rather than for each file within the child-element
+                    &lt;fileset&gt; individually.
+                  </xsd:documentation>
+                </xsd:annotation>
+              </xsd:element>
+              <xsd:element maxOccurs="unbounded" minOccurs="1" ref="tns:file">
+                <xsd:annotation>
+                  <xsd:documentation>
+                    One or more &lt;file&gt; elements must be present, with
+                    no limit on the number allowed. The structure of the
+                    block is the same at this level as for a single,
+                    stand-alone instance of &lt;file&gt;.
+                  </xsd:documentation>
+                </xsd:annotation>
+              </xsd:element>
             </xsd:sequence>
+            <xsd:attribute name="revision"
+                           type="tns:versionString"
+                           use="optional">
+              <xsd:annotation>
+                <xsd:documentation>
+                  A &lt;fileset&gt; may specify a single revision which
+                  applies to all files in the contained &lt;file&gt;
+                  elements.
+                </xsd:documentation>
+              </xsd:annotation>
+            </xsd:attribute>
+            <xsd:anyAttribute namespace="##other" processContents="lax" />
           </xsd:complexType>
         </xsd:element>
       </xsd:choice>
-      <xsd:element name="description" type="tns:descriptionType"
-                   minOccurs="1" maxOccurs="unbounded" />
+      <xsd:element name="description"
+                   type="tns:descriptionType"
+                   minOccurs="1" maxOccurs="unbounded">
+        <xsd:annotation>
+          <xsd:documentation>
+            Within the &lt;change&gt; block, a &lt;description&gt; element
+            represents the description of the change, in a manner similar to
+            the comments provided to source-control systems when files are
+            committed.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
     </xsd:sequence>
-    <xsd:attribute name="id" type="xsd:ID" />
+    <xsd:attribute name="author" type="xsd:NMTOKEN" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          An optional attribute, this allows specification of the author of
+          the current change-set being described. This is useful if the whole
+          of a change is credited to one committer, as opposed to specifying the
+          same author for every file in the &lt;fileset&gt; block.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="date" type="xsd:dateTime" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          The "date" attribute details when the change was submitted, committed
+          to version-control, etc. It uses the "dateTime" data-format as defined
+          by the XML Schema standard, which is the ISO 8601 format for dates and
+          times. Although ISO 8601 allows strings that specify only the date or
+          time portions, the value of this attribute must contain at least the
+          date, if not a full specification.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="id" type="xsd:ID">
+      <xsd:annotation>
+        <xsd:documentation>
+          A changeType instance may specify a unique ID by which it can
+          be referred to from external documents. The value of this attribute
+          must be unique across all "id" attributes in the document, and
+          must conform to the XML Schema definition of an identifier token.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:anyAttribute namespace="##other" processContents="lax" />
   </xsd:complexType>
 
-  <xsd:element id="change" name="change" nillable="false" type="tns:changeType">
+  <xsd:element name="change"
+               type="tns:changeType"
+               nillable="false" id="change">
     <xsd:annotation>
       <xsd:documentation>
         A change element defines one change within a release. The change itself
-        may span several files, but the single description within the change
-        is relevant to all file-references contained within.
+        may cover several files, but the single description within the change
+        applies to all files referenced within.
       </xsd:documentation>
     </xsd:annotation>
     <xsd:unique name="changeDescriptionLangConstraint">
+      <xsd:annotation>
+        <xsd:documentation>
+          This uniqueness-constraint ensures that only one &lt;description&gt;
+          tag with a given value for the "lang" attribute occurs within the
+          enclosing &lt;change&gt;. Note that "lang" defaults to "en_US".
+        </xsd:documentation>
+      </xsd:annotation>
       <xsd:selector xpath="tns:description" />
       <xsd:field xpath="@lang" />
     </xsd:unique>
@@ -191,33 +403,104 @@
   <xsd:complexType id="releaseType" name="releaseType">
     <xsd:annotation>
       <xsd:documentation>
-        The release is the primary piece of information that a changelog
-        collects and organizes. A release contains an optional description,
-        followed by one or more change blocks. The release element is also the
-        greatest user of attributes besides the file element. A release element
-        must have at least a "version" attribute, uniquely identifying the
-        release itself. Additionally, it may have "tag" to associate it with
-        a release-system tag and "date" to specify the date the release was
-        created.
+        The releaseType is the primary piece of information that a ChangeLogML
+        file collects and organizes. A release contains an optional description
+        and other informational blocks, followed by one or more change
+        blocks. The release element is also the greatest user of attributes
+        besides the file element. A releaseType instance must have at least a
+        "version" attribute, uniquely identifying the release itself.
+        Additionally, it must have a "date" attribute to specify the date the
+        release was created.
       </xsd:documentation>
     </xsd:annotation>
     <xsd:sequence>
-      <xsd:element name="description" type="tns:descriptionType"
-                   minOccurs="0" maxOccurs="unbounded" />
-      <xsd:element maxOccurs="unbounded" minOccurs="0" name="information"
-                   type="tns:informationType" nillable="true" />
-      <xsd:element maxOccurs="1" minOccurs="0" name="version-control"
-                   type="tns:informationType" nillable="true" />
-      <xsd:element maxOccurs="unbounded" minOccurs="1" name="change"
-                   type="tns:changeType" />
+      <xsd:element name="description"
+                   type="tns:descriptionType"
+                   minOccurs="0" maxOccurs="unbounded">
+        <xsd:annotation>
+          <xsd:documentation>
+            The &lt;description&gt; element in a release describes the release
+            as a whole, acting as a summary of the release itself.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="information"
+                   type="tns:informationType"
+                   maxOccurs="unbounded" minOccurs="0" nillable="true">
+        <xsd:annotation>
+          <xsd:documentation>
+            The &lt;information&gt; element is a container which may be used
+            to provide meta-data such as Dublin Core, etc., that is more
+            specific to the release than any general meta-data provided in the
+            &lt;changelog&gt; element's &lt;information&gt; container.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="source-control"
+                   type="tns:informationType"
+                   maxOccurs="1" minOccurs="0" nillable="true">
+        <xsd:annotation>
+          <xsd:documentation>
+            The &lt;source-control&gt; element for a release acts as a
+            container for information on source-control that is specific to the
+            release, more specific than information contained within any
+            &lt;source-control&gt; block for the &lt;changelog&gt; element.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="change"
+                   type="tns:changeType"
+                   maxOccurs="unbounded" minOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            The &lt;change&gt; element is an instance of the type,
+            "changeType". One or more of these blocks must be present in a
+            &lt;release&gt; block. There is no upper-limit to the number of
+            &lt;change&gt; blocks allowed.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
     </xsd:sequence>
-    <xsd:attribute name="version" type="xsd:token" use="required" />
-    <xsd:attribute name="tag" type="xsd:NMTOKEN" />
-    <xsd:attribute name="date" type="xsd:dateTime" use="required" />
+    <xsd:attribute name="version" type="xsd:token" use="required">
+      <xsd:annotation>
+        <xsd:documentation>
+          The "version" attribute represents the version by which the release
+          of the project is represented. It should be unique, though it is not
+          treated in the same way as the "id" attribute; uniqueness is managed
+          as a function of the schema rather than the definition of the type of
+          data it can contain. It is not restricted to numerals and periods, as
+          file revision-numbers are.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="date" type="xsd:dateTime" use="required">
+      <xsd:annotation>
+        <xsd:documentation>
+          The "date" attribute details when the release was made available,
+          bundled, etc. It uses the "dateTime" data-format as defined by the
+          XML Schema standard, which is the ISO 8601 format for dates and
+          times. Although ISO 8601 allows strings that specify only the date or
+          time portions, the value of this attribute must contain at least the
+          date, if not a full specification.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="id" type="xsd:ID">
+      <xsd:annotation>
+        <xsd:documentation>
+          A releaseType instance may specify a unique ID by which it can
+          be referred to from external documents. The value of this attribute
+          must be unique across all "id" attributes in the document, and
+          must conform to the XML Schema definition of an identifier token.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:anyAttribute namespace="##other" processContents="lax" />
   </xsd:complexType>
 
-  <xsd:element id="release" name="release" nillable="false"
-               type="tns:releaseType">
+  <xsd:element name="release"
+               type="tns:releaseType"
+               nillable="false" id="release">
     <xsd:annotation>
       <xsd:documentation>
         The release element details one release within the overall change-log
@@ -228,33 +511,267 @@
       </xsd:documentation>
     </xsd:annotation>
     <xsd:unique name="releaseDescriptionLangConstraint">
+      <xsd:annotation>
+        <xsd:documentation>
+          This uniqueness-constraint ensures that only one &lt;description&gt;
+          tag with a given value for the "lang" attribute occurs within the
+          enclosing &lt;release&gt;. Note that "lang" defaults to "en_US".
+        </xsd:documentation>
+      </xsd:annotation>
       <xsd:selector xpath="tns:description" />
       <xsd:field xpath="@lang" />
     </xsd:unique>
   </xsd:element>
 
-  <xsd:element id="changelog" name="changelog" nillable="false">
+  <xsd:complexType id="subprojectType" name="subprojectType" nillable="true">
     <xsd:annotation>
       <xsd:documentation>
-        The changelog element is intended as the document root element. It
-        contains a description element and one or more release blocks.
+        The subprojectType is a way of allowing a project to express
+        relationship to one or more sub-projects within itself, such that the
+        sub-projects are able to have their own changelogs and release
+        schedules. An instance of subprojectType may explicitly contain
+        &lt;release&gt; blocks (that may or may not simply be replicated from
+        the sub-project's own ChangeLogML), or it may use a facility such as
+        XInclude (or m4 pre-processed, etc.) to dynamically include such blocks
+        from the sub-project.
       </xsd:documentation>
     </xsd:annotation>
-    <xsd:complexType>
-      <xsd:sequence>
-        <xsd:element maxOccurs="unbounded" minOccurs="1" name="description"
-                     nillable="false" type="tns:descriptionType" />
-        <xsd:element maxOccurs="unbounded" minOccurs="0" name="information"
-                   type="tns:informationType" nillable="true" />
-        <xsd:element maxOccurs="1" minOccurs="0" name="version-control"
-                     type="tns:informationType" nillable="true" />
-        <xsd:element maxOccurs="unbounded" minOccurs="1" ref="tns:release" />
-      </xsd:sequence>
-    </xsd:complexType>
-    <xsd:unique name="changelogDescriptionLangConstraint">
+    <xsd:sequence>
+      <xsd:element name="description"
+                   type="tns:descriptionType"
+                   maxOccurs="unbounded" minOccurs="1" nillable="false">
+        <xsd:annotation>
+          <xsd:documentation>
+            The &lt;description&gt; block for a subprojectType instance is used
+            to provide a summary of the sub-project, like an abstract or
+            overview for an article.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="information"
+                   type="tns:informationType"
+                   maxOccurs="unbounded" minOccurs="0" nillable="true">
+        <xsd:annotation>
+          <xsd:documentation>
+            The &lt;information&gt; block is an open-ended container that
+            allows content from other XML namespaces to be included, for such
+            things as Dublin Core Metadata, Creative Commons information, etc.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="source-control"
+                   type="tns:informationType"
+                   maxOccurs="1" minOccurs="0" nillable="true">
+        <xsd:annotation>
+          <xsd:documentation>
+            Like the previous, the &lt;source-control&gt; block is an
+            open-ended container for the inclusion of content from additional
+            namespaces. However, this container is intended to be specifically
+            used for information on the source-control system employed by the
+            project.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element maxOccurs="unbounded" minOccurs="0" ref="tns:release">
+        <xsd:annotation>
+          <xsd:documentation>
+            Lastly, the subprojectType instance will contain zero or more
+            &lt;release&gt; blocks. Ideally these will occur in order, either
+            ascending or descending, of the dates of the given releases. This
+            is optional, since any processor will be capable of sorting the
+            blocks on their "date" attributes.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+    <xsd:attribute name="id" type="xsd:ID" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          A subprojectType instance may specify a unique ID by which it can
+          be referred to from external documents. The value of this attribute
+          must be unique across all "id" attributes in the document, and
+          must conform to the XML Schema definition of an identifier token.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="name" type="xsd:NMTOKEN" use="required">
+      <xsd:annotation>
+        <xsd:documentation>
+          An required attribute, this specifies the name of the sub-project.
+          A schema-level constraint is used to ensure that names are unique
+          between instances of subprojectType.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
+
+  <xsd:element name="subproject"
+               type="tns:subprojectType"
+               nillable="true" id="subproject">
+    <xsd:annotation>
+      <xsd:documentation>
+        The subproject element sets up a child-project that is considered part
+        of the main project, but which may release on its own, separate
+        schedule. The parent project may replicate the child's release history
+        into its own ChangeLogML file, or it may use XInclude elements to import
+        it.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:unique name="subprojectDescriptionLangConstraint">
+      <xsd:annotation>
+        <xsd:documentation>
+          This uniqueness-constraint ensures that only one &lt;description&gt;
+          tag with a given value for the "lang" attribute occurs within the
+          enclosing &lt;subproject&gt;. Note that "lang" defaults to "en_US".
+        </xsd:documentation>
+      </xsd:annotation>
       <xsd:selector xpath="tns:description" />
       <xsd:field xpath="@lang" />
     </xsd:unique>
+  </xsd:element>
+
+  <xsd:complexType id="changelogType" name="changelogType" nillable="false">
+    <xsd:annotation>
+      <xsd:documentation>
+        An instance of changelogType will generally be the root-level element
+        in a ChangeLogML document. It contains the project-level information
+        such as name, summary, etc. as well as acting as a container for the
+        &lt;release&gt; blocks that actually iterate the project's change
+        history.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="project"
+                   type="xsd:string"
+                   maxOccurs="1" minOccurs="1" nillable="false">
+        <xsd:annotation>
+          <xsd:documentation>
+            This is the name of the project that this changelog covers.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="title"
+                   type="xsd:string"
+                   maxOccurs="1" minOccurs="0" nillable="false">
+        <xsd:annotation>
+          <xsd:documentation>
+            This is the title for the project, a sort of longer "name" that can
+            be used for web pages, etc.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="description"
+                   type="tns:descriptionType"
+                   maxOccurs="unbounded" minOccurs="1" nillable="false">
+        <xsd:annotation>
+          <xsd:documentation>
+            The &lt;description&gt; block for a changelogType instance is used
+            to provide a summary of the project, like an abstract or overview
+            for an article.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="information"
+                   type="tns:informationType"
+                   maxOccurs="unbounded" minOccurs="0" nillable="true">
+        <xsd:annotation>
+          <xsd:documentation>
+            The &lt;information&gt; block is an open-ended container that
+            allows content from other XML namespaces to be included, for such
+            things as Dublin Core Metadata, Creative Commons information, etc.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="source-control"
+                   type="tns:informationType"
+                   maxOccurs="1" minOccurs="0" nillable="true">
+        <xsd:annotation>
+          <xsd:documentation>
+            Like the previous, the &lt;source-control&gt; block is an
+            open-ended container for the inclusion of content from additional
+            namespaces. However, this container is intended to be specifically
+            used for information on the source-control system employed by the
+            project.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element maxOccurs="unbounded" minOccurs="0" ref="tns:release">
+        <xsd:annotation>
+          <xsd:documentation>
+            The changelogType instance will contain zero or more &lt;release&gt;
+            blocks. Ideally these will occur in order, either ascending or
+            descending, of the dates of the given releases. This is optional,
+            since any processor will be capable of sorting the blocks on their
+            "date" attributes.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element maxOccurs="unbounded" minOccurs="0" ref="tns:subproject">
+        <xsd:annotation>
+          <xsd:documentation>
+            Lastly, the changelogType instance may contain zero or more
+            &lt;subproject&gt; blocks. These blocks provide information on
+            sub-projects of the main project, and are distinguished by a unique
+            "name" attribute on each block. These elements may be null, since
+            there is no requirement that a sub-project have any releases before
+            the parent project does.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+    <xsd:attribute name="id" type="xsd:ID">
+      <xsd:annotation>
+        <xsd:documentation>
+          A changelogType instance may specify a unique ID by which it can
+          be referred to from external documents. The value of this attribute
+          must be unique across all "id" attributes in the document, and
+          must conform to the XML Schema definition of an identifier token.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
+
+  <xsd:element name="changelog"
+               type="tns:changelogType"
+               nillable="false" id="changelog">
+    <xsd:annotation>
+      <xsd:documentation>
+        The changelog element is intended as the document root element. It
+        contains descriptive elements (&lt;description&gt;,
+        &lt;source-control&gt;, etc.) and one or more release blocks.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:unique name="changelogDescriptionLangConstraint">
+      <xsd:annotation>
+        <xsd:documentation>
+          This uniqueness-constraint ensures that only one &lt;description&gt;
+          tag with a given value for the "lang" attribute occurs within the
+          enclosing &lt;changelog&gt;. Note that "lang" defaults to "en_US".
+        </xsd:documentation>
+      </xsd:annotation>
+      <xsd:selector xpath="tns:description" />
+      <xsd:field xpath="@lang" />
+    </xsd:unique>
+    <xsd:key name="releaseVersionConstraint">
+      <xsd:annotation>
+        <xsd:documentation>
+          This key-constraint ensures that each &lt;release&gt; block has a
+          distinct and unique "version" attribute.
+        </xsd:documentation>
+      </xsd:annotation>
+      <xsd:selector xpath="tns:release" />
+      <xsd:field xpath="@version" />
+    </xsd:key>
+    <xsd:key name="subprojectNameConstraint">
+      <xsd:annotation>
+        <xsd:documentation>
+          This key-constraint ensures that each &lt;subproject&gt; block has a
+          distinct and unique "name" attribute.
+        </xsd:documentation>
+      </xsd:annotation>
+      <xsd:selector xpath="tns:subproject" />
+      <xsd:field xpath="@name" />
+    </xsd:key>
   </xsd:element>
 
 </xsd:schema>

@@ -1,15 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?><!-- :tabSize=2:indentSize=2:wrap=hard: -->
-<!--
-    The schema for this namespace may be found at the following URL:
-
-    http://www.blackperl.com/XML/ChangeLog/ChangeLogML.xsd
-
-    $Header: /work/cvs/perl/RPC-XML/ChangeLog.xml,v 1.5 2006/06/30 07:52:26 rjray Exp $
--->
-<changelog xmlns="http://www.blackperl.com/XML/ChangeLog"
+<?xml version="1.0" encoding="utf-8"?>
+<!-- :tabSize=2:indentSize=2:wrap=hard: -->
+<changelog xmlns="http://www.blackperl.com/2009/01/ChangeLogML"
+    xmlns:sc="http://www.blackperl.com/2009/01/ChangeLogML/source-control"
+    xmlns:git="http://www.blackperl.com/2009/01/ChangeLogML/source-control/git"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:xhtml="http://www.w3.org/1999/xhtml"
-    xsi:schemaLocation="http://www.blackperl.com/XML/ChangeLog etc/ChangeLogML.xsd">
+    xsi:schemaLocation="http://www.blackperl.com/2009/01/ChangeLogML etc/ChangeLogML.xsd">
+  <project></project>
+  <title></title>
   <description>
     Revision history for the Perl extension module RPC::XML. This is an
     implementation of the XML-RPC standard as described at the URL
@@ -17,7 +15,160 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
-  <release date="2008-09-29T04:15:00-07:00" version="0.64" tag="v0_64">
+  <release date="2009-06-17T06:00:00-07:00" version="0.65" sc:tag="0.65">
+    <change git:commit="1f4df1152f2edccc25f8e7c3fafcbdcd71987baa">
+      <fileset>
+        <file path="etc/make_method" />
+        <file path="etc/rpc-method.dtd" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="t/30_method.t" />
+        <file path="t/35_namespaces.t" action="ADD" />
+        <file path="t/namespace1.xpl" action="ADD" />
+        <file path="t/namespace2.xpl" action="ADD" />
+        <file path="t/namespace3.xpl" action="ADD" />
+      </fileset>
+      <description>
+         Support for declaration of namespaces in XPL code.
+         Adds a new test suite and includes a rewrite/update of the method
+         tests. Change also covers the make_method tool and the DTD for XPL
+         files.
+      </description>
+    </change>
+    <change git:commit="b2acc9addbb3521ad0f0a73f3df8be3b51a55db0">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/02_pod_coverage.t" />
+      </fileset>
+      <description>
+        Interim fix for encoding issues, prior to the mega-encoding work.
+        This makes the library correctly create octet-based messages, rather
+        than letting UTF-8 leak in if it was passed in initially.
+      </description>
+    </change>
+    <change git:commit="a0e3ddd813afc71b44d4b3f6378a5f21fd49f241">
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+      </fileset>
+      <description>
+        Follow-up to previous commit, some serialization-related problems.
+        Not all instances of bytelength() had been removed after the previous
+        slate of changes, and once that was done some tests in 15_serialize.t
+        broke.
+      </description>
+    </change>
+    <change git:commit="b7448ee254c4fb5a75b69cc319f9026e7d1dded0">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="t/12_nil.t" action="ADD" />
+        <file path="t/30_method.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=34132">RT #34132</xhtml:a>:
+        Based on a patch from the requestor, added support for &lt;nil/&gt;.
+        Documentation and tests are present, but a little sparse. This change
+        also incorporates a small add to <xhtml:tt>lib/RPC/XML/Parser.pm</xhtml:tt>
+        to address
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=42033">RT #42033</xhtml:a>.
+      </description>
+    </change>
+    <change git:commit="c22788c9b05600fe2275827cc853e26da3e4dce9">
+      <fileset>
+        <file path="t/40_server.t" />
+        <file path="t/41_server_hang.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=27778">RT #27778</xhtml:a>:
+        Fix problems with child-process management on Windows that was causing
+        <xhtml:tt>t/40_server.t</xhtml:tt> to hang during test runs. Also put
+        skip-clause into <xhtml:tt>t/41_server_hang.t</xhtml:tt>, as according
+        to the person reporting, it doesn't work at all on MSWin (the network
+        code is very UNIX-y).
+      </description>
+    </change>
+    <change git:commit="0c7085648528f67a83d9902f02ddd2a83a412146">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="t/10_data.t" />
+      </fileset>
+      <description>
+        Applied a regexp-fix from Joakim Mared for stringification of doubles.
+      </description>
+    </change>
+    <change git:commit="1cd3b4ac72f787dc017aa5ef3443a0c886362108">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/10_data.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=35106">RT ticket #35106</xhtml:a>:
+        Make the behavior of RPC::XML::array constructor work as expected.
+        This led to adding use of Scalar::Util and cleaning up the places where
+        I was still doing "UNIVERSAL::isa(...)" hacks to test refs without the
+        risk of directly calling ->isa() on a potentially-unblessed ref.
+      </description>
+    </change>
+    <change git:commit="edb8ef60b745db845024d0a7b41e7b50fdbd6e29">
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/Apache/RPC/Status.pm" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Function.pm" />
+        <file path="lib/RPC/XML/Method.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Update the copyright year and license information, and add contact data
+        to all POD sections for RT, AnnoCPAN, GitHub, etc.
+      </description>
+    </change>
+    <change git:commit="b3b1df84a95c26f101a3468e5658c41556a0a6ce">
+      <fileset>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="t/50_client.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=34559">RT ticket #34559</xhtml:a>:
+        Allow control of LWP::UA timeouts from within client class.
+      </description>
+    </change>
+    <change git:commit="f6b4ee845076ebde9f1c7921e6c70235b4e499f5">
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=43019">RT ticket #43019</xhtml:a>:
+        Small hack to the existing SSL hack for Socket6 problems.
+      </description>
+    </change>
+    <change git:commit="4e1e0061a56a70c1d4597b7a801a4d70cdb12d9b">
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/Apache/RPC/Status.pm" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Function.pm" />
+        <file path="lib/RPC/XML/Method.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Since Scalar::Util requires 5.006, make that (5.006001, actually) the
+        base required Perl version.
+      </description>
+    </change>
+  </release>
+  <release date="2008-09-29T04:15:00-07:00" version="0.64" sc:tag="v0_64">
     <change>
       <file path="t/40_server.t" revision="361" />
       <description>
@@ -42,7 +193,7 @@
       </description>
     </change>
   </release>
-  <release date="2008-09-19T02:23:12-07:00" version="0.63" tag="v0_63">
+  <release date="2008-09-19T02:23:12-07:00" version="0.63" sc:tag="v0_63">
     <change>
       <file path="lib/RPC/XML.pm" revision="359" />
       <description>
@@ -51,7 +202,7 @@
       </description>
     </change>
   </release>
-  <release date="2008-09-19T02:12:02-07:00" version="0.62" tag="v0_62">
+  <release date="2008-09-19T02:12:02-07:00" version="0.62" sc:tag="v0_62">
     <change>
       <file path="t/40_server.t" revision="355" />
       <description>
@@ -69,7 +220,7 @@
       </description>
     </change>
   </release>
-  <release version="0.61" tag="v0_61" date="2008-09-15T01:38:44-07:00">
+  <release version="0.61" sc:tag="v0_61" date="2008-09-15T01:38:44-07:00">
     <change>
       <file path="t/00_load.t" revision="346" />
       <description>
@@ -136,7 +287,7 @@
       </description>
     </change>
   </release>
-  <release version="0.60" tag="v0_60" date="2008-04-09T03:01:07-07:00">
+  <release version="0.60" sc:tag="v0_60" date="2008-04-09T03:01:07-07:00">
     <change>
       <fileset>
         <file path="t/00_load.t" revision="328" />
@@ -299,7 +450,7 @@
       </description>
     </change>
   </release>
-  <release version="0.59" tag="v0_59" date="2006-06-30T01:48:37-06:00">
+  <release version="0.59" sc:tag="v0_59" date="2006-06-30T01:48:37-06:00">
     <change>
       <file path="t/10_data.t" revision="1.10" />
       <description>
@@ -360,7 +511,7 @@
       </description>
     </change>
   </release>
-  <release version="0.58" tag="v0_58" date="2005-05-12T03:24:23-07:00">
+  <release version="0.58" sc:tag="v0_58" date="2005-05-12T03:24:23-07:00">
     <change>
       <fileset>
         <file path="lib/RPC/XML.pm" revision="1.35" />
@@ -399,7 +550,7 @@
       </description>
     </change>
   </release>
-  <release version="0.57" tag="v0_57" date="2004-12-24T03:02:48-08:00">
+  <release version="0.57" sc:tag="v0_57" date="2004-12-24T03:02:48-08:00">
     <change>
       <file path="lib/Apache/RPC/Server.pm" revision="1.27" />
       <description>
@@ -443,7 +594,7 @@
       </description>
     </change>
   </release>
-  <release version="0.56" tag="v0_56" date="2004-12-09T01:07:00-08:00">
+  <release version="0.56" sc:tag="v0_56" date="2004-12-09T01:07:00-08:00">
     <change>
       <file path="etc/make_method" revision="1.10" />
       <description>
@@ -530,7 +681,7 @@
       </description>
     </change>
   </release>
-  <release version="0.55" tag="v0_55" date="2004-11-30T01:16:57-08:00">
+  <release version="0.55" sc:tag="v0_55" date="2004-11-30T01:16:57-08:00">
     <change>
       <file path="lib/RPC/XML/Server.pm" revision="1.39" />
       <description>
@@ -579,7 +730,7 @@
       </description>
     </change>
   </release>
-  <release version="0.54" tag="v0_54" date="2004-04-14T04:43:56-07:00">
+  <release version="0.54" sc:tag="v0_54" date="2004-04-14T04:43:56-07:00">
     <change>
       <file path="Makefile.PL" revision="1.33" />
       <description>
@@ -671,7 +822,7 @@
       </description>
     </change>
   </release>
-  <release version="0.53" tag="v0_53" date="2003-02-25T01:12:11-08:00">
+  <release version="0.53" sc:tag="v0_53" date="2003-02-25T01:12:11-08:00">
     <change>
       <file path="t/40_server.t" revision="1.7" />
       <description>Eliminate a warning under 5.00503.</description>
@@ -702,7 +853,7 @@
       </description>
     </change>
   </release>
-  <release version="0.52" tag="v0_52" date="2003-02-10T01:37:05-08:00">
+  <release version="0.52" sc:tag="v0_52" date="2003-02-10T01:37:05-08:00">
     <change>
       <file path="lib/RPC/XML/Server.pm" revision="1.37" />
       <description>

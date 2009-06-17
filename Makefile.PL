@@ -1,7 +1,5 @@
 ###############################################################################
 #
-# $Id: Makefile.PL,v 1.39 2006/06/30 07:52:26 rjray Exp $
-#
 # This is the MakeMaker skeleton for the RPC-XML extension. Besides the usual
 # tricks, this has to add rules to make the *.xpl files from *.code in the
 # methods/ subdir, as well as get them into a place where they get installed
@@ -86,20 +84,22 @@ find(sub {
 
 WriteMakefile(
               NAME      => 'RPC::XML',
-              VERSION   => '0.64',
+              VERSION   => '0.65',
               AUTHOR    => 'Randy J. Ray',
               ABSTRACT  => 'Data, client and server classes for XML-RPC',
               EXE_FILES => \@scripts,
               PM        => \%PM_FILES,
-              PREREQ_PM => { XML::Parser => 2.31,
-                             File::Spec  => 0.8,
-                             constant    => 1.03,
-                             Test::More  => 0,
-                             LWP         => 5.801 },
+              PREREQ_PM => { XML::Parser  => 2.31,
+                             File::Spec   => 0.8,
+                             constant     => 1.03,
+                             Scalar::Util => 1.20,
+                             Test::More   => 0,
+                             LWP          => 5.801 },
               dist      => { COMPRESS => 'gzip -9f' },
               clean     => { FILES => $CLEAN },
-              LICENSE      => 'perl',
-              SIGN         => 'here, please',
+              LICENSE   => 'perl',
+              SIGN      => 'here, please',
+              MIN_PERL_VERSION => 5.006001,
              );
 
 sub MY::post_initialize

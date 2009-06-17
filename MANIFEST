@@ -52,9 +52,11 @@ t/01_pod.t
 t/02_pod_coverage.t
 t/10_data.t
 t/11_base64_fh.t
+t/12_nil.t
 t/15_serialize.t
 t/20_parser.t
 t/30_method.t
+t/35_namespaces.t
 t/40_server.t
 t/41_server_hang.t
 t/50_client.t
@@ -62,5 +64,8 @@ t/60_net_server.t
 t/meth_bad_1.xpl
 t/meth_bad_2.xpl
 t/meth_good_1.xpl
+t/namespace1.xpl
+t/namespace2.xpl
+t/namespace3.xpl
 t/svsm_text.gif
 t/util.pl
