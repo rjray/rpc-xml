@@ -1419,7 +1419,11 @@ sub process_request
             $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED)
         {
             no strict 'vars';
-            unshift @HTTP::Daemon::ClientConn::ISA, 'IO::Socket::SSL';
+            # RT 43019: Don't do this if Socket6/IO::Socket::INET6 is in
+            # effect, as it causes calls to unpack_sockaddr_in6 to break.
+            unshift @HTTP::Daemon::ClientConn::ISA, 'IO::Socket::SSL'
+                unless (defined $Socket6::VERSION or
+                        defined $IO::Socket::INET6::VERSION);
             $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED = 0;
         }
     }
