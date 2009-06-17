@@ -35,7 +35,7 @@
 
 package RPC::XML::Parser;
 
-use 5.005;
+use 5.006001;
 use strict;
 use vars qw($VERSION @ISA);
 use subs qw(error stack_error new message_init message_end tag_start tag_end

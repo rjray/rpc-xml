@@ -38,7 +38,7 @@
 
 package RPC::XML::Procedure;
 
-use 5.005;
+use 5.006001;
 use strict;
 use vars qw($VERSION);
 use subs qw(new is_valid name code signature help version hidden

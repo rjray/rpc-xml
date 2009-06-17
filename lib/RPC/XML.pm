@@ -22,7 +22,7 @@
 
 package RPC::XML;
 
-use 5.005;
+use 5.006001;
 use strict;
 use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR
             %xmlmap $xmlre $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);

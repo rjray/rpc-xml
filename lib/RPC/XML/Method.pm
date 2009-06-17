@@ -8,8 +8,6 @@
 #
 ###############################################################################
 #
-#   $Id$
-#
 #   Description:    This is now an empty sub-class of RPC::XML::Procedure.
 #                   It is given its own file to allow for a minimal manual
 #                   page redirecting people to the newer class.
@@ -26,14 +24,14 @@
 
 package RPC::XML::Method;
 
-use 5.005;
+use 5.006001;
 use strict;
 use vars qw($VERSION);
 
 require RPC::XML::Procedure;
 
 @RPC::XML::Method::ISA = qw(RPC::XML::Procedure);
-$VERSION = '1.09';
+$VERSION = '1.10';
 
 1;
 

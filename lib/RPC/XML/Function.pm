@@ -8,8 +8,6 @@
 #
 ###############################################################################
 #
-#   $Id$
-#
 #   Description:    This is a type of Procedure that does no signature tests
 #                   at either creation or invocation.
 #
@@ -30,7 +28,7 @@
 
 package RPC::XML::Function;
 
-use 5.005;
+use 5.006001;
 use strict;
 use vars qw($VERSION @ISA);
 use subs qw(new signature make_sig_table clone is_valid match_signature);
@@ -40,7 +38,7 @@ use AutoLoader 'AUTOLOAD';
 require RPC::XML::Procedure;
 
 @ISA = qw(RPC::XML::Procedure);
-$VERSION = '1.05';
+$VERSION = '1.06';
 
 ###############################################################################
 #

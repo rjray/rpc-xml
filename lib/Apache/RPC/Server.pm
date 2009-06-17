@@ -28,7 +28,7 @@
 
 package Apache::RPC::Server;
 
-use 5.005;
+use 5.006001;
 use strict;
 
 use Socket;
@@ -48,7 +48,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = '1.31';
+$Apache::RPC::Server::VERSION = '1.32';
 
 sub version { $Apache::RPC::Server::VERSION }
 

@@ -8,8 +8,6 @@
 #
 ###############################################################################
 #
-#   $Id$
-#
 #   Description:    This module is intended to provide a browser-friendly
 #                   status page on the RPC server(s) being managed by the
 #                   hosting Apache process.
@@ -42,7 +40,7 @@
 
 package Apache::RPC::Status;
 
-use 5.005;
+use 5.006001;
 use strict;
 use vars qw(%IS_INSTALLED $SERVER_VER $STARTED $PERL_VER $DEFAULT $SERVER_CLASS
             %proto $newQ);
@@ -62,7 +60,7 @@ $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf "v%vd", $^V : $];
 
-$Apache::RPC::Status::VERSION = '1.07';
+$Apache::RPC::Status::VERSION = '1.08';
 
 #
 # %proto is the prototype set of screens/handlers that this class knows about.

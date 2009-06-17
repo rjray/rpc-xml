@@ -62,7 +62,7 @@
 
 package RPC::XML::Server;
 
-use 5.005;
+use 5.006001;
 use strict;
 use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR @XPL_PATH
             $IO_SOCKET_SSL_HACK_NEEDED);
