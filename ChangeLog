@@ -9,6 +9,35 @@
 		allowing choice of character-set encodings for  
 		XML messages.                                   
 
+0.66	Thursday July  9, 2009, 07:36:15 AM -0700
+
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Server.pm
+	RT #47219: Re-did the detection of compression availability     
+	(testing for the Compress::Zlib module) based on comments in    
+	this bug.                                                       
+
+	* t/60_net_server.t
+	RT #47220: Net::Server tests are not (currently) viable on      
+	Windows. Also made script taint-safe.                           
+
+	* t/40_server.t
+	* t/50_client.t
+	* t/util.pl
+	RT #47221: Applied a patch from kmx@volny.cz, for better        
+	Windows testing.                                                
+
+	* lib/Apache/RPC/Server.pm
+	* lib/Apache/RPC/Status.pm
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Function.pm
+	* lib/RPC/XML/Method.pm
+	* lib/RPC/XML/Parser.pm
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	All modules now use the "warnings" pragma.                      
+
 0.65	Wednesday June 17, 2009, 06:00:00 AM -0700
 
 	* etc/make_method
@@ -1116,7 +1145,7 @@
 	* *
 	All files are tracked from this point forward.                  
 
-# Generated on Wednesday June 17, 2009, 06:03:27 AM -0700
+# Generated on Thursday July  9, 2009, 07:38:10 AM -0700
 # Using changelog2x/0.10, App::Changelog2x/0.10, XML::LibXML/1.69,             
 # XML::LibXSLT/1.68, libxml/2.6.32, libxslt/1.1.24 (with exslt)                
 # XSLT sources:

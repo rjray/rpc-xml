@@ -15,6 +15,54 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2009-07-09T07:36:15-07:00" version="0.66" sc:tag="0.66">
+    <change git:commit="d7469ec822d50fdc48642dae60c18d0a6bd5c641">
+      <fileset>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=47219">RT #47219</xhtml:a>:
+        Re-did the detection of compression availability (testing for the
+        Compress::Zlib module) based on comments in this bug.
+      </description>
+    </change>
+    <change git:commit="8ce60bd0d5f982ea435760f24a1fdd92eaea614d">
+      <file path="t/60_net_server.t" />
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=47220">RT #47220</xhtml:a>:
+        Net::Server tests are not (currently) viable on Windows. Also made
+        script taint-safe.
+      </description>
+    </change>
+    <change git:commit="b3f8e9474a51914ed599d3e6c50d5413445335c4">
+      <fileset>
+        <file path="t/40_server.t"/>
+        <file path="t/50_client.t"/>
+        <file path="t/util.pl"/>
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=47221">RT #47221</xhtml:a>:
+        Applied a patch from kmx@volny.cz, for better Windows testing.
+      </description>
+    </change>
+    <change git:commit="32fc7eb768bb0e10cb7014e698d5be4fc2cf8689">
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm"/>
+        <file path="lib/Apache/RPC/Status.pm"/>
+        <file path="lib/RPC/XML.pm"/>
+        <file path="lib/RPC/XML/Client.pm"/>
+        <file path="lib/RPC/XML/Function.pm"/>
+        <file path="lib/RPC/XML/Method.pm"/>
+        <file path="lib/RPC/XML/Parser.pm"/>
+        <file path="lib/RPC/XML/Procedure.pm"/>
+        <file path="lib/RPC/XML/Server.pm"/>
+      </fileset>
+      <description>
+        All modules now use the "warnings" pragma.
+      </description>
+    </change>
+  </release>
   <release date="2009-06-17T06:00:00-07:00" version="0.65" sc:tag="0.65">
     <change git:commit="1f4df1152f2edccc25f8e7c3fafcbdcd71987baa">
       <fileset>
