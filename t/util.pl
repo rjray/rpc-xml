@@ -24,6 +24,17 @@ sub start_server
     }
 }
 
+sub stop_server
+{
+    my $pid = shift;
+
+    # Per RT 27778, use 'KILL' instead of 'INT' as the stop-server signal for
+    # MSWin platforms:
+    my $SIGNAL = ($^O eq "MSWin32") ? 'KILL' : 'INT';
+    kill $SIGNAL, $pid;
+    sleep 2; # give the old sockets time to go away 
+}
+
 sub find_port
 {
     my $start_at = $_[0] || 9000;

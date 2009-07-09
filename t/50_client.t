@@ -92,8 +92,7 @@ unless (ref $res)
 {
     # Assume that if an error occurred, the server might be in a confused
     # state. Kill and restart it.
-    kill 'INT', $child;
-    sleep 1; # Give it time to free up the socket
+    stop_server($child);
     $child = start_server($srv);
 }
 
@@ -113,8 +112,7 @@ unless (ref $res)
 {
     # Assume that if an error occurred, the server might be in a confused
     # state. Kill and restart it.
-    kill 'INT', $child;
-    sleep 1; # Give it time to free up the socket
+    stop_server($child);
     $child = start_server($srv);
 }
 
@@ -132,8 +130,7 @@ unless (ref $res)
 {
     # Assume that if an error occurred, the server might be in a confused
     # state. Kill and restart it.
-    kill 'INT', $child;
-    sleep 1; # Give it time to free up the socket
+    stop_server($child);
     $child = start_server($srv);
 }
 
@@ -158,8 +155,7 @@ unless (ref $res)
 {
     # Assume that if an error occurred, the server might be in a confused
     # state. Kill and restart it.
-    kill 'INT', $child;
-    sleep 1; # Give it time to free up the socket
+    stop_server($child);
     $child = start_server($srv);
 }
 
@@ -173,8 +169,7 @@ is($cli->uri, 'http://www.oreilly.com/RPC',
    'RPC::XML::Client::uri changes as expected');
 
 # Kill the server long enough to add a new method
-kill 'INT', $child;
-sleep 1; # Give system enough time to reclaim resources
+stop_server($child);
 
 use Digest::MD5;
 
@@ -232,6 +227,6 @@ SKIP: {
 }
 
 # Kill the server before exiting
-kill 'INT', $child;
+stop_server($child);
 
 exit;
