@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# $Id$
 
 # Test the RPC::XML::Server class with Net::Server rather than HTTP::Daemon
 
@@ -17,6 +16,9 @@ use Test::More;
 eval "use Net::Server";
 # If they do not have Net::Server, quietly skip
 plan skip_all => 'Net::Server not available' if $@;
+# ...or if they are on Windows, skip
+plan skip_all => 'Net::Server tests not reliable on Windows platform'
+    if ($^O eq "MSWin32");
 # otherwise...
 plan tests => 30;
 
@@ -236,5 +238,15 @@ SKIP: {
 }
 
 # Now that we're done, kill the server and exit
-kill 'INT', `cat $pid_file`;
+open(my $fh, "< $pid_file");
+chomp(my $pid = <$fh>);
+if ($pid =~ /^(\d+)$/)
+{
+    kill 'INT', $1;
+}
+else
+{
+    warn "WARNING: $pid_file appears corrupt, zombie processes may remain!\n";
+}
+
 exit;
