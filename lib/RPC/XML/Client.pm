@@ -32,6 +32,7 @@ package RPC::XML::Client;
 
 use 5.006001;
 use strict;
+use warnings;
 use vars qw($VERSION $COMPRESSION_AVAILABLE);
 use subs qw(new simple_request send_request uri useragent request
             fault_handler error_handler combined_handler timeout);

@@ -40,6 +40,7 @@ package RPC::XML::Procedure;
 
 use 5.006001;
 use strict;
+use warnings;
 use vars qw($VERSION);
 use subs qw(new is_valid name code signature help version hidden
             add_signature delete_signature make_sig_table match_signature
@@ -50,7 +51,7 @@ require File::Spec;
 
 use Scalar::Util 'blessed';
 
-$VERSION = '1.17';
+$VERSION = '1.18';
 
 ###############################################################################
 #

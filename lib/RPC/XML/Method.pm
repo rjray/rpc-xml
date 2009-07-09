@@ -26,12 +26,13 @@ package RPC::XML::Method;
 
 use 5.006001;
 use strict;
+use warnings;
 use vars qw($VERSION);
 
 require RPC::XML::Procedure;
 
 @RPC::XML::Method::ISA = qw(RPC::XML::Procedure);
-$VERSION = '1.10';
+$VERSION = '1.11';
 
 1;
 

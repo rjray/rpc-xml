@@ -24,6 +24,7 @@ package RPC::XML;
 
 use 5.006001;
 use strict;
+use warnings;
 use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR
             %xmlmap $xmlre $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);
 use subs qw(time2iso8601 smart_encode utf8_downgrade);
@@ -63,7 +64,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.42';
+$VERSION = '1.43';
 
 # Global error string
 $ERROR = '';

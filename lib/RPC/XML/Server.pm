@@ -64,6 +64,7 @@ package RPC::XML::Server;
 
 use 5.006001;
 use strict;
+use warnings;
 use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR @XPL_PATH
             $IO_SOCKET_SSL_HACK_NEEDED $COMPRESSION_AVAILABLE);
 

@@ -42,6 +42,7 @@ package Apache::RPC::Status;
 
 use 5.006001;
 use strict;
+use warnings;
 use vars qw(%IS_INSTALLED $SERVER_VER $STARTED $PERL_VER $DEFAULT $SERVER_CLASS
             %proto $newQ);
 use subs qw(header footer main_screen server_summary server_detail
@@ -60,7 +61,7 @@ $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf "v%vd", $^V : $];
 
-$Apache::RPC::Status::VERSION = '1.08';
+$Apache::RPC::Status::VERSION = '1.09';
 
 #
 # %proto is the prototype set of screens/handlers that this class knows about.
