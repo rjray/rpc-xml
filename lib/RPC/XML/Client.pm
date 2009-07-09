@@ -32,7 +32,7 @@ package RPC::XML::Client;
 
 use 5.006001;
 use strict;
-use vars qw($VERSION);
+use vars qw($VERSION $COMPRESSION_AVAILABLE);
 use subs qw(new simple_request send_request uri useragent request
             fault_handler error_handler combined_handler timeout);
 
@@ -44,7 +44,14 @@ use Scalar::Util 'blessed';
 use RPC::XML;
 require RPC::XML::Parser;
 
-$VERSION = '1.27';
+BEGIN
+{
+    # Check for compression support
+    eval "require Compress::Zlib";
+    $COMPRESSION_AVAILABLE = ($@) ? '' : 'deflate';
+}
+
+$VERSION = '1.28';
 
 ###############################################################################
 #
@@ -90,12 +97,13 @@ sub new
     $REQ->header(Content_Type => 'text/xml');
     $REQ->protocol('HTTP/1.0');
 
-    # Check for compression support
-    $self->{__compress} = '';
-    eval "require Compress::Zlib";
-    $self->{__compress} = $@ ? '' : 'deflate';
+    # Note compression support
+    $self->{__compress} = $COMPRESSION_AVAILABLE;
     # It looks wasteful to keep using the hash key, but it makes it easier
-    # to change the string in just one place (above) if I have to.
+    # to change the string in just one place (BEGIN block, above) if I have to.
+    # Also (for now) I prefer to manipulate the private keys directly, before
+    # blessing $self, rather than using accessors. This is just for performance
+    # and I might change my mind later.
     $REQ->header(Accept_Encoding => $self->{__compress})
         if $self->{__compress};
     $self->{__compress_thresh} = $attrs{compress_thresh} || 4096;

@@ -65,7 +65,7 @@ package RPC::XML::Server;
 use 5.006001;
 use strict;
 use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR @XPL_PATH
-            $IO_SOCKET_SSL_HACK_NEEDED);
+            $IO_SOCKET_SSL_HACK_NEEDED $COMPRESSION_AVAILABLE);
 
 use Carp 'carp';
 use AutoLoader 'AUTOLOAD';
@@ -89,9 +89,14 @@ BEGIN {
     # starts out true, then gets set to false the first time the hack is
     # applied, so that it doesn't get repeated over and over...
     $IO_SOCKET_SSL_HACK_NEEDED = 1;
+
+    # Check for compression support
+    eval "require Compress::Zlib";
+    $COMPRESSION_AVAILABLE = ($@) ? '' : 'deflate';
 }
 
-$VERSION = '1.50';
+
+$VERSION = '1.51';
 
 ###############################################################################
 #
@@ -181,10 +186,13 @@ sub new
 
     $self->add_default_methods unless ($args{no_default});
     $self->{__compress} = '';
-    unless ($args{no_compress})
+    if ($args{no_compress})
     {
-        eval "require Compress::Zlib";
-        $self->{__compress} = $@ ? '' : 'deflate';
+        $self->{__compress} = '';
+    }
+    else
+    {
+        $self->{__compress} = $COMPRESSION_AVAILABLE;
         # Add some more headers to the default response object for compression.
         # It looks wasteful to keep using the hash key, but it makes it easier
         # to change the string in just one place (above) if I have to.
