@@ -81,7 +81,8 @@ use RPC::XML;
 use RPC::XML::Parser;
 use RPC::XML::Procedure;
 
-BEGIN {
+BEGIN
+{
     $INSTALL_DIR = (File::Spec->splitpath(__FILE__))[1];
     @XPL_PATH = ($INSTALL_DIR, File::Spec->curdir);
 
@@ -92,12 +93,12 @@ BEGIN {
     $IO_SOCKET_SSL_HACK_NEEDED = 1;
 
     # Check for compression support
-    eval "require Compress::Zlib";
+    eval { require Compress::Zlib; };
     $COMPRESSION_AVAILABLE = ($@) ? '' : 'deflate';
 }
 
 
-$VERSION = '1.51';
+$VERSION = '1.52';
 
 ###############################################################################
 #

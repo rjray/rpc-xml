@@ -48,11 +48,11 @@ require RPC::XML::Parser;
 BEGIN
 {
     # Check for compression support
-    eval "require Compress::Zlib";
+    eval { require Compress::Zlib; };
     $COMPRESSION_AVAILABLE = ($@) ? '' : 'deflate';
 }
 
-$VERSION = '1.28';
+$VERSION = '1.29';
 
 ###############################################################################
 #
