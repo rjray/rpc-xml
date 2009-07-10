@@ -9,6 +9,15 @@
 		allowing choice of character-set encodings for  
 		XML messages.                                   
 
+0.67	Friday July 10, 2009, 01:30:00 AM -0700
+
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Server.pm
+	* t/70_compression_detect.t (added)
+	RT #47219: Mis-read the patch from previous fix, this actually  
+	fixes it. Also added a test suite to check for                  
+	compression-detection.                                          
+
 0.66	Thursday July  9, 2009, 07:36:15 AM -0700
 
 	* lib/RPC/XML/Client.pm
@@ -1145,7 +1154,7 @@
 	* *
 	All files are tracked from this point forward.                  
 
-# Generated on Thursday July  9, 2009, 07:38:10 AM -0700
+# Generated on Friday July 10, 2009, 01:30:09 AM -0700
 # Using changelog2x/0.10, App::Changelog2x/0.10, XML::LibXML/1.69,             
 # XML::LibXSLT/1.68, libxml/2.6.32, libxslt/1.1.24 (with exslt)                
 # XSLT sources:

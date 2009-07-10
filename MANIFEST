@@ -61,6 +61,7 @@ t/40_server.t
 t/41_server_hang.t
 t/50_client.t
 t/60_net_server.t
+t/70_compression_detect.t
 t/meth_bad_1.xpl
 t/meth_bad_2.xpl
 t/meth_good_1.xpl

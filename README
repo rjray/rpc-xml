@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.66
+Version: 0.67
 
 WHAT IS IT
 
@@ -68,27 +68,6 @@ CHANGES
 
 * lib/RPC/XML/Client.pm
 * lib/RPC/XML/Server.pm
-RT #47219: Re-did the detection of compression availability     
-(testing for the Compress::Zlib module) based on comments in    
-this bug.                                                       
-
-* t/60_net_server.t
-RT #47220: Net::Server tests are not (currently) viable on      
-Windows. Also made script taint-safe.                           
-
-* t/40_server.t
-* t/50_client.t
-* t/util.pl
-RT #47221: Applied a patch from kmx@volny.cz, for better        
-Windows testing.                                                
-
-* lib/Apache/RPC/Server.pm
-* lib/Apache/RPC/Status.pm
-* lib/RPC/XML.pm
-* lib/RPC/XML/Client.pm
-* lib/RPC/XML/Function.pm
-* lib/RPC/XML/Method.pm
-* lib/RPC/XML/Parser.pm
-* lib/RPC/XML/Procedure.pm
-* lib/RPC/XML/Server.pm
-All modules now use the "warnings" pragma.                      
+* t/70_compression_detect.t (added)
+RT #47219: Mis-read the patch from previous fix, this actually
+fixes it. Also added a test suite to check for compression-detection.                                          
