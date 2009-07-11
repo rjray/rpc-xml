@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# $Id$
 
 # Test the data-manipulation routines in RPC::XML
 

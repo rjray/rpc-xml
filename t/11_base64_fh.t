@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# $Id$
 
 # Test the usage of RPC::XML::base64 with filehandles
 

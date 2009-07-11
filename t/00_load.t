@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# $Id$
 
 use strict;
 use vars qw(@MODULES @APACHE_MODULES $do_apache);
@@ -10,7 +9,7 @@ use Test::More;
 
 BEGIN
 {
-    @MODULES = qw(RPC::XML RPC::XML::Parser
+    @MODULES = qw(RPC::XML RPC::XML::Parser RPC::XML::Parser::XMLParser
                   RPC::XML::Procedure RPC::XML::Method
                   RPC::XML::Client RPC::XML::Server);
     @APACHE_MODULES = qw(Apache::RPC::Server Apache::RPC::Status);

@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# $Id$
 
 # Test the RPC::XML::Client class
 
