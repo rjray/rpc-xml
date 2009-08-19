@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Test that the syntax of our POD documentation is valid
+# Test that our META.yml file matches the specification
 use strict;
 BEGIN {
 	$|  = 1;
@@ -8,8 +8,7 @@ BEGIN {
 }
 
 my @MODULES = (
-	'Pod::Simple 3.07',
-	'Test::Pod 1.26',
+	'Test::CPAN::Meta 0.12',
 );
 
 # Don't run tests during end-user installs
@@ -28,6 +27,6 @@ foreach my $MODULE ( @MODULES ) {
 	}
 }
 
-all_pod_files_ok();
+meta_yaml_ok();
 
 1;

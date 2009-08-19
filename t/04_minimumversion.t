@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Test that the syntax of our POD documentation is valid
+# Test that our declared minimum Perl version matches our syntax
 use strict;
 BEGIN {
 	$|  = 1;
@@ -8,8 +8,8 @@ BEGIN {
 }
 
 my @MODULES = (
-	'Pod::Simple 3.07',
-	'Test::Pod 1.26',
+	'Perl::MinimumVersion 1.20',
+	'Test::MinimumVersion 0.008',
 );
 
 # Don't run tests during end-user installs
@@ -28,6 +28,6 @@ foreach my $MODULE ( @MODULES ) {
 	}
 }
 
-all_pod_files_ok();
+all_minimum_version_from_metayml_ok();
 
 1;

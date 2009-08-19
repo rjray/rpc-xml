@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Test that the syntax of our POD documentation is valid
+# Test that the module passes perlcritic
 use strict;
 BEGIN {
 	$|  = 1;
@@ -8,8 +8,8 @@ BEGIN {
 }
 
 my @MODULES = (
-	'Pod::Simple 3.07',
-	'Test::Pod 1.26',
+	'Perl::Critic 1.098',
+	'Test::Perl::Critic 1.01',
 );
 
 # Don't run tests during end-user installs
@@ -28,6 +28,6 @@ foreach my $MODULE ( @MODULES ) {
 	}
 }
 
-all_pod_files_ok();
+all_critic_ok();
 
 1;

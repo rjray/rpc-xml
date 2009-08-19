@@ -2,11 +2,22 @@
 
 use Test::More;
 
-eval "use Test::Pod::Coverage 1.00";
+unless ( $ENV{AUTOMATED_TESTING} or $ENV{RELEASE_TESTING} ) {
+    plan( skip_all => "Author tests not required for installation" );
+}
 
-plan skip_all =>
-    "Test::Pod::Coverage 1.00 required for testing POD coverage" if $@;
-plan tests => 9;
+my @MODULES = qw(Test::Pod::Coverage);
+# Load the testing modules
+foreach my $MODULE ( @MODULES ) {
+    eval "use $MODULE";
+    if ( $@ ) {
+         $ENV{RELEASE_TESTING}
+             ? die( "Failed to load required release-testing module $MODULE" )
+             : plan( skip_all => "$MODULE not available for testing" );
+    }
+}
+
+plan tests => 11;
 
 pod_coverage_ok('Apache::RPC::Server' => { also_private => [ 'debug' ] } =>
                 'Apache::RPC::Server');
@@ -20,11 +31,8 @@ pod_coverage_ok('RPC::XML::Function' =>
                 { also_private => [ qw(make_sig_table) ] } =>
                 'RPC::XML::Function');
 pod_coverage_ok('RPC::XML::Method' => 'RPC::XML::Method');
-pod_coverage_ok('RPC::XML::Parser' =>
-                { also_private =>
-                  [ qr/^(tag|message)_/,
-                    qw(char_data error extern_ent final stack_error) ] } =>
-                'RPC::XML::Parser');
+pod_coverage_ok('RPC::XML::ParserFactory' => 'RPC::XML::ParserFactory');
+pod_coverage_ok('RPC::XML::Parser' => 'RPC::XML::Parser');
 pod_coverage_ok('RPC::XML::Parser::XMLParser' =>
                 { also_private =>
                   [ qr/^(tag|message)_/,
