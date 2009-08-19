@@ -1,16 +1,16 @@
 #!/usr/bin/perl
 
-# Test the XML::Parser container
+# Test the RPC::XML::Parser::XMLParser class
 
 use strict;
 use vars qw($p $req $res $ret $dir $file);
 
-use Test::More tests => 35;
+use Test::More tests => 36;
 require File::Spec;
 require IO::File;
 
 use RPC::XML ':all';
-use RPC::XML::Parser;
+use RPC::XML::Parser::XMLParser;
 
 (undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
@@ -20,7 +20,8 @@ $file = File::Spec->catfile($dir, 'svsm_text.gif');
 # RPC::XML::* classes are done, only on the data and return values of this
 # class under consideration, RPC::XML::Parser.
 
-$p = RPC::XML::Parser->new();
+$p = RPC::XML::Parser::XMLParser->new();
+isa_ok($p, 'RPC::XML::Parser::XMLParser', '$p');
 isa_ok($p, 'RPC::XML::Parser', '$p');
 
 $req = RPC::XML::request->new('test.method');
@@ -92,7 +93,7 @@ SKIP: {
 # Here, we test whether the parser (when configured to do so) can create
 # filehandles as well.
 undef $p;
-$p = RPC::XML::Parser->new(base64_to_fh => 1);
+$p = RPC::XML::Parser::XMLParser->new(base64_to_fh => 1);
 my $fh = IO::File->new("< $file");
 die "Error opening $file: $!" unless ref $fh;
 my $base64 = RPC::XML::base64->new($fh);

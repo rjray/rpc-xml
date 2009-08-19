@@ -52,4 +52,30 @@ sub find_port
     -1;
 }
 
+sub read_config
+{
+	my $file = shift;
+
+	return {} unless -f $file;
+
+	open(my $fh, "< $file") || die "Error opening $file: $!";
+
+	my $config = {};
+
+	while (defined($_ = <$fh>))
+	{
+		next if /^#/;
+		chomp;
+		next if /^\s*$/;
+
+		my ($key, $value) = split(/\s*=\s*/, $_, 2);
+		$value =~ s/\s+$//; # Lose trailing whitespace
+		$value = [ split(/\s*,\s*/, $value) ];
+
+		$config->{$key} = $value;
+	}
+
+	$config;
+}
+
 1;

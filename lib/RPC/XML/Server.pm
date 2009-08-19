@@ -52,7 +52,7 @@
 #                   HTTP::Status
 #                   URI
 #                   RPC::XML
-#                   RPC::XML::Parser
+#                   RPC::XML::ParserFactory
 #                   RPC::XML::Procedure
 #
 #   Global Consts:  $VERSION
@@ -78,7 +78,7 @@ use URI;
 use Scalar::Util 'blessed';
 
 use RPC::XML;
-use RPC::XML::Parser;
+use RPC::XML::ParserFactory;
 use RPC::XML::Procedure;
 
 BEGIN
@@ -98,7 +98,7 @@ BEGIN
 }
 
 
-$VERSION = '1.52';
+$VERSION = '1.53';
 
 ###############################################################################
 #
@@ -181,8 +181,8 @@ sub new
     $self->{__auto_methods}    = $args{auto_methods} || 0;
     $self->{__auto_updates}    = $args{auto_updates} || 0;
     $self->{__debug}           = $args{debug} || 0;
-    $self->{__parser}          = RPC::XML::Parser->new($args{parser} ?
-                                                       @{$args{parser}} : ());
+    $self->{__parser}          =
+        RPC::XML::ParserFactory->new($args{parser} ? @{$args{parser}} : ());
     $self->{__xpl_path}        = $args{xpl_path} || [];
     $self->{__timeout}         = $args{timeout}  || 10;
 
@@ -435,11 +435,11 @@ gzip-based compression and expansion of messages.
 =item new(OPTIONS)
 
 Creates a new object of the class and returns the blessed reference. Depending
-on the options, the object will contain some combination of an HTTP listener,
-a pre-populated B<HTTP::Response> object, a B<RPC::XML::Parser> object, and
-a dispatch table with the set of default methods pre-loaded. The options that
-B<new> accepts are passed as a hash of key/value pairs (not a hash reference).
-The accepted options are:
+on the options, the object will contain some combination of an HTTP listener, a
+pre-populated B<HTTP::Response> object, a B<RPC::XML::ParserFactory>-generated
+object, and a dispatch table with the set of default methods pre-loaded. The
+options that B<new> accepts are passed as a hash of key/value pairs (not a hash
+reference).  The accepted options are:
 
 =over 4
 
@@ -509,11 +509,11 @@ acknowledgement and consent.
 
 =item B<parser>
 
-If this parameter is passed, the value following it is expected to be an
-array reference. The contents of that array are passed to the B<new> method
-of the B<RPC::XML::Parser> object that the server object caches for its use.
-See the B<RPC::XML::Parser> manual page for a list of recognized parameters
-to the constructor.
+If this parameter is passed, its value is expected to be an array
+reference. The contents of that array are passed to the B<new> method of the
+B<RPC::XML::ParserFactory> class, which creates the parser object that the
+server object caches for its use.  See the B<RPC::XML::ParserFactory> manual
+page for a list of recognized parameters to the constructor.
 
 =item B<message_file_thresh>
 
@@ -1059,13 +1059,6 @@ Unless explicitly stated otherwise, all methods return some type of reference
 on success, or an error string on failure. Non-reference return values should
 always be interpreted as errors unless otherwise noted.
 
-=head1 CAVEATS
-
-This began as a reference implementation in which clarity of process and
-readability of the code took precedence over general efficiency. It is now
-being maintained as production code, but may still have parts that could be
-written more efficiently.
-
 =head1 BUGS
 
 Please report any bugs or feature requests to
@@ -1116,11 +1109,11 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML>, L<RPC::XML::Client>, L<RPC::XML::Parser>
+L<RPC::XML>, L<RPC::XML::Client>, L<RPC::XML::ParserFactory>
 
 =head1 AUTHOR
 
-Randy J. Ray <rjray@blackperl.com>
+Randy J. Ray C<< <rjray@blackperl.com> >>
 
 =cut
 
@@ -1558,9 +1551,9 @@ sub process_request
             }
 
             # Dispatch will always return a RPC::XML::response.
-            # RT29351: If there was an error from RPC::XML::Parser (such as
-            # a message that didn't conform to spec), then return it directly
-            # as a fault, don't have dispatch() try and handle it.
+            # RT29351: If there was an error from RPC::XML::ParserFactory
+            # (such as a message that didn't conform to spec), then return it
+            # directly as a fault, don't have dispatch() try and handle it.
             if (ref $reqxml)
             {
                 # Set localized keys on $self, based on the connection info

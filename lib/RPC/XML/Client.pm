@@ -43,7 +43,7 @@ use URI;
 use Scalar::Util 'blessed';
 
 use RPC::XML;
-require RPC::XML::Parser;
+require RPC::XML::ParserFactory;
 
 BEGIN
 {
@@ -52,7 +52,7 @@ BEGIN
     $COMPRESSION_AVAILABLE = ($@) ? '' : 'deflate';
 }
 
-$VERSION = '1.29';
+$VERSION = '1.30';
 
 ###############################################################################
 #
@@ -140,10 +140,10 @@ sub new
         delete $attrs{error_handler};
     }
 
-    # Get the RPC::XML::Parser instance
-    $self->{__parser} = RPC::XML::Parser->new($attrs{parser} ?
-                                              @{$attrs{parser}} : ()) or
-        return "${class}::new: Unable to get RPC::XML::Parser object";
+    # Get the RPC::XML::Parser instance from the ParserFactory
+    $self->{__parser} =
+        RPC::XML::ParserFactory->new($attrs{parser} ? @{$attrs{parser}} : ())
+              or return "${class}::new: Unable to get RPC::XML::Parser object";
     delete $attrs{parser};
 
     # Now preserve any remaining attributes passed in
@@ -593,11 +593,11 @@ treated specially:
 
 =item parser
 
-If this parameter is passed, the value following it is expected to be an
-array reference. The contents of that array are passed to the B<new> method
-of the B<RPC::XML::Parser> object that the client object caches for its use.
-See the B<RPC::XML::Parser> manual page for a list of recognized parameters
-to the constructor.
+If this parameter is passed, the value following it is expected to be an array
+reference. The contents of that array are passed to the B<new> method of the
+B<RPC::XML::ParserFactory>-generated object that the client object caches for
+its use. See the B<RPC::XML::ParserFactory> manual page for a list of
+recognized parameters to the constructor.
 
 =item useragent
 
@@ -846,6 +846,6 @@ L<RPC::XML>, L<RPC::XML::Server>
 
 =head1 AUTHOR
 
-Randy J. Ray <rjray@blackperl.com>
+Randy J. Ray C<< <rjray@blackperl.com> >>
 
 =cut

@@ -13,10 +13,11 @@ use File::Spec;
 use Test::More tests => 61;
 use LWP::UserAgent;
 use HTTP::Request;
+use Scalar::Util 'blessed';
 
 use RPC::XML 'RPC_BASE64';
 require RPC::XML::Server;
-require RPC::XML::Parser;
+require RPC::XML::ParserFactory;
 
 @API_METHODS = qw(system.identity system.introspection system.listMethods
                   system.methodHelp system.methodSignature system.multicall
@@ -24,6 +25,8 @@ require RPC::XML::Parser;
 
 (undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 require File::Spec->catfile($dir, 'util.pl');
+
+sub failmsg { sprintf("%s at line %d", @_) }
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -78,7 +81,7 @@ isa_ok($res, 'RPC::XML::Method', 'get_method return value');
 $res = $srv->get_method('perl.test.suite.not.added.yet');
 ok(! ref($res), 'get_method for non-existent method');
 # Here goes...
-$parser = RPC::XML::Parser->new;
+$parser = RPC::XML::ParserFactory->new;
 $UA = LWP::UserAgent->new;
 $req = HTTP::Request->new(POST => "http://localhost:$port/");
 $child = start_server($srv);
@@ -290,9 +293,16 @@ $res = ($res->is_error) ? '' : $parser->parse($res->content);
 SKIP: {
     skip "Server response was error, cannot test", 1 unless $res;
     $list = $res->value->value;
-    is(join(',', sort @$list),
-       'system.methodHelp,system.methodSignature',
-       'system.listMethods("method") return list correct');
+    if ($res->is_fault)
+    {
+        fail(failmsg($res->value->string, __LINE__));
+    }
+    else
+    {
+        is(join(',', sort @$list),
+           'system.methodHelp,system.methodSignature',
+           'system.listMethods("method") return list correct');
+    }
 }
 
 # If the response was any kind of error, kill and re-start the server, as
@@ -315,7 +325,15 @@ $res = ($res->is_error) ? '' : $parser->parse($res->content);
 SKIP: {
     skip "Server response was error, cannot test", 1 unless $res;
     $list = $res->value->value;
-    is(scalar(@$list), 0, 'system.listMethods("nomatch") return list correct');
+    if ($res->is_fault)
+    {
+        fail(failmsg($res->value->string, __LINE__));
+    }
+    else
+    {
+        is(scalar(@$list), 0,
+           'system.listMethods("nomatch") return list correct');
+    }
 }
 
 # If the response was any kind of error, kill and re-start the server, as
@@ -411,8 +429,15 @@ $res = ($res->is_error) ? '' : $parser->parse($res->content);
 SKIP: {
     skip "Server response was error, cannot test", 1 unless $res;
     $meth = $srv->get_method('system.identity');
-    is($res->value->value, $meth->{help},
-       'system.methodHelp("system.identity") test');
+    if (! blessed $meth)
+    {
+        fail(failmsg($meth, __LINE__));
+    }
+    else
+    {
+        is($res->value->value, $meth->{help},
+           'system.methodHelp("system.identity") test');
+    }
 }
 
 # If the response was any kind of error, kill and re-start the server, as
@@ -435,10 +460,17 @@ alarm(0);
 $res = ($res->is_error) ? '' : $parser->parse($res->content);
 SKIP: {
     skip "Server response was error, cannot test", 1 unless $res;
-    is(join('', @{ ref($res) ? $res->value->value : [] }),
-       $srv->get_method('system.identity')->{help} .
-       $srv->get_method('system.status')->{help},
-       'system.methodHelp("system.identity", "system.status") test');
+    if ($res->is_fault)
+    {
+        fail(failmsg($res->value->string, __LINE__));
+    }
+    else
+    {
+        is(join('', @{ ref($res) ? $res->value->value : [] }),
+           $srv->get_method('system.identity')->{help} .
+           $srv->get_method('system.status')->{help},
+           'system.methodHelp("system.identity", "system.status") test');
+    }
 }
 
 # If the response was any kind of error, kill and re-start the server, as
@@ -486,11 +518,18 @@ $res = ($res->is_error) ? '' : $parser->parse($res->content);
 SKIP: {
     skip "Server response was error, cannot test", 1 unless $res;
     $meth = $srv->get_method('system.methodHelp');
-    is(join('',
-            sort map { join(' ', @$_) }
-            @{ ref($res) ? $res->value->value : [] }),
-       join('', sort @{ $meth->{signature} }),
-       'system.methodSignature("system.methodHelp") test');
+    if (! blessed $meth)
+    {
+        fail(failmsg($meth, __LINE__));
+    }
+    else
+    {
+        is(join('',
+                sort map { join(' ', @$_) }
+                @{ ref($res) ? $res->value->value : [] }),
+           join('', sort @{ $meth->{signature} }),
+           'system.methodSignature("system.methodHelp") test');
+    }
 }
 
 # If the response was any kind of error, kill and re-start the server, as
@@ -536,34 +575,41 @@ alarm(0);
 $res = ($res->is_error) ? '' : $parser->parse($res->content);
 SKIP: {
     skip "Server response was error, cannot test", 1 unless $res;
-    $list = $res->value->value;
-    $bucket = 0;
-    %seen = ();
-    for $res (@$list)
+    if ($res->is_fault)
     {
-        if ($seen{$res->{name}}++)
-        {
-            # If we somehow get the same name twice, that is a point off
-            $bucket++;
-            next;
-        }
-
-        $meth = $srv->get_method($res->{name});
-        if ($meth)
-        {
-            $bucket++ unless
-                (($meth->{help} eq $res->{help}) &&
-                 ($meth->{version} eq $res->{version}) &&
-                 (join('', sort @{ $res->{signature } }) eq
-                  join('', sort @{ $meth->{signature} })));
-        }
-        else
-        {
-            # That is also a point
-            $bucket++;
-        }
+        fail(failmsg($res->value->string, __LINE__));
     }
-    ok(! $bucket, 'system.introspection passed with no errors');
+    else
+    {
+        $list = $res->value->value;
+        $bucket = 0;
+        %seen = ();
+        for $res (@$list)
+        {
+            if ($seen{$res->{name}}++)
+            {
+                # If we somehow get the same name twice, that is a point off
+                $bucket++;
+                next;
+            }
+
+            $meth = $srv->get_method($res->{name});
+            if ($meth)
+            {
+                $bucket++ unless
+                    (($meth->{help} eq $res->{help}) &&
+                     ($meth->{version} eq $res->{version}) &&
+                     (join('', sort @{ $res->{signature } }) eq
+                      join('', sort @{ $meth->{signature} })));
+            }
+            else
+            {
+                # That is also a point
+                $bucket++;
+            }
+        }
+        ok(! $bucket, 'system.introspection passed with no errors');
+    }
 }
 
 # If the response was any kind of error, kill and re-start the server, as
@@ -588,12 +634,20 @@ alarm(0);
 $res = ($res->is_error) ? '' : $parser->parse($res->content);
 SKIP: {
     skip "Server response was error, cannot test", 2 unless $res;
-    $res = $res->value->value;
-    is($res->[0], $srv->product_tokens,
-       'system.multicall response elt [0] is correct');
-    is((ref($res->[1]) eq 'ARRAY' ? $res->[1]->[0] : ''),
-       'system.introspection',
-       'system.multicall response elt [1][0] is correct');
+    if ($res->is_fault)
+    {
+        fail(failmsg($res->value->string, __LINE__));
+        fail(failmsg($res->value->string, __LINE__));
+    }
+    else
+    {
+        $res = $res->value->value;
+        is($res->[0], $srv->product_tokens,
+           'system.multicall response elt [0] is correct');
+        is((ref($res->[1]) eq 'ARRAY' ? $res->[1]->[0] : ''),
+           'system.introspection',
+           'system.multicall response elt [1][0] is correct');
+    }
 }
 
 # If the response was any kind of error, kill and re-start the server, as
