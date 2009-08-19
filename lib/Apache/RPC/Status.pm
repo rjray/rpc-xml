@@ -52,6 +52,8 @@ use Apache;
 use Apache::Constants qw(DECLINED OK SERVER_VERSION);
 use CGI;
 
+## no critic (ProhibitSubroutinePrototypes)
+
 # We use the server module to get the class methods for server objects, etc.
 require Apache::RPC::Server;
 require RPC::XML::Method;
@@ -61,7 +63,8 @@ $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf "v%vd", $^V : $];
 
-$Apache::RPC::Status::VERSION = '1.09';
+our $VERSION = '1.10';
+$VERSION = eval $VERSION; ## no critic
 
 #
 # %proto is the prototype set of screens/handlers that this class knows about.
@@ -83,7 +86,7 @@ my %IS_INSTALLED = ();
 {
     local $SIG{__DIE__};
     %IS_INSTALLED = map {
-        $_, (eval("require $_") || 0);
+        $_, (eval("require $_") || 0); ## no critic
     } qw(Data::Dumper Devel::Symdump B Apache::Request Apache::Peek
          Apache::Symbol);
 }

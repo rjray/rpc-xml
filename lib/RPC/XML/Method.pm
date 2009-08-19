@@ -32,7 +32,8 @@ use vars qw($VERSION);
 require RPC::XML::Procedure;
 
 @RPC::XML::Method::ISA = qw(RPC::XML::Procedure);
-$VERSION = '1.11';
+$VERSION = '1.12';
+$VERSION = eval $VERSION; ## no critic
 
 1;
 

@@ -99,7 +99,8 @@ require File::Temp;
 
 require RPC::XML;
 
-$VERSION = '1.18';
+$VERSION = '1.19';
+$VERSION = eval $VERSION; ## no critic
 
 ###############################################################################
 #

@@ -53,7 +53,8 @@ BEGIN
     $COMPRESSION_AVAILABLE = ($@) ? '' : 'deflate';
 }
 
-$VERSION = '1.30';
+$VERSION = '1.31';
+$VERSION = eval $VERSION; ## no critic
 
 ###############################################################################
 #
@@ -183,7 +184,7 @@ sub simple_request
     unless (ref $return)
     {
         $RPC::XML::ERROR = ref($self) . "::simple_request: $return";
-        return undef;
+        return;
     }
     $return->value;
 }
@@ -301,8 +302,7 @@ sub send_request
         $reqclone->content_length(-s $req_fh);
         $reqclone->content(sub {
                                my $b = '';
-                               return undef
-                                   unless defined(read($req_fh, $b, 4096));
+                               return unless defined(read($req_fh, $b, 4096));
                                $b;
                            });
     }
@@ -460,7 +460,7 @@ sub credentials
 # Immutable accessor methods
 BEGIN
 {
-    no strict 'refs';
+    no strict 'refs'; ## no critic
 
     for my $method (qw(useragent request compress_re compress parser))
     {

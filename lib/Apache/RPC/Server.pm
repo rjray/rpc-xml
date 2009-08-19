@@ -43,13 +43,16 @@ use RPC::XML;
 use RPC::XML::Server;
 @Apache::RPC::Server::ISA = qw(RPC::XML::Server);
 
+## no critic (ProhibitSubroutinePrototypes)
+
 BEGIN
 {
     $Apache::RPC::Server::INSTALL_DIR = (File::Spec->splitpath(__FILE__))[1];
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-$Apache::RPC::Server::VERSION = '1.33';
+our $VERSION = '1.34';
+$VERSION = eval $VERSION; ## no critic
 
 sub version { $Apache::RPC::Server::VERSION }
 

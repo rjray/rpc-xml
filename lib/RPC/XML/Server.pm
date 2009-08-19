@@ -98,7 +98,8 @@ BEGIN
 }
 
 
-$VERSION = '1.53';
+$VERSION = '1.54';
+$VERSION = eval $VERSION; ## no critic
 
 ###############################################################################
 #
@@ -235,7 +236,7 @@ sub url
     my $self = shift;
 
     return $self->{__daemon}->url if $self->{__daemon};
-    return undef unless (my $host = $self->host);
+    return unless (my $host = $self->host);
 
     my $path = $self->path;
     my $port = $self->port;
@@ -273,12 +274,11 @@ sub started
 
 BEGIN
 {
-    no strict 'refs';
-    my $method;
+    no strict 'refs'; ## no critic
 
     # These are mutable member values for which the logic only differs in
     # the name of the field to modify:
-    for $method (qw(compress_thresh message_file_thresh message_temp_dir))
+    for my $method (qw(compress_thresh message_file_thresh message_temp_dir))
     {
         *$method = sub {
             my ($self, $set) = @_;
@@ -291,7 +291,7 @@ BEGIN
     }
 
     # These are immutable member values, so this simple block applies to all
-    for $method (qw(path host port requests response compress compress_re
+    for my $method (qw(path host port requests response compress compress_re
                        parser))
     {
         *$method = sub { shift->{"__$method"} }

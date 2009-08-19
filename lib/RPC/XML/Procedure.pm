@@ -51,7 +51,8 @@ require File::Spec;
 
 use Scalar::Util 'blessed';
 
-$VERSION = '1.18';
+$VERSION = '1.19';
+$VERSION = eval $VERSION; ## no critic
 
 ###############################################################################
 #
@@ -171,10 +172,10 @@ sub make_sig_table
 {
     my $self = shift;
 
-    my ($sig, $return, $rest);
+    my ($return, $rest);
 
     delete $self->{sig_table};
-    for $sig (@{$self->{signature}})
+    for my $sig (@{$self->{signature}})
     {
         ($return, $rest) = split(/ /, $sig, 2); $rest = '' unless $rest;
         # If the key $rest already exists, then this is a collision

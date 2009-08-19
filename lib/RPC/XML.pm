@@ -29,10 +29,10 @@ use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR
             %xmlmap $xmlre $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);
 use subs qw(time2iso8601 smart_encode utf8_downgrade);
 
+## no critic (ProhibitSubroutinePrototypes)
+
 BEGIN
 {
-    no strict 'refs';
-
     %xmlmap = ( '>' => '&gt;',   '<' => '&lt;', '&' => '&amp;',
                 '"' => '&quot;', "'" => '&apos;');
     $xmlre = join('', keys %xmlmap); $xmlre = qr/([$xmlre])/;
@@ -64,7 +64,8 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.43';
+$VERSION = '1.44';
+$VERSION = eval $VERSION; ## no critic
 
 # Global error string
 $ERROR = '';
@@ -393,7 +394,7 @@ sub new
         $class = ref($class) || $class;
         $RPC::XML::ERROR = "${class}::new: Value must be one of yes, no, " .
             'true, false, 1, 0 (case-insensitive)';
-        return undef;
+        return;
     }
 
     bless \$value, $class;
@@ -435,7 +436,7 @@ sub new
     {
         $RPC::XML::ERROR = "${class}::new: \$RPC::XML::ALLOW_NIL must be set" .
             'for RPC::XML::nil objects to be supported';
-        return undef;
+        return;
     }
 
     bless \$value, $class;
@@ -709,7 +710,7 @@ sub new
             $class = ref($class) || $class;
             $RPC::XML::ERROR = "${class}::new: Must be called with non-null " .
                 'data or an open, seekable filehandle';
-            return undef;
+            return;
         }
         # We want in-memory data to always be in the clear, to reduce the tests
         # needed in value(), below.
@@ -903,7 +904,7 @@ sub to_file
     {
         require Symbol;
         $fh = Symbol::gensym();
-        unless (open($fh, "> $file"))
+        unless (open($fh, '>', $file))
         {
             $RPC::XML::ERROR = $!;
             return -1;
@@ -1005,13 +1006,13 @@ sub new
     {
         $class = ref($class) || $class;
         $RPC::XML::ERROR = "${class}::new: Missing required struct fields";
-        return undef;
+        return;
     }
     if (scalar(keys %args) > 2)
     {
         $class = ref($class) || $class;
         $RPC::XML::ERROR = "${class}::new: Extra struct fields not allowed";
-        return undef;
+        return;
     }
 
     $self = $class->SUPER::new(%args);
@@ -1104,7 +1105,7 @@ sub new
     {
         $RPC::XML::ERROR = 'RPC::XML::request::new: At least a method name ' .
             'must be specified';
-        return undef;
+        return;
     }
 
     if (blessed $argz[0] and $argz[0]->isa('RPC::XML::request'))

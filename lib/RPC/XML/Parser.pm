@@ -29,7 +29,8 @@ use warnings;
 use vars qw($VERSION);
 use subs qw(new parse);
 
-$VERSION = '1.19';
+$VERSION = '1.20';
+$VERSION = eval $VERSION; ## no critic
 
 ###############################################################################
 #

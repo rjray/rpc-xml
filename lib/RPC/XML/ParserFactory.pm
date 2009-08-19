@@ -34,6 +34,7 @@ use vars qw($VERSION %AVAILABLE $PARSER_CLASS);
 use subs qw(import new register);
 
 $VERSION = '1.00';
+$VERSION = eval $VERSION; ## no critic
 
 # These are the known parsers supported, not including any that are specified
 # by the user at import-time.
@@ -114,12 +115,12 @@ sub new
 
     if ($class = $AVAILABLE{$factory})
     {
-        eval "require $class;";
+        eval "require $class;"; ## no critic
         if ($@)
         {
             $RPC::XML::ERROR = __PACKAGE__ . "::new: Error loading $class (" .
               "factory for '$factory'): $@";
-            return undef;
+            return;
         }
     }
     else
@@ -127,18 +128,18 @@ sub new
         # This means that the class is not one of the built-in ones. Try to
         # load it, then make sure it's a sub-class of this one:
         $class = $factory;
-        eval "require $class;";
+        eval "require $class;"; ## no critic
         if ($@)
         {
             $RPC::XML::ERROR = __PACKAGE__ . "::new: Error loading $class: $@";
-            return undef;
+            return;
         }
         # Loaded OK... is it a descendent?
         unless ($class->isa(__PACKAGE__))
         {
             $RPC::XML::ERROR = __PACKAGE__ . "::new: Class '$class' cannot " .
               'be used, as it is not a sub-class of ' . __PACKAGE__;
-            return undef;
+            return;
         }
     }
 
