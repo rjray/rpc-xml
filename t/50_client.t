@@ -3,7 +3,7 @@
 # Test the RPC::XML::Client class
 
 use strict;
-use vars qw($dir $srv $child $port $cli $res $flag);
+use vars qw($dir $vol $srv $child $port $cli $res $flag);
 use subs qw(start_server find_port);
 
 use Test::More;
@@ -14,7 +14,8 @@ require File::Spec;
 require RPC::XML::Server;
 require RPC::XML::Client;
 
-(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+$dir = File::Spec->catpath($vol, $dir, '');
 require File::Spec->catfile($dir, 'util.pl');
 
 plan tests => 27;
@@ -30,11 +31,12 @@ plan tests => 27;
 die "No usable port found between 9000 and 10000, skipping"
     if (($port = find_port) == -1);
 $cli = RPC::XML::Client->new("http://localhost:$port");
+$cli->timeout(5); #to prevent long waiting for non-existing server
 isa_ok($cli, 'RPC::XML::Client', '$cli');
 
 # With no server yet at that port, test the failure modes
 ok((! $cli->simple_request('system.identity')) && $RPC::XML::ERROR,
-   'Calling a server method without a server sets $RPC::XML::ERRPR');
+   'Calling a server method without a server sets $RPC::XML::ERROR');
 ok(! ref($cli->send_request('system.identity')),
    'send_request returns a non-ref value when there is no server');
 

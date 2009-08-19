@@ -3,7 +3,7 @@
 # Test the serialization of XML structures to filehandles
 
 use strict;
-use vars qw($dir $fh $file $tmpfile $md5_able $faux_req $faux_res $ofh $data);
+use vars qw($dir $vol $fh $file $tmpfile $md5_able $faux_req $faux_res $ofh $data);
 
 use RPC::XML ':all';
 
@@ -11,7 +11,8 @@ use Test;
 use File::Spec;
 use IO::File;
 
-(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+$dir = File::Spec->catpath($vol, $dir, '');
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
 $tmpfile = File::Spec->catfile($dir, "__tmp__${$}__");
 

@@ -5,7 +5,7 @@
 use strict;
 use subs qw(start_server find_port);
 use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
-            $list $meth @keys %seen $dir);
+            $list $meth @keys %seen $dir $vol);
 
 use Socket;
 use File::Spec;
@@ -23,7 +23,8 @@ require RPC::XML::ParserFactory;
                   system.methodHelp system.methodSignature system.multicall
                   system.status);
 
-(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+$dir = File::Spec->catpath($vol, $dir, '');
 require File::Spec->catfile($dir, 'util.pl');
 
 sub failmsg { sprintf("%s at line %d", @_) }
@@ -67,7 +68,7 @@ my @allhosts = ($localIP, $localhostinfo[0], split(' ', $localhostinfo[1]));
 for (@allhosts) { s/\./\\./g }
 # Per RT 27778: For some reason gethostbyname('localhost') does not return
 # "localhost" on win32
-push @allhosts, 'localhost' if ($^O eq 'MSWin32');
+push @allhosts, 'localhost' if ($^O eq 'MSWin32' || $^O eq 'cygwin');
 my $allhosts = join('|', @allhosts);
 like($srv->url, qr{http://($allhosts):$port},
    'RPC::XML::Server::url method (set)'); # This should be non-null this time

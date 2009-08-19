@@ -3,7 +3,7 @@
 # Test the usage of RPC::XML::base64 with filehandles
 
 use strict;
-use vars qw($dir $file $tmpfile $value $enc_value $obj $fh $pos $md5_able);
+use vars qw($dir $vol $file $tmpfile $value $enc_value $obj $fh $pos $md5_able);
 
 # This is what we're testing
 use RPC::XML;
@@ -13,7 +13,8 @@ use File::Spec;
 use IO::File;
 use MIME::Base64;
 
-(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+$dir = File::Spec->catpath($vol, $dir, '');
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
 $tmpfile = File::Spec->catfile($dir, "__tmp__${$}__");
 

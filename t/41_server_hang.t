@@ -6,7 +6,7 @@
 
 use strict;
 use subs qw(start_server find_port);
-use vars qw($dir $srv $bucket $child $req $port $socket $body);
+use vars qw($dir $vol $srv $bucket $child $req $port $socket $body);
 
 use File::Spec;
 use Test::More tests => 2;
@@ -17,7 +17,8 @@ use HTTP::Request;
 require RPC::XML::Server;
 require IO::Socket;
 
-(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+$dir = File::Spec->catpath($vol, $dir, '');
 require File::Spec->catfile($dir, 'util.pl');
 
 {

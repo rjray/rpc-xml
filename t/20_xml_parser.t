@@ -3,7 +3,7 @@
 # Test the RPC::XML::Parser::XMLParser class
 
 use strict;
-use vars qw($p $req $res $ret $dir $file);
+use vars qw($p $req $res $ret $dir $vol $file);
 
 use Test::More tests => 36;
 require File::Spec;
@@ -12,7 +12,8 @@ require IO::File;
 use RPC::XML ':all';
 use RPC::XML::Parser::XMLParser;
 
-(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+$dir = File::Spec->catpath($vol, $dir, '');
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
 
 # The organization of the test suites is such that we assume anything that

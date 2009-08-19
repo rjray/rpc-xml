@@ -95,6 +95,7 @@ use constant {
 
 use XML::Parser;
 require File::Spec;
+require File::Temp;
 
 require RPC::XML;
 
@@ -233,17 +234,16 @@ sub tag_start
         {
             return unless ($robj->[M_BASE64_TO_FH]);
             require Symbol;
-            my ($fh, $file) = (Symbol::gensym(), File::Spec->tmpdir);
+			my ($fh, $tmpdir) = (Symbol::gensym(), File::Spec->tmpdir);
 
-            $file = $robj->[M_BASE64_TEMP_DIR] if ($robj->[M_BASE64_TEMP_DIR]);
-            $file  = File::Spec->catfile($file, 'b64' . $self->current_byte);
-            unless (open($fh, '+>', $file))
+			$tmpdir = $robj->[M_BASE64_TEMP_DIR]
+				if ($robj->[M_BASE64_TEMP_DIR]);
+			unless ($fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir))
             {
                 push(@{$robj->[M_STACK]},
                      "Error opening temp file for base64: $!", PARSE_ERROR);
                 $self->finish;
             }
-            unlink($file);
             $robj->[M_CDATA] = $fh;
             $robj->[M_SPOOLING_BASE64_DATA]= 1;
         }

@@ -524,7 +524,7 @@ temporary file, and spooled from there instead. This is useful for cases in
 which the request includes B<RPC::XML::base64> objects that are themselves
 spooled from file-handles. This test is independent of compression, so even
 if compression of a request would drop it below this threshhold, it will be
-spooled anyway. The file itself is unlinked after the file-handle is created,
+spooled anyway. The file itself is created via File::Temp with UNLINK=>1,
 so once it is freed the disk space is immediately freed.
 
 =item B<message_temp_dir>
@@ -1408,7 +1408,7 @@ sub process_request
     my $conn = shift;
 
     my ($req, $reqxml, $resp, $respxml, $do_compress, $parser, $com_engine,
-        $length, $read, $buf, $resp_fh, $tmpfile,
+        $length, $read, $buf, $resp_fh, $tmpdir,
         $peeraddr, $peerhost, $peerport);
 
     my $me = ref($self) . '::process_request';
@@ -1588,17 +1588,13 @@ sub process_request
             {
                 require File::Spec;
                 # Start by creating a temp-file
-                $tmpfile = $self->message_temp_dir || File::Spec->tmpdir;
-                $tmpfile = File::Spec->catfile($tmpfile,
-                                               __PACKAGE__ . $$ . time);
-                $tmpfile =~ s/::/-/g;
-                unless (open($resp_fh, "+> $tmpfile"))
+                $tmpdir = $self->message_temp_dir || File::Spec->tmpdir;
+                unless ($resp_fh = File::Temp->new(UNLINK=>1, DIR=>$tmpdir))
                 {
                     $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                      "$me: Error opening $tmpfile: $!");
+                                      "$me: Error opening tmpfile: $!");
                     next;
                 }
-                unlink $tmpfile;
                 # Make it auto-flush
                 my $old_fh = select($resp_fh); $| = 1; select($old_fh);
 
@@ -1610,14 +1606,12 @@ sub process_request
                 if ($do_compress)
                 {
                     my $fh2;
-                    $tmpfile .= '-2';
-                    unless (open($fh2, "+> $tmpfile"))
+                    unless ($fh2 = File::Temp->new(UNLINK=>1, DIR=>$tmpdir))
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                          "$me: Error opening $tmpfile: $!");
+                                          "$me: Error opening tmpfile: $!");
                         next;
                     }
-                    unlink $tmpfile;
                     # Make it auto-flush
                     $old_fh = select($fh2); $| = 1; select($old_fh);
 

@@ -4,7 +4,7 @@
 
 use strict;
 use warnings;
-use vars qw($obj $obj2 $flag $dir $tmp);
+use vars qw($obj $obj2 $flag $dir $vol $tmp);
 
 use File::Spec;
 use Test::More;
@@ -13,7 +13,8 @@ use RPC::XML::Procedure;
 
 plan tests => 37;
 
-(undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
+$dir = File::Spec->catpath($vol, $dir, '');
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on

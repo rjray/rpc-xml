@@ -41,6 +41,7 @@ use LWP::UserAgent;
 use HTTP::Request;
 use URI;
 use Scalar::Util 'blessed';
+use File::Temp;
 
 use RPC::XML;
 require RPC::XML::ParserFactory;
@@ -208,7 +209,7 @@ sub send_request
     my ($self, $req, @args) = @_;
 
     my ($me, $message, $response, $reqclone, $content, $can_compress, $value,
-        $do_compress, $req_fh, $tmpfile, $com_engine);
+        $do_compress, $req_fh, $tmpdir, $com_engine);
 
     $me = ref($self) . '::send_request';
 
@@ -241,13 +242,11 @@ sub send_request
         require File::Spec;
         require Symbol;
         # Start by creating a temp-file
-        $tmpfile = $self->message_temp_dir || File::Spec->tmpdir;
-        ($tmpfile = File::Spec->catfile($tmpfile, __PACKAGE__ . $$ . time)) =~
-            s/::/-/g; # Colons in filenames bad on some systems!
+        $tmpdir = $self->message_temp_dir || File::Spec->tmpdir;
         $req_fh = Symbol::gensym();
-        return "$me: Error opening $tmpfile: $!"
-            unless (open($req_fh, "+> $tmpfile"));
-        unlink $tmpfile;
+        return "$me: Error opening tmpfile: $!"
+             unless ($req_fh = File::Temp->new(UNLINK=>1, DIR=>$tmpdir));
+        binmode($req_fh);
         # Make it auto-flush
         my $old_fh = select($req_fh); $| = 1; select($old_fh);
 
@@ -259,10 +258,8 @@ sub send_request
         if ($do_compress && ($req->length >= $self->compress_thresh))
         {
             my $fh2 = Symbol::gensym();
-            $tmpfile .= '-2';
-            return "$me: Error opening $tmpfile: $!"
-                unless (open($fh2, "+> $tmpfile"));
-            unlink $tmpfile;
+            return "$me: Error opening tmpfile: $!"
+                unless ($fh2 = File::Temp->new(UNLINK=>1, DIR=>$tmpdir));
             # Make it auto-flush
             $old_fh = select($fh2); $| = 1; select($old_fh);
 
@@ -641,7 +638,7 @@ temporary file, and spooled from there instead. This is useful for cases in
 which the request includes B<RPC::XML::base64> objects that are themselves
 spooled from file-handles. This test is independent of compression, so even
 if compression of a request would drop it below this threshhold, it will be
-spooled anyway. The file itself is unlinked after the file-handle is created,
+spooled anyway. The file itself is created via File::Temp with UNLINK=>1,
 so once it is freed the disk space is immediately freed.
 
 =item message_temp_dir
