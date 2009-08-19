@@ -7,6 +7,8 @@ use strict;
 use warnings;
 use vars qw($compression_available %TEST_PKGS);
 
+use Symbol 'delete_package';
+
 use Test::More;
 
 # First, determine if we actually *do* have Compress::Zlib available:
@@ -77,10 +79,10 @@ sub clear
     my ($pkg, $file, $name) = @_;
 
     delete $INC{$file};
-    %{"${pkg}::"} = ();
+    delete_package($pkg);
     if ($pkg eq 'Compress::Zlib')
     {
-        delete @Zlib::OldDeflate::{qw(deflate flush)};
-        delete $Zlib::OldInflate::{'inflate'};
+        delete_package 'Zlib::OldDeflate';
+        delete_package 'Zlib::OldInflate';
     }
 }
