@@ -163,7 +163,7 @@ else
 
     if ($opts{signature})
     {
-        @siglist = map { s/:/ /g; $_ } @{$opts{signature}};
+        @siglist = map { (my $val = $_) =~ s/:/ /g; $val } @{$opts{signature}};
     }
     else
     {
