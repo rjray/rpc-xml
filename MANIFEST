@@ -54,7 +54,8 @@ t/10_data.t
 t/11_base64_fh.t
 t/12_nil.t
 t/15_serialize.t
-t/20_parser.t
+t/20_xml_parser.t
+t/29_parserfactory.t
 t/30_method.t
 t/35_namespaces.t
 t/40_server.t

@@ -51,8 +51,9 @@ sub new
 #
 #   Sub Name:       parse
 #
-#   Description:    Parse the requested string or stream. In this case, it
-#                   dies because the sub-class should have overridden it.
+#   Description:    Parse the requested string or stream, or return a
+#                   push-parser instance. In this case, it dies because the
+#                   sub-class should have overridden it.
 #
 #   Returns:        dies
 #
@@ -63,6 +64,46 @@ sub parse
 
     die __PACKAGE__ . '::parse: This method should have been overridden by ' .
         "the $class class";
+}
+
+###############################################################################
+#
+#   Sub Name:       parse_more
+#
+#   Description:    When called on a push-parser instance (which may or may
+#                   not be the same class), parses additional content and
+#                   waits for more. In this case it dies because the sub-class
+#                   should have overridden it.
+#
+#   Returns:        dies
+#
+###############################################################################
+sub parse_more
+{
+	my $class = ref($_[0]) || $_[0];
+
+    die __PACKAGE__ . '::parse_more: This method should have been overridden' .
+        " by the $class class";
+}
+
+###############################################################################
+#
+#   Sub Name:       parse_done
+#
+#   Description:    When called on a push-parser instance (which may or may
+#                   not be the same class), finishes the parse process and
+#                   returns the result. In this case it dies because the
+#                   sub-class should have overridden it.
+#
+#   Returns:        dies
+#
+###############################################################################
+sub parse_done
+{
+	my $class = ref($_[0]) || $_[0];
+
+    die __PACKAGE__ . '::parse_done: This method should have been overridden' .
+        " by the $class class";
 }
 
 1;
@@ -130,7 +171,7 @@ relevant if B<base64_to_fh> is set.
 The C<base64*> parameters do not have to be implemented if the user has
 no plans to use the C<to_file> method of the B<RPC::XML::base64> data-class.
 
-=item parse [ { STRING | STREAM } ]
+=item parse [ STRING | STREAM ]
 
 Parse the XML document specified in either a string or a stream. The stream
 may be any file descriptor, derivative of B<IO::Handle>, etc.
@@ -155,7 +196,43 @@ If the message does not conform to either a request or a response, or does
 not properly parse, the return value must be a string containing the error
 message.
 
+=item A non-blocking (push) parser instance
+
+If no arguments are passed in, the return value must be a parser object that
+implements push-parsing (non-blocking). It does not have to be of the same
+class as the original object, but it must support the remaining two methods
+
 =back
+
+=back
+
+The next two methods are only called on push-parser instances, and as such do
+not have to be implemented by the actual factory-compatible parser. It is
+enough if the non-blocking parser instance it returns from the no-argument call
+to parse() implements these:
+
+=over 4
+
+=item parse_more STRING
+
+Send a chunk of the current XML document to the parser for processing.
+
+=item parse_done
+
+Signal the end of parsing. The return value from this should be one of the
+same three possibilities that the direct use of parse() (above) returns:
+
+=over 4
+
+=item RPC::XML::request instance
+
+=item RPC::XML::response instance
+
+=item string containing an error message
+
+=back
+
+parse_done() may also signal an error by throwing an exception.
 
 =back
 

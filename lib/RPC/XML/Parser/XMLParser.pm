@@ -235,11 +235,11 @@ sub tag_start
         {
             return unless ($robj->[M_BASE64_TO_FH]);
             require Symbol;
-			my ($fh, $tmpdir) = (Symbol::gensym(), File::Spec->tmpdir);
+            my ($fh, $tmpdir) = (Symbol::gensym(), File::Spec->tmpdir);
 
-			$tmpdir = $robj->[M_BASE64_TEMP_DIR]
-				if ($robj->[M_BASE64_TEMP_DIR]);
-			unless ($fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir))
+            $tmpdir = $robj->[M_BASE64_TEMP_DIR]
+                if ($robj->[M_BASE64_TEMP_DIR]);
+            unless ($fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir))
             {
                 push(@{$robj->[M_STACK]},
                      "Error opening temp file for base64: $!", PARSE_ERROR);
@@ -575,6 +575,22 @@ sub extern_ent
     return '';
 }
 
+# Exception-throwing stub in case this is called without first getting the
+# XML::Parser::ExpatNB instance:
+sub parse_more
+{
+    die __PACKAGE__ . '::parse_more: Must be called on a push-parser ' .
+        'instance obtained from parse()';
+}
+
+# Exception-throwing stub in case this is called without first getting the
+# XML::Parser::ExpatNB instance:
+sub parse_done
+{
+    die __PACKAGE__ . '::parse_done: Must be called on a push-parser ' .
+        'instance obtained from parse()';
+}
+
 1;
 
 __END__
@@ -594,21 +610,46 @@ RPC::XML::Parser::XMLParser - A container class for XML::Parser
 
 =head1 DESCRIPTION
 
-This class implements the "interface" defined in the B<RPC::XML::Parser>
+This class implements the interface defined in the B<RPC::XML::Parser>
 factory-class (see L<RPC::XML::Parser>) using the B<XML::Parser> module
-to handle the actual XML manipulation.
+to handle the actual manipulation of XML.
 
 =head1 METHODS
 
 This module implements the public-facing methods as described in
-L<RPC::XML::Parser>. See that module for details.
+L<RPC::XML::Parser>:
 
-=head1 CAVEATS
+=over 4
 
-This began as a reference implementation in which clarity of process and
-readability of the code took precedence over general efficiency. It is now
-being maintained as production code, but may still have parts that could be
-written more efficiently.
+=item new [ ARGS ]
+
+The constructor only recognizes the two parameters specified in the base
+class (for the B<RPC::XML::base64> file-spooling operations).
+
+=item parse [ STRING | STREAM ]
+
+The parse() method accepts either a string of XML, a filehandle of some sort,
+or no argument at all. In the latter case, the return value is a parser
+instance that acts as a push-parser (a non-blocking parser). For the first
+two types of input, the return value is either a message object (one of
+B<RPC::XML::request> or B<RPC::XML::response>) or an error.
+
+=item parse_more STRING
+
+(Only callable on a push-parser instance) Parses the chunk of XML, which does
+not have to describe a complete document, and adds it to the current running
+document. If this method is called on a parser instance that is not a
+push-parser, an exception is thrown.
+
+=item parse_done
+
+(Only callable on a push-parser instance) Finishes the parsing process and
+returns either a message object (one of B<RPC::XML::request> or
+B<RPC::XML::response>) or an error (if the document was incomplete, not
+wel-formed, or not valid). If this method is called on a parser instance that
+is not a push-parser, an exception is thrown.
+
+=back
 
 =head1 BUGS
 
