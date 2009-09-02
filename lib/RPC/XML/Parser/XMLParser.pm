@@ -85,13 +85,11 @@ use constant TAG2TOKEN   => { methodCall        => METHOD,
                               name              => STRUCTNAME  };
 
 # Members of the class
-use constant {
-    M_STACK                => 0,
-    M_CDATA                => 1,
-    M_BASE64_TO_FH         => 2,
-    M_BASE64_TEMP_DIR      => 3,
-    M_SPOOLING_BASE64_DATA => 4,
-};
+use constant M_STACK                => 0;
+use constant M_CDATA                => 1;
+use constant M_BASE64_TO_FH         => 2;
+use constant M_BASE64_TEMP_DIR      => 3;
+use constant M_SPOOLING_BASE64_DATA => 4;
 
 use XML::Parser;
 require File::Spec;
