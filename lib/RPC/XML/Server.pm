@@ -45,6 +45,7 @@
 #                   share_methods
 #                   copy_methods
 #                   timeout
+#                   server_fault
 #
 #   Libraries:      AutoLoader
 #                   HTTP::Daemon (conditionally)
@@ -57,6 +58,7 @@
 #
 #   Global Consts:  $VERSION
 #                   $INSTALL_DIR
+#                   %FAULT_TABLE
 #
 ###############################################################################
 
@@ -65,8 +67,8 @@ package RPC::XML::Server;
 use 5.006001;
 use strict;
 use warnings;
-use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR @XPL_PATH
-            $IO_SOCKET_SSL_HACK_NEEDED $COMPRESSION_AVAILABLE);
+use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR %FAULT_TABLE  @XPL_PATH
+    $IO_SOCKET_SSL_HACK_NEEDED $COMPRESSION_AVAILABLE);
 
 use Carp 'carp';
 use AutoLoader 'AUTOLOAD';
@@ -95,11 +97,18 @@ BEGIN
     # Check for compression support
     eval { require Compress::Zlib; };
     $COMPRESSION_AVAILABLE = ($@) ? '' : 'deflate';
+
+    # Set up the initial table of fault-types and their codes/messages
+    %FAULT_TABLE = (
+        badxml       => [100 => 'XML parse error: %s'],
+        badmethod    => [200 => 'Method lookup error: %s'],
+        badsignature => [201 => 'Method signature error: %s'],
+        execerror    => [300 => 'Code execution error: %s'],
+    );
 }
 
-
 $VERSION = '1.54';
-$VERSION = eval $VERSION; ## no critic
+$VERSION = eval $VERSION;    ## no critic
 
 ###############################################################################
 #
@@ -120,76 +129,84 @@ $VERSION = eval $VERSION; ## no critic
 sub new
 {
     my $class = shift;
-    my %args = @_;
+    my %args  = @_;
 
-    my ($self, $http, $resp, $host, $port, $queue, $path, $URI, $srv_name,
-        $srv_version, $timeout);
+    my (
+        $self,     $http,        $resp, $host,
+        $port,     $queue,       $path, $URI,
+        $srv_name, $srv_version, $timeout
+    );
 
     $class = ref($class) || $class;
     $self = bless {}, $class;
 
-    $srv_version = $args{server_version} || $self->version;
-    $srv_name    = $args{server_name}    || $class;
+    $srv_version = delete $args{server_version} || $self->version;
+    $srv_name    = delete $args{server_name}    || $class;
     $self->{__version} = "$srv_name/$srv_version";
 
-    if ($args{no_http})
+    if (delete $args{no_http})
     {
-        $self->{__host} = $args{host} || '';
-        $self->{__port} = $args{port} || '';
-        delete @args{qw(host port)};
+        $self->{__host} = delete $args{host} || '';
+        $self->{__port} = delete $args{port} || '';
     }
     else
     {
         require HTTP::Daemon;
 
-        $host = $args{host}   || '';
-        $port = $args{port}   || '';
-        $queue = $args{queue} || 5;
-        $http = HTTP::Daemon->new(Reuse => 1,
-                                  ($host ? (LocalHost => $host) : ()),
-                                  ($port ? (LocalPort => $port) : ()),
-                                  ($queue ? (Listen => $queue)  : ()));
+        $host  = delete $args{host}  || '';
+        $port  = delete $args{port}  || '';
+        $queue = delete $args{queue} || 5;
+        $http  = HTTP::Daemon->new(
+            Reuse => 1,
+            ($host  ? (LocalHost => $host)  : ()),
+            ($port  ? (LocalPort => $port)  : ()),
+            ($queue ? (Listen    => $queue) : ())
+        );
         return "${class}::new: Unable to create HTTP::Daemon object"
             unless $http;
-        $URI = URI->new($http->url);
-        $self->{__host} = $URI->host;
-        $self->{__port} = $URI->port;
+        $URI              = URI->new($http->url);
+        $self->{__host}   = $URI->host;
+        $self->{__port}   = $URI->port;
         $self->{__daemon} = $http;
-
-        # Remove those we've processed
-        delete @args{qw(host port queue)};
     }
+
+    # Create and store the cached response object for later cloning and use
     $resp = HTTP::Response->new();
     return "${class}::new: Unable to create HTTP::Response object"
         unless $resp;
-    $resp->header(# This is essentially the same string returned by the
-                  # default "identity" method that may be loaded from a
-                  # XPL file. But it hasn't been loaded yet, and may not
-                  # be, hence we set it here (possibly from option values)
-                  RPC_Server   => $self->{__version},
-                  RPC_Encoding => 'XML-RPC',
-                  # Set any other headers as well
-                  Accept       => 'text/xml');
+    $resp->header(    # This is essentially the same string returned by the
+                      # default "identity" method that may be loaded from a
+                      # XPL file. But it hasn't been loaded yet, and may not
+                      # be, hence we set it here (possibly from option values)
+        RPC_Server   => $self->{__version},
+        RPC_Encoding => 'XML-RPC',
+        # Set any other headers as well
+        Accept => 'text/xml'
+    );
     $resp->content_type('text/xml');
     $resp->code(RC_OK);
     $resp->message('OK');
     $self->{__response} = $resp;
 
-    $self->{__path}            = $args{path} || '';
-    $self->{__started}         = 0;
-    $self->{__method_table}    = {};
-    $self->{__requests}        = 0;
-    $self->{__auto_methods}    = $args{auto_methods} || 0;
-    $self->{__auto_updates}    = $args{auto_updates} || 0;
-    $self->{__debug}           = $args{debug} || 0;
-    $self->{__parser}          =
-        RPC::XML::ParserFactory->new($args{parser} ? @{$args{parser}} : ());
-    $self->{__xpl_path}        = $args{xpl_path} || [];
-    $self->{__timeout}         = $args{timeout}  || 10;
+    # Basic (scalar) properties
+    $self->{__path}         = delete $args{path} || '';
+    $self->{__started}      = 0;
+    $self->{__method_table} = {};
+    $self->{__requests}     = 0;
+    $self->{__auto_methods} = delete $args{auto_methods} || 0;
+    $self->{__auto_updates} = delete $args{auto_updates} || 0;
+    $self->{__debug}        = delete $args{debug} || 0;
+    $self->{__xpl_path}     = delete $args{xpl_path} || [];
+    $self->{__timeout}      = delete $args{timeout} || 10;
+    $self->{__parser}       = RPC::XML::ParserFactory->new(
+        $args{parser} ? @{delete $args{parser}} : ());
 
-    $self->add_default_methods unless ($args{no_default});
+    # Set up the default methods unless requested not to
+    $self->add_default_methods unless (delete $args{no_default});
+
+    # Compression support
     $self->{__compress} = '';
-    if ($args{no_compress})
+    if (delete $args{no_compress})
     {
         $self->{__compress} = '';
     }
@@ -201,7 +218,7 @@ sub new
         # to change the string in just one place (above) if I have to.
         $resp->header(Accept_Encoding => $self->{__compress})
             if $self->{__compress};
-        $self->{__compress_thresh} = $args{compress_thresh} || 4096;
+        $self->{__compress_thresh} = delete $args{compress_thresh} || 4096;
         # Yes, I know this is redundant. It's for future expansion/flexibility.
         $self->{__compress_re} =
             $self->{__compress} ? qr/$self->{__compress}/ : qr/deflate/;
@@ -211,14 +228,45 @@ sub new
     # files due to size, and where to home the temp files. Start with a size
     # threshhold of 1Meg and no specific dir (which will fall-through to the
     # tmpdir() method of File::Spec).
-    $self->{__message_file_thresh} = $args{message_file_thresh} || 1048576;
-    $self->{__message_temp_dir}    = $args{message_temp_dir}    || '';
+    $self->{__message_file_thresh} = delete $args{message_file_thresh} ||
+        1048576;
+    $self->{__message_temp_dir} = delete $args{message_temp_dir} || '';
 
-    # Remove the args we've already dealt with directly
-    delete @args{qw(no_default no_http debug path server_name server_version
-                    no_compress compress_thresh parser message_file_thresh
-                    message_temp_dir)};
-    # Copy the rest over untouched
+    # Set up the table of response codes/messages that will be used when the
+    # server is sending a controlled error message to a client (as opposed to
+    # something HTTP-level that is less within our control).
+    $self->{__fault_table} = {%FAULT_TABLE};
+    if ($args{fault_code_base})
+    {
+        my $base = delete $args{fault_code_base};
+        # Apply the numerical offset to all (current) error codes
+        for my $key (keys %{$self->{__fault_table}})
+        {
+            if (ref($self->{__fault_table}->{$key}))
+            {
+                # A ref is a listref where the first element is the code
+                $self->{__fault_table}->{$key}->[0] += $base;
+            }
+            else
+            {
+                $self->{__fault_table}->{$key} += $base;
+            }
+        }
+    }
+    if ($args{fault_table})
+    {
+        my $local_table = delete $args{fault_table};
+        # Merge any data from this table into the object's fault-table
+        for my $key (keys %$local_table)
+        {
+            $self->{__fault_table}->{$key} =
+                  (ref $local_table->{$key})
+                ? [@{$local_table->{$key}}]
+                : $local_table->{$key};
+        }
+    }
+
+    # Copy the remaining args over untouched
     $self->{$_} = $args{$_} for (keys %args);
 
     $self;
@@ -274,7 +322,7 @@ sub started
 
 BEGIN
 {
-    no strict 'refs'; ## no critic
+    no strict 'refs';    ## no critic
 
     # These are mutable member values for which the logic only differs in
     # the name of the field to modify:
@@ -287,12 +335,14 @@ BEGIN
             $self->{"__$method"} = $set if (defined $set);
 
             $old;
-        }
+            }
     }
 
     # These are immutable member values, so this simple block applies to all
-    for my $method (qw(path host port requests response compress compress_re
-                       parser))
+    for my $method (
+        qw(path host port requests response compress compress_re
+        parser)
+        )
     {
         *$method = sub { shift->{"__$method"} }
     }
@@ -302,7 +352,7 @@ BEGIN
 sub xpl_path
 {
     my $self = shift;
-    my $ret = $self->{__xpl_path};
+    my $ret  = $self->{__xpl_path};
 
     $self->{__xpl_path} = $_[0] if ($_[0] and ref($_[0]) eq 'ARRAY');
     $ret;
@@ -331,10 +381,10 @@ sub add_method
 
     my $me = ref($self) . '::add_method';
 
-    if (! ref($meth))
+    if (!ref($meth))
     {
         $val = $self->method_from_file($meth);
-        if (! ref($val))
+        if (!ref($val))
         {
             return "$me: Error loading from file $meth: $val";
         }
@@ -345,10 +395,10 @@ sub add_method
     }
     elsif (ref($meth) eq 'HASH')
     {
-        my $class = 'RPC::XML::' . ucfirst ($meth->{type} || 'method');
+        my $class = 'RPC::XML::' . ucfirst($meth->{type} || 'method');
         $meth = $class->new($meth);
     }
-    elsif (! (blessed $meth and $meth->isa('RPC::XML::Procedure')))
+    elsif (!(blessed $meth and $meth->isa('RPC::XML::Procedure')))
     {
         return "$me: Method argument must be a file name, a hash " .
             'reference or an object derived from RPC::XML::Procedure';
@@ -356,7 +406,8 @@ sub add_method
 
     # Do some sanity-checks
     return "$me: Method missing required data; check name, code and/or " .
-        'signature' unless $meth->is_valid;
+        'signature'
+        unless $meth->is_valid;
 
     $name = $meth->name;
     $self->{__method_table}->{$name} = $meth;
@@ -533,6 +584,28 @@ If a message is to be spooled to a temporary file, this key can define a
 specific directory in which to open those files. If this is not given, then
 the C<tmpdir> method from the B<File::Spec> package is used, instead.
 
+=item B<fault_code_base>
+
+Specify a base integer value that is added to the numerical codes for all
+faults the server can return. See L</"Server Faults"> for the list of faults
+that are built-in to the server class. This allows an application to "move"
+the B<RPC::XML::Server> pre-defined fault codes out of the way of codes that
+the application itself may generate.
+
+Note that this value is B<not> applied to any faults specified via the next
+option, C<fault_table>. It is assumed that the developer has already applied
+any offset to those codes.
+
+=item B<fault_table>
+
+Specify one or more fault types to either add to or override the built-in set
+of faults for the server object. The value of this parameter is a hash
+reference whose keys are the fault type and whose values are either a scalar
+(which is taken to be the numerical code) or a list reference with two elements
+(the code followed by the string). See L</"Server Faults"> for the list of faults
+that are built-in to the server class, and for more information on defining
+your own.
+
 =back
 
 Any other keys in the options hash not explicitly used by the constructor are
@@ -578,6 +651,13 @@ You can call this method to set the timeout of new connections after
 they are received.  This function returns the old timeout value.  If
 you pass in no value then it will return the old value without
 modifying the current value.  The default value is 10 seconds.
+
+=item server_fault(STRING, STRING)
+
+Create a B<RPC::XML::fault> object of the specified type, optionally including
+the second (string) parameter. See L</"Server Faults"> for the list of faults
+defined by B<RPC::XML::Server> (as well as documentation on creating your
+own).
 
 =item add_method(FILE | HASHREF | OBJECT)
 
@@ -1053,6 +1133,161 @@ as defined earlier for the C<new> method.
 
 =back
 
+=head2 Server Faults
+
+Previous versions of this library had a very loosely-organized set of fault
+codes that a server might return in certain (non-fatal) error circumstances.
+This has been replaced by a more configurable, adjustable system to allow
+users to better integrate the server-defined faults with any that their
+application may produce. It also allows for the definition of additional
+fault types so that the same mechanism for formatting the pre-defined faults
+can be used within sub-classes and user applications.
+
+The server method B<server_fault> is used to generate B<RPC::XML::fault>
+objects for these situations. It takes one or two arguments, the first being
+the name of the type of fault to create and the second being the specific
+message. If a fault is defined with a static message, the second argument may
+be skipped (and will be ignored if passed).
+
+In addition to defining their own faults, a user may override the definition
+of any of the server's pre-defined faults.
+
+=head3 Defining faults
+
+The user may define their own faults using the C<fault_table> argument to the
+constructor of the server class being instantiated. They may also override
+any of the pre-defined faults (detailed in the next section) by providing a
+new definition for the name.
+
+The value of the C<fault_table> argument is a hash reference whose keys are
+the names of the faults and whose values are one of two types:
+
+=over 4
+
+=item An integer
+
+If the value for the key is a scalar, it is assumed to be an integer and will
+be used as the fault code. When the fault is created, the message argument
+(the second parameter) will be used verbatim as the fault message.
+
+=item A 2-element list reference
+
+If the value is a list reference, it is assumed to have two elements: the first
+is the integer fault code to use, and the second is a message "template"
+string to use as the fault message. If the string contains the sequence C<%s>,
+this will be replaced with the message argument (the second parameter) passed
+to B<server_fault>. If that sequence is not in the string, then the fault
+message is considered static and the message argument is ignored.
+
+=back
+
+An example of defining faults:
+
+    my $server = RPC::XML::Server->new(
+        ...
+        fault_table => {
+            limitexceeded => [ 500 => 'Call limit exceeded' ],
+            accessdenied  => [ 600 => 'Access denied: %s' ],
+            serviceclosed => 700
+        },
+        ...
+    );
+
+In this example, the fault-type "limitexceeded" is defined as having a fault
+code of 500 and a static message of C<Call limit exceeded>. The next fault
+defined is "accessdenied", which has a code of 600 and message that starts
+with C<Access denied:> and incorporates whatever message was passed in to the
+fault creation. The last example defines a fault called C<serviceclosed> that
+has a code of 700 and uses any passed-in message unaltered.
+
+=head3 Server-defined faults
+
+The B<RPC::XML::Server> class defines the following faults and uses them
+internally. You can override the codes and messages for these by including them
+in the table passed as a C<fault_table> argument. The faults fall into three
+groups:
+
+=over 4
+
+=item Request Initialization
+
+Faults in this group stem from the initialization of the request and the
+parsing of the XML. The codes for this group fall in the range 100-199.
+
+=item Method Resolution
+
+This group covers problems with mapping the request to a known method or
+function on the server. These codes will be in the range 200-299.
+
+=item Execution
+
+Lastly, these faults are for problems in actually executing the requested
+code. Their codes are in the range 300-399.
+
+=back
+
+The faults, and the phases they apply to, are:
+
+=over 4
+
+=item badxml (Request Initialization)
+
+This fault is sent back to the client when the XML of the request did not
+parse as a valid XML-RPC request.
+
+The code is C<100>, and the message is of the form, C<XML parse error: %s>.
+The specific error from the XML parser is included in the message.
+
+=item badmethod (Method Resolution)
+
+This fault is sent when the requested method is unknown to the server. No
+method has been configured on the server by that name.
+
+The code is C<200>, and the message is of the form, C<Method lookup error: %s>.
+The name of the method and other information is included in the message.
+
+=item badsignature (Method Resolution)
+
+If a method is known on the server, but there is no signature that matches the
+sequence of arguments passed, this fault is returned. This fault cannot be
+triggered by server-side code configured via B<RPC::XML::Function>, as no
+signature-checking is done for those.
+
+The code is C<201>, and the message is of the form, C<Method signature error:
+%s>. The name of the method and the signature of the arguments is included in
+the message.
+
+=item execerror (Execution)
+
+This fault relates back to the client any exception thrown by the remote code
+during execution. If the invoked code returned their error in the form of a
+B<RPC::XML::fault> object, that fault is returned instead. Otherwise, the
+value of C<$@> is used in the message of the fault that gets generated.
+
+The code is C<300>, and the message is of the form, C<Code execution error:
+%s>. The actual text of the exception thrown is included in the message.
+
+=back
+
+There is one special server-fault whose code and message cannot be overridden.
+If a call is made to B<server_fault> for an unknown type of fault, the
+returned object will have a code of C<-1> and a message stating that the
+fault-type is unknown. The message will include both the requested type-name
+and any message (if any) that was passed in.
+
+=head3 Adjusting the server-defined codes
+
+If you just want to "move" the range of codes that the server uses out of the
+way of your application's own faults, this can be done with the
+C<fault_code_base> parameter when constructing the server object. The value
+of the parameter must be an integer, and it is added to the value of all
+existing fault codes. For example, a value of C<10000> would make the code
+for the C<badxml> fault be C<10100>, the code for C<badmethod> be C<10200>,
+etc.
+
+This is applied before any user-defined faults are merged in, so their code
+values will not be affected by this value.
+
 =head1 DIAGNOSTICS
 
 Unless explicitly stated otherwise, all methods return some type of reference
@@ -1223,7 +1458,8 @@ sub get_method
             unless $meth = $self->{__method_table}->{$name};
     }
     # Check the mod-time of the file the method came from, if the test is on
-    if ($self->{__auto_updates} && $meth->{file} &&
+    if ($self->{__auto_updates} &&
+        $meth->{file} &&
         ($meth->{mtime} < (stat $meth->{file})[9]))
     {
         my $ret = $meth->reload;
@@ -1277,12 +1513,12 @@ sub server_loop
             push @exit_signals, 'INT';
         }
 
-        local @SIG{@exit_signals} = ( sub { $exit_now++ } ) x @exit_signals;
+        local @SIG{@exit_signals} = (sub { $exit_now++ }) x @exit_signals;
 
         $self->started('set');
         $exit_now = 0;
-        $timeout = $self->{__daemon}->timeout(1);
-        while (! $exit_now)
+        $timeout  = $self->{__daemon}->timeout(1);
+        while (!$exit_now)
         {
             $conn = $self->{__daemon}->accept;
 
@@ -1291,7 +1527,7 @@ sub server_loop
             $conn->timeout($self->timeout);
             $self->process_request($conn);
             $conn->close;
-            undef $conn; # Free up any lingering resources
+            undef $conn;    # Free up any lingering resources
         }
 
         $self->{__daemon}->timeout($timeout) if defined $timeout;
@@ -1303,20 +1539,20 @@ sub server_loop
         require HTTP::Daemon;
 
         my $conf_file_flag = 0;
-        my $port_flag = 0;
-        my $host_flag = 0;
+        my $port_flag      = 0;
+        my $host_flag      = 0;
 
         for (my $i = 0; $i < @_; $i += 2)
         {
             $conf_file_flag = 1 if ($_[$i] eq 'conf_file');
-            $port_flag = 1 if ($_[$i] eq 'port');
-            $host_flag = 1 if ($_[$i] eq 'host');
+            $port_flag      = 1 if ($_[$i] eq 'port');
+            $host_flag      = 1 if ($_[$i] eq 'host');
         }
 
         # An explicitly-given conf-file trumps any specified at creation
-        if (exists($self->{conf_file}) and (! $conf_file_flag))
+        if (exists($self->{conf_file}) and (!$conf_file_flag))
         {
-            push (@_, 'conf_file', $self->{conf_file});
+            push(@_, 'conf_file', $self->{conf_file});
             $conf_file_flag = 1;
         }
 
@@ -1324,15 +1560,16 @@ sub server_loop
         # pointing to a config file:
         unless ($conf_file_flag or $port_flag)
         {
-            push (@_, 'port', $self->{port} || $self->port || 9000);
-            push (@_, 'host', $self->{host} || $self->host || '*');
+            push(@_, 'port', $self->{port} || $self->port || 9000);
+            push(@_, 'host', $self->{host} || $self->host || '*');
         }
 
         # Try to load the Net::Server::MultiType module
         eval { require Net::Server::MultiType; };
-        return ref($self) .
+        return
+            ref($self) .
             "::server_loop: Error loading Net::Server::MultiType: $@"
-                if ($@);
+            if ($@);
         unshift(@RPC::XML::Server::ISA, 'Net::Server::MultiType');
 
         $self->started('set');
@@ -1407,9 +1644,11 @@ sub process_request
     my $self = shift;
     my $conn = shift;
 
-    my ($req, $reqxml, $resp, $respxml, $do_compress, $parser, $com_engine,
-        $length, $read, $buf, $resp_fh, $tmpdir,
-        $peeraddr, $peerhost, $peerport);
+    my (
+        $req,     $reqxml,     $resp,     $respxml,  $do_compress,
+        $parser,  $com_engine, $length,   $read,     $buf,
+        $resp_fh, $tmpdir,     $peeraddr, $peerhost, $peerport
+    );
 
     my $me = ref($self) . '::process_request';
     unless ($conn and ref($conn))
@@ -1418,15 +1657,15 @@ sub process_request
         bless $conn, 'HTTP::Daemon::ClientConn';
         ${*$conn}{'httpd_daemon'} = $self;
 
-        if ($IO::Socket::SSL::VERSION and
-            $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED)
+        if (    $IO::Socket::SSL::VERSION
+            and $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED)
         {
             no strict 'vars';
             # RT 43019: Don't do this if Socket6/IO::Socket::INET6 is in
             # effect, as it causes calls to unpack_sockaddr_in6 to break.
             unshift @HTTP::Daemon::ClientConn::ISA, 'IO::Socket::SSL'
-                unless (defined $Socket6::VERSION or
-                        defined $IO::Socket::INET6::VERSION);
+                unless (defined $Socket6::VERSION
+                or defined $IO::Socket::INET6::VERSION);
             $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED = 0;
         }
     }
@@ -1456,8 +1695,7 @@ sub process_request
                 unless ($self->compress)
                 {
                     $conn->send_error(RC_BAD_REQUEST,
-                                      "$me: Compression not permitted in " .
-                                      'requests');
+                        "$me: Compression not permitted in " . 'requests');
                     next;
                 }
 
@@ -1479,8 +1717,8 @@ sub process_request
                     unless ($com_engine = Compress::Zlib::inflateInit())
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                          "$me: Unable to initialize the " .
-                                          'Compress::Zlib engine');
+                            "$me: Unable to initialize the " .
+                                'Compress::Zlib engine');
                         next;
                     }
                 }
@@ -1494,12 +1732,13 @@ sub process_request
                         # left in the read buffer. The call to sysread() should
                         # NOT be made until we've emptied this source, first.
                         $read = length($buf);
-                        $conn->read_buffer(''); # Clear it, now that it's read
+                        $conn->read_buffer('');   # Clear it, now that it's read
                     }
                     else
                     {
-                        $read = sysread($conn, $buf,
-                                        ($length < 2048) ? $length : 2048);
+                        $read =
+                            sysread($conn, $buf,
+                            ($length < 2048) ? $length : 2048);
                         unless ($read)
                         {
                             # Convert this print to a logging-hook call.
@@ -1518,8 +1757,7 @@ sub process_request
                         unless ($buf = $com_engine->inflate($buf))
                         {
                             $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                              "$me: Error inflating " .
-                                              'compressed data');
+                                "$me: Error inflating " . 'compressed data');
                             # This error also means that even if Keep-Alive
                             # is set, we don't know how much of the stream
                             # is corrupted.
@@ -1532,8 +1770,8 @@ sub process_request
                     if ($@)
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                          "$me: Parse error in (compressed) " .
-                                          "XML request (mid): $@");
+                            "$me: Parse error in (compressed) " .
+                                "XML request (mid): $@");
                         # Again, the stream is likely corrupted
                         $conn->force_last_request;
                         next;
@@ -1544,8 +1782,8 @@ sub process_request
                 if ($@)
                 {
                     $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                      "$me: Parse error in (compressed) " .
-                                      "XML request (end): $@");
+                        "$me: Parse error in (compressed) " .
+                            "XML request (end): $@");
                     next;
                 }
             }
@@ -1564,39 +1802,40 @@ sub process_request
             }
             else
             {
-                $respxml = RPC::XML::fault->new(RC_INTERNAL_SERVER_ERROR,
-                                                $reqxml);
-                $respxml = RPC::XML::response->new($respxml);
+                $respxml = RPC::XML::response->new(
+                    $self->server_fault('badxml', $reqxml));
             }
 
             # Clone the pre-fab response and set headers
             $resp = $self->response->clone;
             # Should we apply compression to the outgoing response?
-            $do_compress = 0; # In case it was set above for incoming data
-            if ($self->compress and
-                ($respxml->length > $self->compress_thresh) and
-                (($req->header('Accept-Encoding') || '') =~
-                 $self->compress_re))
+            $do_compress = 0;    # In case it was set above for incoming data
+            if (    $self->compress
+                and ($respxml->length > $self->compress_thresh)
+                and
+                (($req->header('Accept-Encoding') || '') =~ $self->compress_re))
             {
                 $do_compress = 1;
                 $resp->header(Content_Encoding => $self->compress);
             }
             # Next step, determine the response disposition. If it is above the
             # threshhold for a requested file cut-off, send it to a temp file
-            if ($self->message_file_thresh and
-                $self->message_file_thresh < $respxml->length)
+            if (    $self->message_file_thresh
+                and $self->message_file_thresh < $respxml->length)
             {
                 require File::Spec;
                 # Start by creating a temp-file
                 $tmpdir = $self->message_temp_dir || File::Spec->tmpdir;
-                unless ($resp_fh = File::Temp->new(UNLINK=>1, DIR=>$tmpdir))
+                unless ($resp_fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir))
                 {
                     $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                      "$me: Error opening tmpfile: $!");
+                        "$me: Error opening tmpfile: $!");
                     next;
                 }
                 # Make it auto-flush
-                my $old_fh = select($resp_fh); $| = 1; select($old_fh);
+                my $old_fh = select($resp_fh);
+                $| = 1;
+                select($old_fh);
 
                 # Now that we have it, spool the response to it. This is a
                 # little hairy, since we still have to allow for compression.
@@ -1606,14 +1845,16 @@ sub process_request
                 if ($do_compress)
                 {
                     my $fh2;
-                    unless ($fh2 = File::Temp->new(UNLINK=>1, DIR=>$tmpdir))
+                    unless ($fh2 = File::Temp->new(UNLINK => 1, DIR => $tmpdir))
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                          "$me: Error opening tmpfile: $!");
+                            "$me: Error opening tmpfile: $!");
                         next;
                     }
                     # Make it auto-flush
-                    $old_fh = select($fh2); $| = 1; select($old_fh);
+                    $old_fh = select($fh2);
+                    $|      = 1;
+                    select($old_fh);
 
                     # Write the request to the second FH
                     $respxml->serialize($fh2);
@@ -1623,8 +1864,8 @@ sub process_request
                     unless ($com_engine = Compress::Zlib::deflateInit())
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                          "$me: Unable to initialize the " .
-                                          'Compress::Zlib engine');
+                            "$me: Unable to initialize the " .
+                                'Compress::Zlib engine');
                         next;
                     }
 
@@ -1637,8 +1878,7 @@ sub process_request
                         unless (defined($out = $com_engine->deflate(\$buf)))
                         {
                             $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                              "$me: Compression failure in " .
-                                              'deflate()');
+                                "$me: Compression failure in " . 'deflate()');
                             next;
                         }
                         print $resp_fh $out;
@@ -1647,8 +1887,7 @@ sub process_request
                     unless (defined($out = $com_engine->flush))
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                                          "$me: Compression flush failure in" .
-                                          ' deflate()');
+                            "$me: Compression flush failure in" . ' deflate()');
                         next;
                     }
                     print $resp_fh $out;
@@ -1664,12 +1903,14 @@ sub process_request
                 seek($resp_fh, 0, 0);
 
                 $resp->content_length(-s $resp_fh);
-                $resp->content(sub {
-                                   my $b = '';
-                                   return undef unless
-                                       defined(read($resp_fh, $b, 4096));
-                                   $b;
-                               });
+                $resp->content(
+                    sub {
+                        my $b = '';
+                        return undef
+                            unless defined(read($resp_fh, $b, 4096));
+                        $b;
+                    }
+                );
             }
             else
             {
@@ -1723,9 +1964,8 @@ sub dispatch
     if (ref($xml) eq 'SCALAR')
     {
         $reqobj = $self->parser->parse($$xml);
-        return RPC::XML::response
-            ->new(RPC::XML::fault->new(200, "XML parse failure: $reqobj"))
-                unless (ref $reqobj);
+        return RPC::XML::response->new($self->server_fault(badxml => $reqobj))
+            unless (ref $reqobj);
     }
     elsif (ref($xml) eq 'ARRAY')
     {
@@ -1741,9 +1981,8 @@ sub dispatch
     else
     {
         $reqobj = $self->parser->parse($xml);
-        return RPC::XML::response
-            ->new(RPC::XML::fault->new(200, "XML parse failure: $reqobj"))
-                unless (ref $reqobj);
+        return RPC::XML::response->new($self->server_fault(badxml => $reqobj))
+            unless (ref $reqobj);
     }
 
     @data = @{$reqobj->args};
@@ -1755,12 +1994,14 @@ sub dispatch
     {
         $response = $meth->call($self, @data);
         $self->{__requests}++
-            unless (($name eq 'system.status') && @data &&
-                    ($data[0]->type eq 'boolean') && ($data[0]->value));
+            unless (($name eq 'system.status') &&
+            @data &&
+            ($data[0]->type eq 'boolean') &&
+            ($data[0]->value));
     }
     else
     {
-        $response = RPC::XML::fault->new(300, $meth);
+        $response = $self->server_fault(badmethod => $meth);
     }
 
     # All the eval'ing and error-trapping happened within the method class
@@ -1842,8 +2083,8 @@ sub add_default_methods
 ###############################################################################
 sub add_methods_in_dir
 {
-    my $self = shift;
-    my $dir = shift;
+    my $self    = shift;
+    my $dir     = shift;
     my @details = @_;
 
     my $negate = 0;
@@ -1862,7 +2103,7 @@ sub add_methods_in_dir
         @details{@details} = (1) x @details;
     }
 
-    local(*D);
+    local (*D);
     opendir(D, $dir) || return "Error opening $dir for reading: $!";
     my @files = grep($_ =~ /\.xpl$/, readdir(D));
     closedir D;
@@ -1870,8 +2111,8 @@ sub add_methods_in_dir
     for (@files)
     {
         # Use $detail as a short-circuit to avoid the other tests when we can
-        next if ($detail and
-                 $negate ? $details{$_} : ! $details{$_});
+        next if ($detail
+            and $negate ? $details{$_} : !$details{$_});
         # n.b.: Giving the full path keeps add_method from having to search
         $ret = $self->add_method(File::Spec->catfile($dir, $_));
         return $ret unless ref $ret;
@@ -1967,8 +2208,8 @@ sub share_methods
 
     my ($me, $pkg, %tmp, @tmp, $tmp, $meth, @list, @missing);
 
-    $me = ref($self) . '::share_methods';
-    $pkg = __PACKAGE__; # So it can go inside quoted strings
+    $me  = ref($self) . '::share_methods';
+    $pkg = __PACKAGE__;                     # So it can go inside quoted strings
 
     return "$me: First arg not derived from $pkg, cannot share"
         unless (blessed $src_srv && $src_srv->isa($pkg));
@@ -2052,8 +2293,8 @@ sub copy_methods
 
     my ($me, $pkg, %tmp, @tmp, $tmp, $meth, @list, @missing);
 
-    $me = ref($self) . '::copy_methods';
-    $pkg = __PACKAGE__; # So it can go inside quoted strings
+    $me  = ref($self) . '::copy_methods';
+    $pkg = __PACKAGE__;                     # So it can go inside quoted strings
 
     return "$me: First arg not derived from $pkg, cannot copy"
         unless (blessed $src_srv && $src_srv->isa($pkg));
@@ -2138,4 +2379,50 @@ sub timeout
         $self->{__timeout} = $timeout;
     }
     return $old_timeout;
+}
+
+###############################################################################
+#
+#   Sub Name:       server_fault
+#
+#   Description:    Create a RPC::XML::fault object for the class of error
+#                   and specific message that are passed in.
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object of this class
+#                   $err      in      scalar    Type of error/fault to generate
+#                   $message  in      scalar    Error text for the fault
+#
+#   Returns:        RPC::XML::fault instance
+#
+###############################################################################
+sub server_fault
+{
+    my ($self, $err, $message) = @_;
+    $message ||= ''; # Avoid any "undef" warnings
+
+    my ($code, $text);
+
+    if (my $fault = $self->{__fault_table}->{$err})
+    {
+        if (ref $fault)
+        {
+            # This specifies both code and message
+            ($code, $text) = @$fault;
+            # Replace (the first) "%s" with $message
+            $text =~ s/%s/$message/;
+        }
+        else
+        {
+            # This is just the code, use $message verbatim
+            ($code, $text) = ($fault, $message);
+        }
+    }
+    else
+    {
+        $code = -1;
+        $text = "Unknown error class '$err' (message is '$message')";
+    }
+
+    RPC::XML::fault->new($code, $text);
 }
