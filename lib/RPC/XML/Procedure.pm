@@ -47,9 +47,11 @@ use subs qw(new is_valid name code signature help version hidden
     reload load_XPL_file);
 
 use AutoLoader 'AUTOLOAD';
-require File::Spec;
+use File::Spec;
 
 use Scalar::Util 'blessed';
+
+use RPC::XML 'smart_encode';
 
 $VERSION = '1.19';
 $VERSION = eval $VERSION;    ## no critic
@@ -1037,6 +1039,13 @@ sub call
     return $srv->server_fault(badsignature => "method $name has no matching " .
             "signature for the argument list: [$signature]")
         unless ($resptype);
+    # Make sure that the response-type is a valid XML-RPC type
+    if (($resptype ne 'scalar') && (! "RPC::XML::$resptype"->can('new'))
+    {
+        return $srv->server_fault(badsignature =>
+            "Signature [$signature] for method $name has unknown " .
+            "return-type '$resptype'");
+    }
 
     # Set these in case the server object is part of the param list
     local $srv->{signature} = [$resptype, @paramtypes];
@@ -1065,9 +1074,21 @@ sub call
 
     $self->{called}++ unless $noinc;
     # Create a suitable return value
-    if ((!ref($response)) && "RPC::XML::$resptype"->can('new'))
+    if (! ref($response))
     {
-        $response = "RPC::XML::$resptype"->new($response);
+        if ($resptype eq 'scalar')
+        {
+            # Server code from the RPC::XML::Function class doesn't use
+            # signatures, so if they didn't encode the returned value
+            # themselves they're trusting smart_encode() to get it right.
+            $response = smart_encode($response);
+        }
+        else
+        {
+			# We checked that this was valid earlier, so no need for further
+			# tests here.
+            $response = "RPC::XML::$resptype"->new($response);
+        }
     }
 
     $response;
