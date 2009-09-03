@@ -1040,7 +1040,7 @@ sub call
             "signature for the argument list: [$signature]")
         unless ($resptype);
     # Make sure that the response-type is a valid XML-RPC type
-    if (($resptype ne 'scalar') && (! "RPC::XML::$resptype"->can('new'))
+    if (($resptype ne 'scalar') && (! "RPC::XML::$resptype"->can('new')))
     {
         return $srv->server_fault(badsignature =>
             "Signature [$signature] for method $name has unknown " .
