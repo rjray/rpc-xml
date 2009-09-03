@@ -6,3 +6,5 @@ lib/Apache/RPC/*.xpl
 methods/*.xpl
 .project
 t/test.conf
+RPC-XML-*
+META.yml
