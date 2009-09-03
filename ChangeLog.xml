@@ -6,8 +6,8 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:xhtml="http://www.w3.org/1999/xhtml"
     xsi:schemaLocation="http://www.blackperl.com/2009/01/ChangeLogML etc/ChangeLogML.xsd">
-  <project></project>
-  <title></title>
+  <project>RPC::XML</project>
+  <title>Perl Module RPC::XML Change History</title>
   <description>
     Revision history for the Perl extension module RPC::XML. This is an
     implementation of the XML-RPC standard as described at the URL
@@ -15,6 +15,153 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2009-09-03T10:25:00-07:00" version="0.69" sc:tag="0.69">
+    <change git:commit="da64377d20640d347436c856c0fbc59c09c96ecd">
+      <fileset>
+        <file path="t/00_load.t" />
+        <file path="t/01_pod.t" />
+        <file path="t/02_pod_coverage.t" />
+        <file path="t/10_data.t" />
+        <file path="t/11_base64_fh.t" />
+        <file path="t/12_nil.t" />
+        <file path="t/15_serialize.t" />
+        <file path="t/20_parser.t" />
+        <file path="t/50_client.t" />
+      </fileset>
+      <description>
+        Minor clean-up of old CVS/SVN keyword references.
+      </description>
+    </change>
+    <change git:commit="b5da315f4fe1b3ffbf179c334ef1b58af625d483">
+      <fileset>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" action="ADD" />
+        <file path="lib/RPC/XML/ParserFactory.pm" action="ADD" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/20_parser.t" action="DELETE" />
+        <file path="t/20_xml_parser.t" action="ADD" />
+        <file path="t/29_parserfactory.t" action="ADD" />
+        <file path="t/40_server.t" />
+        <file path="t/util.pl" />
+      </fileset>
+      <description>
+        Converted parsing to be from a specific class to a parser-factory style.
+        This included renaming the existing parser class and shuffling tests
+        around.
+      </description>
+    </change>
+    <change git:commit="1115ea4070938edcc3ae0bb192c5fae47c542ab8">
+      <file path="t/70_compression_detect.t" />
+      <description>
+        Cleaner approach to scrubbing symbol tables.
+      </description>
+    </change>
+    <change git:commit="6cc8cea15f527a8d2a3f8e402941bcd7a93b7c13">
+      <fileset>
+        <file path="t/00_load.t" />
+        <file path="t/01_pod.t" />
+        <file path="t/02_pod_coverage.t" />
+        <file path="t/03_meta.t" action="ADD" />
+        <file path="t/04_minimumversion.t" action="ADD" />
+        <file path="t/05_critic.t" action="ADD" />
+      </fileset>
+      <description>
+        New tests, and developer-specific tests changed to only run in my copy.
+      </description>
+    </change>
+    <change git:commit="e31cca20b53d062faa2234f10f8794e4e7058c27">
+      <fileset>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/11_base64_fh.t" />
+        <file path="t/15_serialize.t" />
+        <file path="t/20_xml_parser.t" />
+        <file path="t/30_method.t" />
+        <file path="t/35_namespaces.t" />
+        <file path="t/40_server.t" />
+        <file path="t/41_server_hang.t" />
+        <file path="t/50_client.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=47806">RT #47806</xhtml:a>:
+        One more patch for Windows compatibility with temp-files.
+      </description>
+    </change>
+    <change git:commit="03e00c1944254eee3dba120c2887bc34a5655a35">
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/Apache/RPC/Status.pm" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Function.pm" />
+        <file path="lib/RPC/XML/Method.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="lib/RPC/XML/ParserFactory.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Fixes based on Perl::Critic and other best-practices techniques.
+      </description>
+    </change>
+    <change git:commit="e02196452fd86135b24cc936f969ee5a261c8483">
+      <file path="etc/make_method" />
+      <description>
+        Also made changes based on Perl::Critic.
+      </description>
+    </change>
+    <change git:commit="3c01cda3398e0b0fceef2cc36492ccbff6aba773">
+      <fileset>
+        <file path="MANIFEST" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+      </fileset>
+      <description>
+        Expanded definition of the interface to include push-parsing methods.
+        Documented these and added stubs to RPC::XML::Parser::XMLParser that
+        throw exceptions when called by a non-push-parser instance. Reflected
+        changes to test suite in MANIFEST.
+      </description>
+    </change>
+    <change git:commit="4ed1f2ced8cb30ea4776b54ccab8c6ea774a619a">
+      <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+      <description>
+        Slight tweak to make this 5.6.1-compatible.
+      </description>
+    </change>
+    <change git:commit="b45db2993c694d312d2bee27a0a1cda850acb4d4">
+      <fileset>
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=42736">RT #42736</xhtml:a>:
+        Support user-adjustment of server-based faults, and normalize the
+        existing faults.
+      </description>
+    </change>
+    <change git:commit="b449b138f243ad40e61a110bbe9514be277ee5b1">
+      <file path="lib/RPC/XML/Procedure.pm" />
+      <description>
+        Fix encoding of return values from call() when the method called is of
+        type Function (and thus has no strict signatures).
+      </description>
+    </change>
+    <change git:commit="9a0fe50ad9648716e287717d2007a439946930a1">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="t/13_no_deep_recursion.t" action="ADD" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=41063">RT #41063</xhtml:a>:
+        Re-visit how arrays and structs are smart-encoded and constructed, so
+        as to avoid cyclical data structure references.
+      </description>
+    </change>
+  </release>
   <release date="2009-07-10T01:30:00-07:00" version="0.67" sc:tag="0.67">
     <change git:commit="67180ef41cdfa56c771e6b9dd8d5f1f116b7dc77">
       <fileset>

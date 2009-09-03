@@ -1,4 +1,4 @@
-                                                                            
+                      Perl Module RPC::XML Change History                   
 
 		Revision history for the Perl extension module  
 		RPC::XML. This is an implementation of the      
@@ -8,6 +8,102 @@
 		protocol in terms of supporting HTTP/1.1 and    
 		allowing choice of character-set encodings for  
 		XML messages.                                   
+
+0.69	Thursday September  3, 2009, 10:25:00 AM -0700
+
+	* t/00_load.t
+	* t/01_pod.t
+	* t/02_pod_coverage.t
+	* t/10_data.t
+	* t/11_base64_fh.t
+	* t/12_nil.t
+	* t/15_serialize.t
+	* t/20_parser.t
+	* t/50_client.t
+	Minor clean-up of old CVS/SVN keyword references.               
+
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Parser.pm
+	* lib/RPC/XML/Parser/XMLParser.pm (added)
+	* lib/RPC/XML/ParserFactory.pm (added)
+	* lib/RPC/XML/Server.pm
+	* t/20_parser.t (deleted)
+	* t/20_xml_parser.t (added)
+	* t/29_parserfactory.t (added)
+	* t/40_server.t
+	* t/util.pl
+	Converted parsing to be from a specific class to a              
+	parser-factory style. This included renaming the existing       
+	parser class and shuffling tests around.                        
+
+	* t/70_compression_detect.t
+	Cleaner approach to scrubbing symbol tables.                    
+
+	* t/00_load.t
+	* t/01_pod.t
+	* t/02_pod_coverage.t
+	* t/03_meta.t (added)
+	* t/04_minimumversion.t (added)
+	* t/05_critic.t (added)
+	New tests, and developer-specific tests changed to only run in  
+	my copy.                                                        
+
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* lib/RPC/XML/Server.pm
+	* t/11_base64_fh.t
+	* t/15_serialize.t
+	* t/20_xml_parser.t
+	* t/30_method.t
+	* t/35_namespaces.t
+	* t/40_server.t
+	* t/41_server_hang.t
+	* t/50_client.t
+	RT #47806: One more patch for Windows compatibility with        
+	temp-files.                                                     
+
+	* lib/Apache/RPC/Server.pm
+	* lib/Apache/RPC/Status.pm
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Function.pm
+	* lib/RPC/XML/Method.pm
+	* lib/RPC/XML/Parser.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* lib/RPC/XML/ParserFactory.pm
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	Fixes based on Perl::Critic and other best-practices techniques.
+
+	* etc/make_method
+	Also made changes based on Perl::Critic.                        
+
+	* MANIFEST
+	* lib/RPC/XML/Parser.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	Expanded definition of the interface to include push-parsing    
+	methods. Documented these and added stubs to                    
+	RPC::XML::Parser::XMLParser that throw exceptions when called   
+	by a non-push-parser instance. Reflected changes to test suite  
+	in MANIFEST.                                                    
+
+	* lib/RPC/XML/Parser/XMLParser.pm
+	Slight tweak to make this 5.6.1-compatible.                     
+
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	RT #42736: Support user-adjustment of server-based faults, and  
+	normalize the existing faults.                                  
+
+	* lib/RPC/XML/Procedure.pm
+	Fix encoding of return values from call() when the method       
+	called is of type Function (and thus has no strict signatures). 
+
+	* lib/RPC/XML.pm
+	* t/13_no_deep_recursion.t (added)
+	RT #41063: Re-visit how arrays and structs are smart-encoded    
+	and constructed, so as to avoid cyclical data structure         
+	references.                                                     
 
 0.67	Friday July 10, 2009, 01:30:00 AM -0700
 
@@ -1154,8 +1250,8 @@
 	* *
 	All files are tracked from this point forward.                  
 
-# Generated on Friday July 10, 2009, 01:30:09 AM -0700
-# Using changelog2x/0.10, App::Changelog2x/0.10, XML::LibXML/1.69,             
+# Generated on Thursday September  3, 2009, 10:25:26 AM -0700
+# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/1.69,             
 # XML::LibXSLT/1.68, libxml/2.6.32, libxslt/1.1.24 (with exslt)                
 # XSLT sources:
 #     $Id: changelog2text.xslt 8 2009-01-19 06:46:50Z rjray $
