@@ -5,7 +5,7 @@
 use strict;
 use vars qw($val $obj $class %val_tbl @values);
 
-use Test::More tests => 188;
+use Test::More tests => 189;
 use RPC::XML ':all';
 
 # First, the most basic data-types
@@ -120,9 +120,10 @@ ok(ref $obj, "RPC::XML::base64(pre-encoded), object is referent");
 is($obj->value, q/one reasonable-length string/,
    "RPC::XML::base64(pre-encoded), value check");
 $obj = RPC::XML::base64->new();
-ok(! ref($obj), "RPC::XML::base64(no data), bad value did not yield referent");
-like($RPC::XML::ERROR, qr/::new: Must be called with non-null data/,
-     "RPC::XML::base64(no data), bad value correctly set \$RPC::XML::ERROR");
+isa_ok($obj, 'RPC::XML::base64');
+is($obj->value, '', "Zero-length base64 object value OK");
+is($obj->as_string, '<base64></base64>',
+   "Zero-length base64 object stringifies OK");
 
 # Now we throw some junk at smart_encode()
 @values = smart_encode(__FILE__, 10, 3.14159, '2112',

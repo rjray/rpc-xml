@@ -64,7 +64,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.44';
+$VERSION = '1.45';
 $VERSION = eval $VERSION; ## no critic
 
 # Global error string
@@ -735,14 +735,7 @@ sub new
         # Not a filehandle. Might be a scalar ref, but other than that it's
         # in-memory data.
         $self->{inmem}++;
-        $self->{value} = ref($value) ? $$value : $value;
-        unless (defined $value and length $value)
-        {
-            $class = ref($class) || $class;
-            $RPC::XML::ERROR = "${class}::new: Must be called with non-null " .
-                'data or an open, seekable filehandle';
-            return;
-        }
+        $self->{value} = ref($value) ? $$value : ($value || '');
         # We want in-memory data to always be in the clear, to reduce the tests
         # needed in value(), below.
         if ($self->{encoded})
