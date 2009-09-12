@@ -143,10 +143,25 @@ sub time2iso8601
                 # Skip any that we've already seen
                 next if $seenrefs->{$_}++;
 
-                if (blessed $_ and $_->isa('RPC::XML::datatype'))
+                if (blessed $_)
                 {
-                    # Pass through any that have already been encoded
-                    $type = $_;
+                    if ($_->isa('RPC::XML::datatype'))
+                    {
+                        # Pass through any that have already been encoded
+                        $type = $_;
+                    }
+                    elsif ($_->isa('DateTime'))
+                    {
+                        $type = RPC::XML::datetime_iso8601
+                            ->new($_->clone->set_time_zone('UTC')->iso8601);
+                    }
+                    else
+                    {
+                        # If the user passed in an object that didn't pass one
+                        # of the above tests, we can't do anything with it:
+                        my $type = blessed $_;
+                        die "Un-convertable reference: $type, cannot use";
+                    }
                 }
                 elsif (reftype($_) eq 'HASH')
                 {
@@ -192,13 +207,12 @@ sub time2iso8601
                 {
                     # If the user passed in a reference that didn't pass one
                     # of the above tests, we can't do anything with it:
-                    my $type = blessed $_ || reftype $_;
-                    die "Un-convertable reference/type: $type, cannot use";
+                    my $type = reftype $_;
+                    die "Un-convertable reference: $type, cannot use";
                 }
             }
             # You have to check ints first, because they match the
             # next pattern too
-            # make sure not to encode digits that are larger than i4
             elsif (! $FORCE_STRING_ENCODING and /^[-+]?\d+$/
                    and $_ > $MinBigInt and $_ < $MaxBigInt)
             {
@@ -211,6 +225,27 @@ sub time2iso8601
                    and $_ > $MinDouble and $_ < $MaxDouble)
             {
                 $type = RPC::XML::double->new($_);
+            }
+            # The XMLRPC spec only allows for the incorrect iso8601 format
+            # without dashes, but dashes are part of the standard so we include
+            # them (DateTime->now->iso8601 includes them).
+            elsif (/
+                       ^           # start
+                       \d{4}       # 4 digit year
+                       -?          # "optional" dash
+                       [01]\d      # month
+                       -?          # optional dash
+                       [0123]\d    # day of month
+                       T           # Yes, "T"
+                       [012]\d:    # hours
+                       [012345]\d: # min
+                       [012345]\d  # seconds
+                       (?:\.\d+)?  # optional fractional seconds
+                       Z?          # optional "Z" to indicate UTC
+                       $           # end
+                   /x)
+            {
+                $type = RPC::XML::datetime_iso8601->new($_);
             }
             else
             {
@@ -449,7 +484,35 @@ package RPC::XML::datetime_iso8601;
 use strict;
 use base 'RPC::XML::simple_type';
 
+use Scalar::Util 'reftype';
+
 sub type { 'dateTime.iso8601' };
+
+# Check the value passed in for sanity, and normalize the string representation
+sub new
+{
+    my ($class, $value) = @_;
+
+    $value = $$value if (ref($value) && reftype($value) eq 'SCALAR');
+
+    if ($value =~ /^(\d{4})-?([01]\d)-?([0123]\d)T
+                   ([012]\d):([012345]\d):([012345]\d)(\.\d+)?Z?$/x)
+    {
+        # This is the WRONG way to represent this, but it's the way it is
+        # given in the spec, so assume that other implementations can only
+        # accept this form. Also, this should match the form that time2iso8601
+		# produces.
+        $value = $7 ? "$1$2$3T$4:$5:$6$7Z" : "$1$2$3T$4:$5:$6Z";
+    }
+    else
+    {
+        $RPC::XML::ERROR = "${class}::new: Malformed data ($value) passed " .
+            'as dateTime.iso8601';
+        return;
+    }
+
+    bless \$value, $class;
+}
 
 ###############################################################################
 #

@@ -5,7 +5,7 @@
 use strict;
 use vars qw($val $obj $class %val_tbl @values);
 
-use Test::More tests => 189;
+use Test::More tests => 198;
 use RPC::XML ':all';
 
 # First, the most basic data-types
@@ -97,13 +97,30 @@ ok(! ref $obj, "RPC::XML::boolean, bad value did not yield referent");
 like($RPC::XML::ERROR, qr/::new: Value must be one of/,
    "RPC::XML::boolean, bad value correctly set \$RPC::XML::ERROR");
 
-# The dateTime.iso8601 type shares all code save for type() with the above, so
-# only test that one here
-$obj = RPC::XML::datetime_iso8601->new(time2iso8601(time));
+# The dateTime.iso8601 type
+$val = time2iso8601(time);
+$obj = RPC::XML::datetime_iso8601->new($val);
 is($obj->type, 'dateTime.iso8601',
    "RPC::XML::datetime_iso8601, type identification");
 is(length($obj->as_string), $obj->length,
    "RPC::XML::datetime_iso8601, length() method test");
+is($obj->value, $val, 'RPC::XML::datetime_iso8601, value() method test');
+# Add a fractional part and try again
+chop $val; # Lose the 'Z'
+$val .= '.125Z';
+$obj = RPC::XML::datetime_iso8601->new($val);
+is($obj->type, 'dateTime.iso8601',
+   "RPC::XML::datetime_iso8601, type identification");
+is(length($obj->as_string), $obj->length,
+   "RPC::XML::datetime_iso8601, length() method test");
+is($obj->value, $val, 'RPC::XML::datetime_iso8601, value() method test');
+# Test bad date-data
+substr($val, -5, 5) = ''; # Drop the Z and the fractional
+$val .= '-07:00'; # Add a specification of a time zone that isn't UTC
+$obj = RPC::XML::datetime_iso8601->new();
+ok(! ref $obj, "RPC::XML::datetime_iso8601, bad value did not yield referent");
+like($RPC::XML::ERROR, qr/::new: Malformed data.*passed/,
+     'RPC::XML::datetime_iso8601, bad value correctly set \$RPC::XML::ERROR');
 
 # Test the base64 type
 require MIME::Base64;
@@ -127,8 +144,9 @@ is($obj->as_string, '<base64></base64>',
 
 # Now we throw some junk at smart_encode()
 @values = smart_encode(__FILE__, 10, 3.14159, '2112',
-                       RPC::XML::string->new('2112'), [], {}, \"foo", \2,
-                       \1.414, );
+                       RPC::XML::string->new('2112'), [], {}, \ "foo", \2,
+                       \1.414, '2009-09-03T10:25:00', '20090903T10:25:00Z',
+                       '2009-09-03T10:25:00.125');
 
 is($values[0]->type, 'string', "smart_encode, string<1>");
 is($values[1]->type, 'int', "smart_encode, int<1>");
@@ -142,6 +160,9 @@ is($values[6]->type, 'struct', "smart_encode, struct");
 is($values[7]->type, 'string', "smart_encode, string<3>");
 is($values[8]->type, 'int', "smart_encode, int<3>");
 is($values[9]->type, 'double', "smart_encode, double<2>");
+is($values[10]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601');
+is($values[11]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601<2>');
+is($values[11]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601<3>');
 
 # Check that smart_encode gives up on un-convertable references
 {
