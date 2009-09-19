@@ -69,6 +69,8 @@ for (@allhosts) { s/\./\\./g }
 # Per RT 27778: For some reason gethostbyname('localhost') does not return
 # "localhost" on win32
 push @allhosts, 'localhost' if ($^O eq 'MSWin32' || $^O eq 'cygwin');
+push @allhosts, 'localhost\.localdomain'
+    unless (grep(/localdomain/, @allhosts));
 my $allhosts = join('|', @allhosts);
 like($srv->url, qr{http://($allhosts):$port},
    'RPC::XML::Server::url method (set)'); # This should be non-null this time
