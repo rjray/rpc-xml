@@ -495,19 +495,20 @@ sub new
 
     $value = $$value if (ref($value) && reftype($value) eq 'SCALAR');
 
-    if ($value =~ /^(\d{4})-?([01]\d)-?([0123]\d)T
-                   ([012]\d):([012345]\d):([012345]\d)(\.\d+)?Z?$/x)
+    if ($value && $value =~ /^(\d{4})-?([01]\d)-?([0123]\d)T
+                             ([012]\d):([012345]\d):([012345]\d)(\.\d+)?Z?$/x)
     {
         # This is the WRONG way to represent this, but it's the way it is
         # given in the spec, so assume that other implementations can only
         # accept this form. Also, this should match the form that time2iso8601
-		# produces.
+        # produces.
         $value = $7 ? "$1$2$3T$4:$5:$6$7Z" : "$1$2$3T$4:$5:$6Z";
     }
     else
     {
-        $RPC::XML::ERROR = "${class}::new: Malformed data ($value) passed " .
-            'as dateTime.iso8601';
+        $RPC::XML::ERROR = "${class}::new: Malformed data (" .
+            (defined($value) ? $value : '<undef>') .
+            ') passed as dateTime.iso8601';
         return;
     }
 
