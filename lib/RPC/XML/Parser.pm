@@ -29,7 +29,7 @@ use warnings;
 use vars qw($VERSION);
 use subs qw(new parse);
 
-$VERSION = '1.20';
+$VERSION = '1.21';
 $VERSION = eval $VERSION; ## no critic
 
 ###############################################################################
@@ -38,11 +38,27 @@ $VERSION = eval $VERSION; ## no critic
 #
 #   Description:    Constructor. Dies, because this should be overridden.
 #
+#                   Per RT#50013: Now, when called specifically for this class,
+#                   quietly loads RPC::XML::ParserFactory and instantiates a
+#                   parser based on XML::Parser.
+#
 #   Returns:        undef
 #
 ###############################################################################
 sub new
 {
+    my $class = shift;
+
+    if ($class eq 'RPC::XML::Parser')
+    {
+        # For sake of not breaking backwards-compatibility with projects like
+        # Catalyst::Plugin::Server::XMLRPC, in this case quietly load the
+        # RPC::XML::ParserFactory and return a factory-generated instance:
+        require RPC::XML::ParserFactory;
+
+        return RPC::XML::ParserFactory->new(class => 'xmlparser', @_);
+    }
+
     die __PACKAGE__ . '::new: This method should have been overridden by ' .
         "the $_[0] class";
 }
@@ -60,7 +76,7 @@ sub new
 ###############################################################################
 sub parse
 {
-	my $class = ref($_[0]) || $_[0];
+    my $class = ref($_[0]) || $_[0];
 
     die __PACKAGE__ . '::parse: This method should have been overridden by ' .
         "the $class class";
@@ -80,7 +96,7 @@ sub parse
 ###############################################################################
 sub parse_more
 {
-	my $class = ref($_[0]) || $_[0];
+    my $class = ref($_[0]) || $_[0];
 
     die __PACKAGE__ . '::parse_more: This method should have been overridden' .
         " by the $class class";
@@ -100,7 +116,7 @@ sub parse_more
 ###############################################################################
 sub parse_done
 {
-	my $class = ref($_[0]) || $_[0];
+    my $class = ref($_[0]) || $_[0];
 
     die __PACKAGE__ . '::parse_done: This method should have been overridden' .
         " by the $class class";
@@ -170,6 +186,12 @@ relevant if B<base64_to_fh> is set.
 
 The C<base64*> parameters do not have to be implemented if the user has
 no plans to use the C<to_file> method of the B<RPC::XML::base64> data-class.
+
+As a special-case, to preserve backwards compatibility with pre-0.69 versions
+of this package, new() has special behavior when specifically called for the
+package B<RPC::XML::Parser>. When called for this package, the constructor
+quietly loads B<RPC::XML::ParserFactory> and uses it to construct and return
+an instance of a parser based on B<XML::Parser>.
 
 =item parse [ STRING | STREAM ]
 

@@ -1458,7 +1458,7 @@ RPC::XML - A set of classes for core data, message and XML handling
     $req = RPC::XML::request->new('fetch_prime_factors',
                                   RPC::XML::int->new(985120528));
     ...
-    $resp = RPC::XML::Parser->new()->parse(STREAM);
+    $resp = RPC::XML::ParserFactory->new()->parse(STREAM);
     if (ref($resp))
     {
         return $resp->value->value;
