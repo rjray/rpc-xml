@@ -1066,10 +1066,9 @@ sub call
     # transform Perl-level error/failure into such an object
     if ($@)
     {
-        return (blessed $@ and $@->isa('RPC::XML::fault'))
-            ? $@
-            : $srv->server_fault->(
-            execerror => "Method $name returned error: $@");
+        return (blessed $@ and $@->isa('RPC::XML::fault')) ?
+            $@ : $srv->server_fault(execerror =>
+                                    "Method $name returned error: $@");
     }
 
     $self->{called}++ unless $noinc;
@@ -1085,8 +1084,8 @@ sub call
         }
         else
         {
-			# We checked that this was valid earlier, so no need for further
-			# tests here.
+            # We checked that this was valid earlier, so no need for further
+            # tests here.
             $response = "RPC::XML::$resptype"->new($response);
         }
     }
