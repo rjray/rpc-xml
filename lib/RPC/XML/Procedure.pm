@@ -53,7 +53,7 @@ use Scalar::Util 'blessed';
 
 use RPC::XML 'smart_encode';
 
-$VERSION = '1.19';
+$VERSION = '1.20';
 $VERSION = eval $VERSION;    ## no critic
 
 ###############################################################################
