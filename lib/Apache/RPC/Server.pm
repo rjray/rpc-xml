@@ -611,8 +611,8 @@ B<RPC::XML::Server>. Three parameters are of concern to this class:
 
 The value associated with this key is a reference to an B<Apache> request
 object. If this is not passed, then it is assumed that this is being called in
-the start-up phase of the server and the value returned from C<Apache->server>
-(see L<Apache>) is used.
+the start-up phase of the server and the value returned from
+C<< Apache->server >> (see L<Apache>) is used.
 
 =item server_id
 
