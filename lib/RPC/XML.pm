@@ -82,14 +82,15 @@ sub RPC_BASE64           ($;$) { RPC::XML::base64->new(@_) }
 sub RPC_NIL              ()    { RPC::XML::nil->new() }
 
 # This is a dead-simple ISO8601-from-UNIX-time stringifier. Always expresses
-# time in UTC.
+# time in UTC. The format isn't strictly ISO8601, though, as the XML-RPC spec
+# fucked it up.
 sub time2iso8601
 {
     my $time = shift || time;
     my $zone = shift || '';
 
     my @time = gmtime($time);
-    $time = sprintf("%4d%02d%02dT%02d:%02d:%02dZ",
+    $time = sprintf("%4d-%02d-%02dT%02d:%02d:%02dZ",
                     $time[5] + 1900, $time[4] + 1, @time[3, 2, 1, 0]);
     if ($zone)
     {
@@ -496,13 +497,15 @@ sub new
     $value = $$value if (ref($value) && reftype($value) eq 'SCALAR');
 
     if ($value && $value =~ /^(\d{4})-?([01]\d)-?([0123]\d)T
-                             ([012]\d):([012345]\d):([012345]\d)(\.\d+)?Z?$/x)
+                             ([012]\d):([012345]\d):([012345]\d)(\.\d+)?
+							 (Z|[-+]\d\d:\d\d)?$/x)
     {
         # This is the WRONG way to represent this, but it's the way it is
         # given in the spec, so assume that other implementations can only
         # accept this form. Also, this should match the form that time2iso8601
         # produces.
-        $value = $7 ? "$1$2$3T$4:$5:$6$7Z" : "$1$2$3T$4:$5:$6Z";
+        $value = $7 ? "$1-$2-$3T$4:$5:$6$7" : "$1-$2-$3T$4:$5:$6";
+		$value .= $8 if $8;
     }
     else
     {
