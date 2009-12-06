@@ -292,7 +292,7 @@ the GNU LGPL 2.1 (L<http://www.opensource.org/licenses/lgpl-2.1.php>).
 =head1 CREDITS
 
 The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
-See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
+See L<http://www.xmlrpc.com> for more information about the B<XML-RPC>
 specification.
 
 =head1 SEE ALSO
