@@ -171,13 +171,13 @@ a number of implementation classes.
 =head1 IMPORT-TIME ARGUMENTS
 
 You can specify a particular underlying parser class to use, if you do not
-want to allow B<RPC::XML::Parser> to use the default class. This is done with
+want B<RPC::XML::ParserFactory> to use the default class. This is done with
 the C<class> keyword:
 
-    use RPC::XML::Parser (class => 'XML::Parser');
+    use RPC::XML::ParserFactory (class => 'XML::Parser');
 
 The value may be the name for any of the built-in classes, or it may be the
-name of a class that is a sub-class of this package (and can thus be
+name of a class that inherits from B<RPC::XML::Parser> (and can thus be
 "manufactured" by the factory). The value is saved and becomes the default
 class for any calls to B<new> that do not explicitly name a class to use.
 
