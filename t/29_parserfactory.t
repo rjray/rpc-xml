@@ -15,12 +15,13 @@ use RPC::XML ':all';
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, '');
 
-# Need read_config() from util.pl:
-require File::Spec->catfile($dir, 'util.pl');
+%parsers = (
+	'XML::Parser' => 1,
+);
 
-$config = read_config(File::Spec->catfile($dir, 'test.conf'));
-# What parsers did we detect?
-%parsers = map { $_ => 1 } @{$config->{parsers}};
+# See if we should run tests dependent on XML::LibXML
+eval "use XML::LibXML;";
+$parsers{'XML::LibXML'} = 1 unless $@;
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -85,26 +86,19 @@ EndOfEval1
 # parser isn't in the config:
 for my $parser (qw(XML::LibXML XML::SAX))
 {
-    SKIP:
+	(my $factory_class = $parser) =~ s/:://g;
+	$factory_class = "RPC::XML::Parser::$factory_class";
+  SKIP:
     {
         skip "$parser not detected, tests skipped", 6
-          unless $parsers{$parser};
+			unless $parsers{$parser};
 
         for my $alias (@{$aliases{$parser}})
         {
-            $ns++;
+			$p = RPC::XML::ParserFactory->new(class => $alias);
 
-            eval <<"EndOfEval1";
-{
-    package $ns;
-    use RPC::XML::ParserFactory (class => $alias);
-
-    \$main::p = RPC::XML::ParserFactory->new();
-}
-EndOfEval1
-
-            isa_ok($p, 'RPC::XML::Parser',            "Alias $alias: \$p");
-            isa_ok($p, 'RPC::XML::Parser::XMLParser', "Alias $alias: \$p");
+            isa_ok($p, 'RPC::XML::Parser', "Alias $alias: \$p");
+            isa_ok($p, $factory_class,     "Alias $alias: \$p");
         }
     }
 }
