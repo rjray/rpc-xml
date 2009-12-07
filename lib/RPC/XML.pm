@@ -1588,6 +1588,17 @@ The classes themselves are:
 
 =over 4
 
+=item RPC::XML::nil
+
+This represents the "nil" data-type, the XML-RPC equivalent of C<void> in
+C or Java terms. It is only usable as a return type, and signals that a
+function (or method) returns no value.
+
+In order to use this, you must set the global variable C<$ALLOW_NIL> (or
+C<$RPC::XML::ALLOW_NIL> if you don't import it) to a non-false value. If
+this variable is set to a false value, the parser will not recognize a
+C<nil> tag.
+
 =item RPC::XML::int
 
 Creates an integer value. Constructor expects the integer value as an
@@ -1838,18 +1849,6 @@ non-false value to allow use of nil values. Data objects that are C<nil>
 are represented as B<undef> by Perl. See L</"The nil Datatype">.
 
 =back
-
-=head1 EXTENSIONS TO XML-RPC
-
-Starting with release 0.64 of this package, some small extensions to the
-core B<XML-RPC> standard have been supported. These are summarized here,
-with additional caveats as appropriate.
-
-=head2 XML Document Encoding
-
-=head2 The i8 Datatype
-
-=head2 The nil Datatype
 
 =head1 CAVEATS
 
