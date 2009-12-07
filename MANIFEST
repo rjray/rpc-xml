@@ -23,7 +23,10 @@ lib/RPC/XML.pm                 # Base data-type manipuation, etc.
 lib/RPC/XML/Client.pm          # Basic client class
 lib/RPC/XML/Function.pm        # Reference client implementation
 lib/RPC/XML/Method.pm          # Class encapsulation of RPC server methods
-lib/RPC/XML/Parser.pm          # Parser class for client and server
+lib/RPC/XML/Parser.pm          # Parser base class
+lib/RPC/XML/Parser/XMLParser.pm # Parser implementation class (XML::Parser)
+lib/RPC/XML/Parser/XMLLibXML.pm # Parser implementation class (XML::LibXML)
+lib/RPC/XML/ParserFactory.pm   # Parser factory-class
 lib/RPC/XML/Procedure.pm       # Class encapsulation of RPC procedures
 lib/RPC/XML/Server.pm          # Basic server class
 methods/identity.base          # Everything under method/ is template for the
@@ -55,10 +58,12 @@ t/11_base64_fh.t
 t/12_nil.t
 t/15_serialize.t
 t/20_xml_parser.t
+t/21_xml_libxml.t
 t/29_parserfactory.t
 t/30_method.t
 t/35_namespaces.t
 t/40_server.t
+t/40_server_xmllibxml.t
 t/41_server_hang.t
 t/50_client.t
 t/60_net_server.t

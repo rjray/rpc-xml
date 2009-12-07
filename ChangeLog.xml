@@ -15,6 +15,96 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2009-12-06T22:00:00-07:00" version="0.70" sc:tag="0.70">
+    <change git:commit="8e62c642a888608cf60fc190abcb60a49c061d73">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="t/10_data.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=49406">RT #49406</xhtml:a>:
+        Make Base64 data-type allow zero-length data.
+      </description>
+    </change>
+    <change git:commit="22d750832ab8dacb9ee354553f0e944d47270845">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="t/10_data.t" />
+      </fileset>
+      <description>
+        Hand-applied a patch (most likely from Bill Moseley) to extend the
+        construction of dateTime.iso8601 data-types.
+      </description>
+    </change>
+    <change git:commit="8eb6f33ae986581088bda6dd44dc734fee4ff580">
+      <file path="t/40_server.t" />
+      <description>
+        Fixed another corner-case for the url() test.
+      </description>
+    </change>
+    <change git:commit="4ffb86c1ec8b505c8a45b6e0c0c7ac442aaf54c6">
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Fixed a case from previous work that caused "undef" warnings.
+      </description>
+    </change>
+    <change git:commit="80e32c55ef781ed1615f47aa413464aeeadcf023">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="t/28_parser_bugs_50013.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=50013">RT #50013</xhtml:a>:
+        Restore backwards-compatibility for projects that use RPC::XML::Parser
+        directly.
+      </description>
+    </change>
+    <change git:commit="2660dfe40d48647e0be328a44f498f7173a65f19">
+      <file path="lib/RPC/XML/Procedure.pm" />
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=50143">RT #50143</xhtml:a>:
+        Incorrectly called server_fault() as if it were a coderef.
+      </description>
+    </change>
+    <change git:commit="493632a55258a0aafca4a93c2d9459dd79bdf09a">
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Applied patch from Frank Wiegand to fix a POD problem.
+      </description>
+    </change>
+    <change git:commit="85d78349d66e0a44f403fdb71a9094f1d558499d">
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Some additional regexp issues on dateTime.iso8601, to handle
+        backwards-compatibility.
+      </description>
+    </change>
+    <change git:commit="0ae7cd67879c2fd0500f144f259461aefb819639">
+      <file path="lib/RPC/XML/ParserFactory.pm" />
+      <description>
+        Fixed some minor doc errors.
+      </description>
+    </change>
+    <change git:commit="b8b66741f0e453430467dba7f5552c2ca79bb109">
+      <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+      <description>
+        Moved the 'require' of some libraries to the point where they are
+        first needed, to delay loading until/unless necessary.
+      </description>
+    </change>
+    <change git:commit="6f94c6b5fc68d41ce0872c594ce41a13c833ad48">
+      <fileset>
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" action="ADD" />
+        <file path="t/21_xml_libxml.t" action="ADD" />
+        <file path="t/29_parserfactory.t" />
+        <file path="t/40_server_xmllibxml.t" action="ADD" />
+      </fileset>
+      <description>
+        Implement support for XML::LibXML in the parser-factory.
+      </description>
+    </change>
+  </release>
   <release date="2009-09-03T10:25:00-07:00" version="0.69" sc:tag="0.69">
     <change git:commit="da64377d20640d347436c856c0fbc59c09c96ecd">
       <fileset>

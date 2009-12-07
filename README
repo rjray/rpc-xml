@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.69
+Version: 0.70
 
 WHAT IS IT
 
@@ -66,96 +66,47 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* t/00_load.t
-* t/01_pod.t
-* t/02_pod_coverage.t
+* lib/RPC/XML.pm
 * t/10_data.t
-* t/11_base64_fh.t
-* t/12_nil.t
-* t/15_serialize.t
-* t/20_parser.t
-* t/50_client.t
-Minor clean-up of old CVS/SVN keyword references.
+RT #49406: Make Base64 data-type allow zero-length data.
 
-* lib/RPC/XML/Client.pm
+* lib/RPC/XML.pm
+* t/10_data.t
+Hand-applied a patch (most likely from Bill Moseley) to extend
+the construction of dateTime.iso8601 data-types.
+
+* t/40_server.t
+Fixed another corner-case for the url() test.
+
+* lib/RPC/XML.pm
+Fixed a case from previous work that caused "undef" warnings.
+
+* lib/RPC/XML.pm
 * lib/RPC/XML/Parser.pm
-* lib/RPC/XML/Parser/XMLParser.pm (added)
-* lib/RPC/XML/ParserFactory.pm (added)
-* lib/RPC/XML/Server.pm
-* t/20_parser.t (deleted)
-* t/20_xml_parser.t (added)
-* t/29_parserfactory.t (added)
-* t/40_server.t
-* t/util.pl
-Converted parsing to be from a specific class to a
-parser-factory style. This included renaming the existing
-parser class and shuffling tests around.
+* t/28_parser_bugs_50013.t
+RT #50013: Restore backwards-compatibility for projects that
+use RPC::XML::Parser directly.
 
-* t/70_compression_detect.t
-Cleaner approach to scrubbing symbol tables.
-
-* t/00_load.t
-* t/01_pod.t
-* t/02_pod_coverage.t
-* t/03_meta.t (added)
-* t/04_minimumversion.t (added)
-* t/05_critic.t (added)
-New tests, and developer-specific tests changed to only run in
-my copy.
-
-* lib/RPC/XML/Client.pm
-* lib/RPC/XML/Parser/XMLParser.pm
-* lib/RPC/XML/Server.pm
-* t/11_base64_fh.t
-* t/15_serialize.t
-* t/20_xml_parser.t
-* t/30_method.t
-* t/35_namespaces.t
-* t/40_server.t
-* t/41_server_hang.t
-* t/50_client.t
-RT #47806: One more patch for Windows compatibility with
-temp-files.
+* lib/RPC/XML/Procedure.pm
+RT #50143: Incorrectly called server_fault() as if it were a
+coderef.
 
 * lib/Apache/RPC/Server.pm
-* lib/Apache/RPC/Status.pm
+Applied patch from Frank Wiegand to fix a POD problem.
+
 * lib/RPC/XML.pm
-* lib/RPC/XML/Client.pm
-* lib/RPC/XML/Function.pm
-* lib/RPC/XML/Method.pm
-* lib/RPC/XML/Parser.pm
-* lib/RPC/XML/Parser/XMLParser.pm
+Some additional regexp issues on dateTime.iso8601, to handle
+backwards-compatibility.
+
 * lib/RPC/XML/ParserFactory.pm
-* lib/RPC/XML/Procedure.pm
-* lib/RPC/XML/Server.pm
-Fixes based on Perl::Critic and other best-practices techniques.
-
-* etc/make_method
-Also made changes based on Perl::Critic.
-
-* MANIFEST
-* lib/RPC/XML/Parser.pm
-* lib/RPC/XML/Parser/XMLParser.pm
-Expanded definition of the interface to include push-parsing
-methods. Documented these and added stubs to
-RPC::XML::Parser::XMLParser that throw exceptions when called
-by a non-push-parser instance. Reflected changes to test suite
-in MANIFEST.
+Fixed some minor doc errors.
 
 * lib/RPC/XML/Parser/XMLParser.pm
-Slight tweak to make this 5.6.1-compatible.
+Moved the 'require' of some libraries to the point where they
+are first needed, to delay loading until/unless necessary.
 
-* lib/RPC/XML/Procedure.pm
-* lib/RPC/XML/Server.pm
-RT #42736: Support user-adjustment of server-based faults, and
-normalize the existing faults.
-
-* lib/RPC/XML/Procedure.pm
-Fix encoding of return values from call() when the method
-called is of type Function (and thus has no strict signatures).
-
-* lib/RPC/XML.pm
-* t/13_no_deep_recursion.t (added)
-RT #41063: Re-visit how arrays and structs are smart-encoded
-and constructed, so as to avoid cyclical data structure
-references.
+* lib/RPC/XML/Parser/XMLLibXML.pm (added)
+* t/21_xml_libxml.t (added)
+* t/29_parserfactory.t
+* t/40_server_xmllibxml.t (added)
+Implement support for XML::LibXML in the parser-factory.

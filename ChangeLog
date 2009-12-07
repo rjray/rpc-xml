@@ -9,6 +9,53 @@
 		allowing choice of character-set encodings for  
 		XML messages.                                   
 
+0.70	Sunday December  6, 2009, 10:00:00 PM -0700
+
+	* lib/RPC/XML.pm
+	* t/10_data.t
+	RT #49406: Make Base64 data-type allow zero-length data.        
+
+	* lib/RPC/XML.pm
+	* t/10_data.t
+	Hand-applied a patch (most likely from Bill Moseley) to extend  
+	the construction of dateTime.iso8601 data-types.                
+
+	* t/40_server.t
+	Fixed another corner-case for the url() test.                   
+
+	* lib/RPC/XML.pm
+	Fixed a case from previous work that caused "undef" warnings.   
+
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Parser.pm
+	* t/28_parser_bugs_50013.t
+	RT #50013: Restore backwards-compatibility for projects that    
+	use RPC::XML::Parser directly.                                  
+
+	* lib/RPC/XML/Procedure.pm
+	RT #50143: Incorrectly called server_fault() as if it were a    
+	coderef.                                                        
+
+	* lib/Apache/RPC/Server.pm
+	Applied patch from Frank Wiegand to fix a POD problem.          
+
+	* lib/RPC/XML.pm
+	Some additional regexp issues on dateTime.iso8601, to handle    
+	backwards-compatibility.                                        
+
+	* lib/RPC/XML/ParserFactory.pm
+	Fixed some minor doc errors.                                    
+
+	* lib/RPC/XML/Parser/XMLParser.pm
+	Moved the 'require' of some libraries to the point where they   
+	are first needed, to delay loading until/unless necessary.      
+
+	* lib/RPC/XML/Parser/XMLLibXML.pm (added)
+	* t/21_xml_libxml.t (added)
+	* t/29_parserfactory.t
+	* t/40_server_xmllibxml.t (added)
+	Implement support for XML::LibXML in the parser-factory.        
+
 0.69	Thursday September  3, 2009, 10:25:00 AM -0700
 
 	* t/00_load.t
@@ -1250,9 +1297,9 @@
 	* *
 	All files are tracked from this point forward.                  
 
-# Generated on Thursday September  3, 2009, 10:25:26 AM -0700
-# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/1.69,             
-# XML::LibXSLT/1.68, libxml/2.6.32, libxslt/1.1.24 (with exslt)                
+# Generated on Sunday December  6, 2009, 10:00:42 PM -0800
+# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/1.70,             
+# XML::LibXSLT/1.70, libxml/2.6.32, libxslt/1.1.24 (with exslt)                
 # XSLT sources:
 #     $Id: changelog2text.xslt 8 2009-01-19 06:46:50Z rjray $
 #     $Id: common-text.xslt 8 2009-01-19 06:46:50Z rjray $
