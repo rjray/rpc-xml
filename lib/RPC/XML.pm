@@ -1888,7 +1888,7 @@ L<http://search.cpan.org/dist/RPC-XML>
 
 =item * Source code on GitHub
 
-L<http://github.com/rjray/rpc-xml/tree/master>
+L<http://github.com/rjray/rpc-xml>
 
 =back
 
