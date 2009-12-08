@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.70
+Version: 0.71
 
 WHAT IS IT
 
@@ -66,47 +66,27 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* lib/RPC/XML.pm
-* t/10_data.t
-RT #49406: Make Base64 data-type allow zero-length data.
+* MANIFEST
+* t/01_pod.t (deleted)
+* t/02_pod_coverage.t (deleted)
+* t/03_meta.t (deleted)
+* t/04_minimumversion.t (deleted)
+* t/05_critic.t (deleted)
+* xt/01_pod.t (added)
+* xt/02_pod_coverage.t (added)
+* xt/03_meta.t (added)
+* xt/04_minimumversion.t (added)
+* xt/05_critic.t (added)
+Moved author-only tests to xt/, updated MANIFEST.
 
-* lib/RPC/XML.pm
-* t/10_data.t
-Hand-applied a patch (most likely from Bill Moseley) to extend
-the construction of dateTime.iso8601 data-types.
+* MANIFEST
+Add test suite 28_parser_bugs_50013.t, which was omitted from
+last release.
 
-* t/40_server.t
-Fixed another corner-case for the url() test.
-
-* lib/RPC/XML.pm
-Fixed a case from previous work that caused "undef" warnings.
-
-* lib/RPC/XML.pm
-* lib/RPC/XML/Parser.pm
-* t/28_parser_bugs_50013.t
-RT #50013: Restore backwards-compatibility for projects that
-use RPC::XML::Parser directly.
-
-* lib/RPC/XML/Procedure.pm
-RT #50143: Incorrectly called server_fault() as if it were a
-coderef.
-
-* lib/Apache/RPC/Server.pm
-Applied patch from Frank Wiegand to fix a POD problem.
-
-* lib/RPC/XML.pm
-Some additional regexp issues on dateTime.iso8601, to handle
-backwards-compatibility.
-
-* lib/RPC/XML/ParserFactory.pm
-Fixed some minor doc errors.
-
-* lib/RPC/XML/Parser/XMLParser.pm
-Moved the 'require' of some libraries to the point where they
-are first needed, to delay loading until/unless necessary.
-
-* lib/RPC/XML/Parser/XMLLibXML.pm (added)
-* t/21_xml_libxml.t (added)
-* t/29_parserfactory.t
-* t/40_server_xmllibxml.t (added)
-Implement support for XML::LibXML in the parser-factory.
+* xt/01_pod.t
+* xt/02_pod_coverage.t
+* xt/03_meta.t
+* xt/04_minimumversion.t
+* xt/05_critic.t
+Re-engineered the author-only/release tests, since they're no
+longer in the t/ directory and thus should not interfere.

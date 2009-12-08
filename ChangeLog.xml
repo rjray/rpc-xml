@@ -15,6 +15,46 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2009-12-07T20:00:00-07:00" version="0.71" sc:tag="0.71">
+    <change git:commit="8cc9534a7da336de8c646ff1bc473ce531f43cd6">
+      <fileset>
+        <file path="MANIFEST" />
+        <file path="t/01_pod.t" action="DELETE" />
+        <file path="t/02_pod_coverage.t" action="DELETE" />
+        <file path="t/03_meta.t" action="DELETE" />
+        <file path="t/04_minimumversion.t" action="DELETE" />
+        <file path="t/05_critic.t" action="DELETE" />
+        <file path="xt/01_pod.t" action="ADD" />
+        <file path="xt/02_pod_coverage.t" action="ADD" />
+        <file path="xt/03_meta.t" action="ADD" />
+        <file path="xt/04_minimumversion.t" action="ADD" />
+        <file path="xt/05_critic.t" action="ADD" />
+      </fileset>
+      <description>
+        Moved author-only tests to xt/, updated MANIFEST.
+      </description>
+    </change>
+    <change git:commit="eb38e38dafe8491185a8638f4842fa419022b5c4">
+      <file path="MANIFEST" />
+      <description>
+        Add test suite 28_parser_bugs_50013.t, which was omitted from last
+        release.
+      </description>
+    </change>
+    <change git:commit="9d273720c0163349c9822a1f79b676d8227bdd7c">
+      <fileset>
+        <file path="xt/01_pod.t" />
+        <file path="xt/02_pod_coverage.t" />
+        <file path="xt/03_meta.t" />
+        <file path="xt/04_minimumversion.t" />
+        <file path="xt/05_critic.t" />
+      </fileset>
+      <description>
+        Re-engineered the author-only/release tests, since they're no longer in
+        the t/ directory and thus should not interfere.
+      </description>
+    </change>
+  </release>
   <release date="2009-12-06T22:00:00-07:00" version="0.70" sc:tag="0.70">
     <change git:commit="8e62c642a888608cf60fc190abcb60a49c061d73">
       <fileset>
