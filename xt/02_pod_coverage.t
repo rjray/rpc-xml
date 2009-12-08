@@ -1,23 +1,12 @@
 #!/usr/bin/perl
 
 use Test::More;
+use Test::Pod::Coverage;
 
-unless ( $ENV{AUTOMATED_TESTING} or $ENV{RELEASE_TESTING} ) {
-    plan( skip_all => "Author tests not required for installation" );
-}
+plan skip_all => "Author tests not required for installation"
+    unless ($ENV{AUTHOR_TESTING} or $ENV{RELEASE_TESTING});
 
-my @MODULES = qw(Test::Pod::Coverage);
-# Load the testing modules
-foreach my $MODULE ( @MODULES ) {
-    eval "use $MODULE";
-    if ( $@ ) {
-         $ENV{RELEASE_TESTING}
-             ? die( "Failed to load required release-testing module $MODULE" )
-             : plan( skip_all => "$MODULE not available for testing" );
-    }
-}
-
-plan tests => 11;
+plan tests => 12;
 
 pod_coverage_ok('Apache::RPC::Server' => { also_private => [ 'debug' ] } =>
                 'Apache::RPC::Server');
@@ -38,6 +27,9 @@ pod_coverage_ok('RPC::XML::Parser::XMLParser' =>
                   [ qr/^(tag|message)_/,
                     qw(char_data error extern_ent final stack_error) ] } =>
                 'RPC::XML::Parser::XMLParser');
+pod_coverage_ok('RPC::XML::Parser::XMLLibXML' =>
+                { also_private => [ qr/^dom_/ ] } =>
+                'RPC::XML::Parser::XMLLibXML');
 pod_coverage_ok('RPC::XML::Procedure' =>
                 { also_private => [ qw(load_XPL_file make_sig_table) ] } =>
                 'RPC::XML::Procedure');
