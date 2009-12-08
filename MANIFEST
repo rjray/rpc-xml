@@ -57,6 +57,7 @@ t/12_nil.t
 t/15_serialize.t
 t/20_xml_parser.t
 t/21_xml_libxml.t
+t/28_parser_bugs_50013.t
 t/29_parserfactory.t
 t/30_method.t
 t/35_namespaces.t
