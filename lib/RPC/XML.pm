@@ -64,7 +64,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.45';
+$VERSION = '1.46';
 $VERSION = eval $VERSION; ## no critic
 
 # Global error string
