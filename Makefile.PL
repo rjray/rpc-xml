@@ -31,6 +31,21 @@ if ($LWP::VERSION and $LWP::VERSION < 5.801)
 END
 }
 
+eval "require XML::LibXML;";
+if ($@)
+{
+    print STDERR <<END;
+@@@@@
+        XML::LibXML not found
+
+        You may ignore the warnings about XML::LibXML not being present, if
+        you plan only to use the XML::Parser-based parsing engine. The use
+        of XML::LibXML is completely optional.
+@@@@@
+
+END
+}
+
 $CLEAN = 'pod2html-* *.html *.spec *.rpm rpmrc rpmmacro *.log t/*.log ' .
     'META.yml *.ppd ';
 
@@ -68,7 +83,7 @@ find(sub {
 
 WriteMakefile(
     NAME      => 'RPC::XML',
-    VERSION   => '0.71',
+    VERSION   => '0.72',
     AUTHOR    => 'Randy J. Ray',
     ABSTRACT  => 'Data, client and server classes for XML-RPC',
     EXE_FILES => \@scripts,
@@ -79,7 +94,8 @@ WriteMakefile(
         'Scalar::Util' => 1.19,
         'Test::More'   => 0,
         'LWP'          => 5.801,
-        'XML::Parser'  => 2.31
+        'XML::Parser'  => 2.31,
+        'XML::LibXML'  => '1.70',
     },
     dist      => { COMPRESS => 'gzip -9f' },
     clean     => { FILES => $CLEAN },

@@ -7,10 +7,24 @@ use subs qw(start_server find_port);
 use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
             $list $meth @keys %seen $dir $vol);
 
+BEGIN
+{
+	use Test::More;
+
+	eval "use XML::LibXML";
+	if ($@)
+	{
+		plan skip_all => "XML::LibXML not installed";
+	}
+	else
+	{
+		plan tests => 62;
+	}
+}
+
 use Socket;
 use File::Spec;
 
-use Test::More tests => 62;
 use LWP::UserAgent;
 use HTTP::Request;
 use Scalar::Util 'blessed';
