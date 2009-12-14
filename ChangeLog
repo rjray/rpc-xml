@@ -9,6 +9,15 @@
 		allowing choice of character-set encodings for  
 		XML messages.                                   
 
+0.72	Sunday December 13, 2009, 09:45:00 PM -0700
+
+	* Makefile.PL
+	* t/40_server_xmllibxml.t
+	RT #52662: Fix requirement specification for XML::LibXML.       
+
+	* lib/RPC/XML.pm
+	Some more clean-up of the docs, removing a redundant section.   
+
 0.71	Monday December  7, 2009, 08:00:00 PM -0700
 
 	* MANIFEST
@@ -1324,7 +1333,7 @@
 	* *
 	All files are tracked from this point forward.                  
 
-# Generated on Monday December  7, 2009, 07:59:45 PM -0800
+# Generated on Sunday December 13, 2009, 09:42:33 PM -0800
 # Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/1.70,             
 # XML::LibXSLT/1.70, libxml/2.6.32, libxslt/1.1.24 (with exslt)                
 # XSLT sources:

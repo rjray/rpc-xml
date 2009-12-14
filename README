@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.71
+Version: 0.72
 
 WHAT IS IT
 
@@ -66,27 +66,9 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* MANIFEST
-* t/01_pod.t (deleted)
-* t/02_pod_coverage.t (deleted)
-* t/03_meta.t (deleted)
-* t/04_minimumversion.t (deleted)
-* t/05_critic.t (deleted)
-* xt/01_pod.t (added)
-* xt/02_pod_coverage.t (added)
-* xt/03_meta.t (added)
-* xt/04_minimumversion.t (added)
-* xt/05_critic.t (added)
-Moved author-only tests to xt/, updated MANIFEST.
+* Makefile.PL
+* t/40_server_xmllibxml.t
+RT #52662: Fix requirement specification for XML::LibXML.
 
-* MANIFEST
-Add test suite 28_parser_bugs_50013.t, which was omitted from
-last release.
-
-* xt/01_pod.t
-* xt/02_pod_coverage.t
-* xt/03_meta.t
-* xt/04_minimumversion.t
-* xt/05_critic.t
-Re-engineered the author-only/release tests, since they're no
-longer in the t/ directory and thus should not interfere.
+* lib/RPC/XML.pm
+Some more clean-up of the docs, removing a redundant section.

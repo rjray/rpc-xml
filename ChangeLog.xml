@@ -15,6 +15,24 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2009-12-13T21:45:00-07:00" version="0.72" sc:tag="0.72">
+    <change git:commit="afc23bd0c54cc59c79fdf4945cb17818d6caed91">
+      <fileset>
+        <file path="Makefile.PL" />
+        <file path="t/40_server_xmllibxml.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=52662">RT #52662</xhtml:a>:
+        Fix requirement specification for XML::LibXML.
+      </description>
+    </change>
+    <change git:commit="dd5dcb9d7268de1ceb0b68a4e36d66f80610a906">
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Some more clean-up of the docs, removing a redundant section.
+      </description>
+    </change>
+  </release>
   <release date="2009-12-07T20:00:00-07:00" version="0.71" sc:tag="0.71">
     <change git:commit="8cc9534a7da336de8c646ff1bc473ce531f43cd6">
       <fileset>
