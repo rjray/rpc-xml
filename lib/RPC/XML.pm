@@ -64,7 +64,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.46';
+$VERSION = '1.47';
 $VERSION = eval $VERSION; ## no critic
 
 # Global error string
@@ -1588,17 +1588,6 @@ The classes themselves are:
 
 =over 4
 
-=item RPC::XML::nil
-
-This represents the "nil" data-type, the XML-RPC equivalent of C<void> in
-C or Java terms. It is only usable as a return type, and signals that a
-function (or method) returns no value.
-
-In order to use this, you must set the global variable C<$ALLOW_NIL> (or
-C<$RPC::XML::ALLOW_NIL> if you don't import it) to a non-false value. If
-this variable is set to a false value, the parser will not recognize a
-C<nil> tag.
-
 =item RPC::XML::int
 
 Creates an integer value. Constructor expects the integer value as an
@@ -1646,7 +1635,12 @@ should be passed when calling the constructor.
 Note that nil is an extension to B<XML-RPC>, which is not supported by
 all implementations. B<$RPC::XML::ALLOW_NIL> must be set to a non-false
 value before objects of this type can be constructed. See
-L</"The nil Datatype">.
+L</GLOBAL VARIABLES>. If B<$RPC::XML::ALLOW_NIL> is set to a false value,
+the parsers will not recognize the C<< <nil /> >> tag at all.
+
+In practice, this type is only useful to denote the equivalent of a "void"
+return value from a function. The type itself is not interchangeable with
+any of the other data-types.
 
 =item RPC::XML::base64
 
