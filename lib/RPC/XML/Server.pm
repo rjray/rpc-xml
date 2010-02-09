@@ -1675,7 +1675,7 @@ sub process_request
     $peeraddr = $conn->peeraddr;
     $peerport = $conn->peerport;
     $peerhost = $conn->peerhost;
-    while ($req = $conn->get_request('headers only'))
+    while ($conn and $req = $conn->get_request('headers only'))
     {
         if ($req->method eq 'HEAD')
         {
@@ -1923,7 +1923,16 @@ sub process_request
                 $resp->content_length(length $buf);
             }
 
-            $conn->send_response($resp);
+			eval {
+				local $SIG{PIPE} = sub { die "Caught SIGPIPE\n"; };
+				$conn->send_response($resp);
+			};
+			if ($@ and $@ =~ /Caught SIGPIPE/)
+			{
+				# Client disconnected, maybe even before we started sending
+				# our response. Either way, $conn is useless now.
+				undef $conn;
+			}
             undef $resp;
         }
         else
