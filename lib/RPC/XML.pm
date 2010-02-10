@@ -64,7 +64,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.48';
+$VERSION = '1.49';
 $VERSION = eval $VERSION; ## no critic
 
 # Global error string
@@ -144,24 +144,22 @@ sub time2iso8601
                 # Skip any that we've already seen
                 next if $seenrefs->{$_}++;
 
-                if (blessed $_)
+                if (blessed($_) &&
+                    ($_->isa('RPC::XML::datatype') || $_->isa('DateTime')))
                 {
+                    # Only if the reference is a datatype or a DateTime
+                    # instance, do we short-cut here...
+
                     if ($_->isa('RPC::XML::datatype'))
                     {
                         # Pass through any that have already been encoded
                         $type = $_;
                     }
-                    elsif ($_->isa('DateTime'))
-                    {
-                        $type = RPC::XML::datetime_iso8601
-                            ->new($_->clone->set_time_zone('UTC')->iso8601);
-                    }
                     else
                     {
-                        # If the user passed in an object that didn't pass one
-                        # of the above tests, we can't do anything with it:
-                        my $type = blessed $_;
-                        die "Un-convertable reference: $type, cannot use";
+                        # Must be a DateTime object, convert to ISO8601
+                        $type = RPC::XML::datetime_iso8601
+                            ->new($_->clone->set_time_zone('UTC')->iso8601);
                     }
                 }
                 elsif (reftype($_) eq 'HASH')
@@ -498,14 +496,14 @@ sub new
 
     if ($value && $value =~ /^(\d{4})-?([01]\d)-?([0123]\d)T
                              ([012]\d):([012345]\d):([012345]\d)(\.\d+)?
-							 (Z|[-+]\d\d:\d\d)?$/x)
+                             (Z|[-+]\d\d:\d\d)?$/x)
     {
         # This is the WRONG way to represent this, but it's the way it is
         # given in the spec, so assume that other implementations can only
         # accept this form. Also, this should match the form that time2iso8601
         # produces.
         $value = $7 ? "$1-$2-$3T$4:$5:$6$7" : "$1-$2-$3T$4:$5:$6";
-		$value .= $8 if $8;
+        $value .= $8 if $8;
     }
     else
     {
@@ -1513,10 +1511,24 @@ time value, base-64 data, etc., the program must still explicitly encode it.
 However, this routine will hopefully simplify things a little bit for a
 majority of the usage cases.
 
+If an argument is a blessed reference (an object), B<smart_encode> will
+generally treat it as a non-blessed reference of the underlying type. That
+is, objects based on hash references will be encoded as if they are unblessed
+hash references (becoming B<RPC::XML::struct> objects), objects based on
+array references are encoded as array references (B<RPC::XML::array>), etc.
+Only hash references, array references and scalar references are treated in
+this fashion; any other blessed references cannot be down-graded and will
+cause an exception to be thrown.
+
+The exception to this are objects of the B<DateTime> class: this package does
+not utilize B<DateTime> directly, but if you pass in a reference to an
+existing object of that class, it is properly converted to an object of the
+B<RPC::XML::datetime_iso8601> class.
+
 =back
 
-In addition to these three, the following "helper" functions are also
-available. They may be imported explicitly, or via a tag of C<:types>:
+In addition to these, the following "helper" functions are also available. They
+may be imported explicitly, or via a tag of C<:types>:
 
     RPC_BOOLEAN RPC_INT RPC_I4 RPC_I8 RPC_DOUBLE
     RPC_DATETIME_ISO8601 RPC_BASE64 RPC_STRING RPC_NIL
@@ -1525,7 +1537,7 @@ Each creates a data object of the appropriate type from a single value
 (or, in the case of B<RPC_NIL>, from no value). They are merely short-
 hand for calling the constructors of the data classes directly.
 
-All of the above (helpers and the first three functions) may be imported via
+All of the above (helpers and the first two functions) may be imported via
 the tag C<:all>.
 
 =head1 CLASSES
