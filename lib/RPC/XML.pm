@@ -64,7 +64,7 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.47';
+$VERSION = '1.48';
 $VERSION = eval $VERSION; ## no critic
 
 # Global error string
@@ -987,7 +987,7 @@ sub to_file
 
     my ($fh, $buf, $do_close, $count) = (undef, '', 0, 0);
 
-    if (ref $file and retype($file) eq 'GLOB')
+    if (ref $file and reftype($file) eq 'GLOB')
     {
         $fh = $file;
     }
