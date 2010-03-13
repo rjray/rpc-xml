@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -28,12 +28,10 @@ use 5.006001;
 use strict;
 use warnings;
 use vars qw($VERSION);
+use base qw(RPC::XML::Procedure);
 
-require RPC::XML::Procedure;
-
-@RPC::XML::Method::ISA = qw(RPC::XML::Procedure);
-$VERSION = '1.12';
-$VERSION = eval $VERSION; ## no critic
+$VERSION = '1.13';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 1;
 
@@ -96,9 +94,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or
@@ -116,8 +114,4 @@ L<RPC::XML::Procedure>
 
 =head1 AUTHOR
 
-Randy J. Ray <rjray@blackperl.com>
-
-=cut
-
-__END__
+Randy J. Ray C<< <rjray@blackperl.com> >>

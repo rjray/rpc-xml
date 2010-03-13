@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -29,8 +29,8 @@ use warnings;
 use vars qw($VERSION);
 use subs qw(new parse);
 
-$VERSION = '1.21';
-$VERSION = eval $VERSION; ## no critic
+$VERSION = '1.22';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
 #
@@ -47,7 +47,7 @@ $VERSION = eval $VERSION; ## no critic
 ###############################################################################
 sub new
 {
-    my $class = shift;
+    my ($class, @args) = @_;
 
     if ($class eq 'RPC::XML::Parser')
     {
@@ -56,11 +56,11 @@ sub new
         # RPC::XML::ParserFactory and return a factory-generated instance:
         require RPC::XML::ParserFactory;
 
-        return RPC::XML::ParserFactory->new(class => 'xmlparser', @_);
+        return RPC::XML::ParserFactory->new(class => 'xmlparser', @args);
     }
 
     die __PACKAGE__ . '::new: This method should have been overridden by ' .
-        "the $_[0] class";
+        "the $class class\n";
 }
 
 ###############################################################################
@@ -76,10 +76,11 @@ sub new
 ###############################################################################
 sub parse
 {
-    my $class = ref($_[0]) || $_[0];
+    my $class = shift;
+    $class = ref($class) || $class;
 
     die __PACKAGE__ . '::parse: This method should have been overridden by ' .
-        "the $class class";
+        "the $class class\n";
 }
 
 ###############################################################################
@@ -96,10 +97,11 @@ sub parse
 ###############################################################################
 sub parse_more
 {
-    my $class = ref($_[0]) || $_[0];
+    my $class = shift;
+    $class = ref($class) || $class;
 
     die __PACKAGE__ . '::parse_more: This method should have been overridden' .
-        " by the $class class";
+        " by the $class class\n";
 }
 
 ###############################################################################
@@ -116,10 +118,11 @@ sub parse_more
 ###############################################################################
 sub parse_done
 {
-    my $class = ref($_[0]) || $_[0];
+    my $class = shift;
+    $class = ref($class) || $class;
 
     die __PACKAGE__ . '::parse_done: This method should have been overridden' .
-        " by the $class class";
+        " by the $class class\n";
 }
 
 1;
@@ -143,7 +146,7 @@ B<RPC::XML::ParserFactory> class.
 All parser implementations that are intended to be returned by calls to
 RPC::XML::ParserFactory::new() should declare this as their parent class.
 
-=head1 METHODS
+=head1 SUBROUTINES/METHODS
 
 This class provides empty implementations for the following methods. A parser
 implementation must provide definitions for B<both> of these methods. If the
@@ -258,6 +261,12 @@ parse_done() may also signal an error by throwing an exception.
 
 =back
 
+=head1 DIAGNOSTICS
+
+Unless otherwises specified, routines return the object reference itself upon
+a successful operation, and an error string (which is not a blessed reference)
+upon error.
+
 =head1 BUGS
 
 Please report any bugs or feature requests to
@@ -292,9 +301,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or

@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2002-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2002-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -31,16 +31,14 @@ package RPC::XML::Function;
 use 5.006001;
 use strict;
 use warnings;
-use vars qw($VERSION @ISA);
+use vars qw($VERSION);
 use subs qw(new signature make_sig_table clone is_valid match_signature);
+use base qw(RPC::XML::Procedure);
 
 use AutoLoader 'AUTOLOAD';
 
-require RPC::XML::Procedure;
-
-@ISA = qw(RPC::XML::Procedure);
-$VERSION = '1.08';
-$VERSION = eval $VERSION; ## no critic
+$VERSION = '1.09';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
 #
@@ -66,8 +64,7 @@ sub new
     # the super-class new, but this is sufficient for now.
     #
 
-    my $class = shift;
-    my @argz  = @_;
+    my ($class, @argz) = @_;
 
     my $data; # This will be a hashref that eventually gets blessed
 
@@ -80,7 +77,7 @@ sub new
     {
         # 1. A hashref containing all the relevant keys
         $data = {};
-        %$data = %{$argz[0]};
+        %{$data} = %{$argz[0]};
     }
     elsif (@argz == 1)
     {
@@ -97,14 +94,22 @@ sub new
         if (defined $class)
         {
             $data = $class->load_XPL_file($argz[0]);
-            return $data unless ref $data; # load_XPL_path signalled an error
+            if (! ref $data)
+            {
+                # load_XPL_path signalled an error
+                return $data;
+            }
         }
         else
         {
             # Spoofing the "class" argument to load_XPL_file makes me feel
             # even dirtier...
             $data = load_XPL_file(\$class, $argz[0]);
-            return $data unless ref $data; # load_XPL_path signalled an error
+            if (! ref $data)
+            {
+                # load_XPL_path signalled an error
+                return $data;
+            }
             $class = "RPC::XML::$class";
         }
     }
@@ -116,7 +121,7 @@ sub new
         $data = {};
         while (@argz)
         {
-            ($key, $val) = splice(@argz, 0, 2);
+            ($key, $val) = splice @argz, 0, 2;
             if ($key eq 'signature')
             {
                 # Noop
@@ -133,21 +138,24 @@ sub new
         }
     }
 
-    return "${class}::new: Missing required data"
-        unless ($data->{name} and $data->{code});
-    bless $data, $class;
+    if (! ($data->{name} and $data->{code}))
+    {
+        return "${class}::new: Missing required data";
+    }
+
+    return bless $data, $class;
 }
 
 #
 # These two are only implemented here at all, because some of the logic in
 # other places call them
 #
-sub signature      { undef; }
-sub make_sig_table { $_[0]; }
+sub signature      { return; }
+sub make_sig_table { return shift; }
 
 1;
 
-=pod
+__END__
 
 =head1 NAME
 
@@ -176,7 +184,7 @@ value. If an object of this class anticipates that the data may be ambiguous
 it encapsulates should consider encoding the response with the data-classes
 documented in L<RPC::XML> prior to return.
 
-=head1 USAGE
+=head1 SUBROUTINES/METHODS
 
 Only those routines different from B<RPC::XML::Procedure> are listed:
 
@@ -249,9 +257,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or
@@ -269,11 +277,9 @@ L<RPC::XML>, L<RPC::XML::Procedure>, L<make_method>
 
 =head1 AUTHOR
 
-Randy J. Ray <rjray@blackperl.com>
+Randy J. Ray C<< <rjray@blackperl.com> >>
 
 =cut
-
-__END__
 
 #
 # These are the same as RPC::XML::Procedure subs, except that they have no
@@ -297,9 +303,9 @@ sub clone
     my $self = shift;
 
     my $new_self = {};
-    %$new_self = %$self;
+    %{$new_self} = %{$self};
 
-    bless $new_self, ref($self);
+    return bless $new_self, ref $self;
 }
 
 ###############################################################################
@@ -321,7 +327,7 @@ sub is_valid
 {
     my $self = shift;
 
-    return ((ref($self->{code}) eq 'CODE') and $self->{name});
+    return ((ref $self->{code} eq 'CODE') and $self->{name});
 }
 
 ###############################################################################
@@ -340,5 +346,5 @@ sub is_valid
 ###############################################################################
 sub match_signature
 {
-    'scalar';
+    return 'scalar';
 }

@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -37,10 +37,13 @@ package RPC::XML::Parser::XMLParser;
 use 5.006001;
 use strict;
 use warnings;
-use vars qw($VERSION @ISA);
+use vars qw($VERSION);
 use subs qw(error stack_error new message_init message_end tag_start tag_end
             final char_data parse);
 use base 'RPC::XML::Parser';
+
+# I'm not ready to add Readonly to my list of dependencies...
+## no critic (ProhibitConstantPragma)
 
 # These constants are only used by the internal stack machine
 use constant PARSE_ERROR => 0;
@@ -68,9 +71,9 @@ use constant FAULTENT    => 21;
 use constant FAULTSTART  => 22;
 
 # This is to identify valid types
-use constant VALIDTYPES  => { map { $_, 1 } qw(int i4 i8 string double
-                                               boolean dateTime.iso8601
-                                               base64) };
+use constant VALIDTYPES  => { map { ($_, 1) } qw(int i4 i8 string double
+                                                 boolean dateTime.iso8601
+                                                 base64) };
 # This maps XML tags to stack-machine tokens
 use constant TAG2TOKEN   => { methodCall        => METHOD,
                               methodResponse    => RESPONSE,
@@ -95,8 +98,8 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = '1.19';
-$VERSION = eval $VERSION; ## no critic
+$VERSION = '1.20';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
 #
@@ -117,8 +120,7 @@ $VERSION = eval $VERSION; ## no critic
 ###############################################################################
 sub new
 {
-    my $class = shift;
-    my %attrs = @_;
+    my ($class, %attrs) = @_;
 
     my $self = [];
 
@@ -134,7 +136,7 @@ sub new
         }
     }
 
-    bless $self, $class;
+    return bless $self, $class;
 }
 
 ###############################################################################
@@ -173,13 +175,23 @@ sub parse
 
     # If there is no stream given, then create an incremental parser handle
     # and return it.
-    return $parser->parse_start() unless $stream;
+    if (! $stream)
+    {
+        return $parser->parse_start();
+    }
 
     my $retval;
-    eval { $retval = $parser->parse($stream) };
-    return $@ if $@;
+    if (! eval { $retval = $parser->parse($stream); 1; })
+    {
+        # I'm not sure we could get here and NOT have $@ set, but check it
+        # just in case...
+        if ($@)
+        {
+            return $@;
+        }
+    }
 
-    $retval;
+    return $retval;
 }
 
 # This is called when a new document is about to start parsing
@@ -188,7 +200,7 @@ sub message_init
     my ($robj, $self) = @_;
 
     $robj->[M_STACK] = [];
-    $self;
+    return $self;
 }
 
 # This is called when the parsing process is complete
@@ -197,14 +209,16 @@ sub final
     my ($robj, $self) = @_;
 
     # Look at the top-most marker, it'll need to be one of the end cases
-    my $marker = pop(@{$robj->[M_STACK]});
+    my $marker = pop @{$robj->[M_STACK]};
     # There should be only on item on the stack after it
-    my $retval = pop(@{$robj->[M_STACK]});
+    my $retval = pop @{$robj->[M_STACK]};
     # If the top-most marker isn't the error marker, check the stack
-    $retval = 'RPC::XML Error: Extra data on parse stack at document end'
-        if ($marker != PARSE_ERROR and (@{$robj->[M_STACK]}));
+    if ($marker != PARSE_ERROR and (@{$robj->[M_STACK]}))
+    {
+        $retval = 'RPC::XML Error: Extra data on parse stack at document end';
+    }
 
-    $retval;
+    return $retval;
 }
 
 # This gets called each time an opening tag is parsed
@@ -217,30 +231,36 @@ sub tag_start
 
     if (TAG2TOKEN->{$elem})
     {
-        push(@{$robj->[M_STACK]}, TAG2TOKEN->{$elem});
+        push @{$robj->[M_STACK]}, TAG2TOKEN->{$elem};
     }
     # Note that the <nil /> element is not in VALIDTYPES, as it is only valid
     # when $RPC::XML::ALLOW_NIL is true.
     elsif (VALIDTYPES->{$elem} || ($RPC::XML::ALLOW_NIL && $elem eq 'nil'))
     {
         # All datatypes are represented on the stack by this generic token
-        push(@{$robj->[M_STACK]}, DATATYPE);
+        push @{$robj->[M_STACK]}, DATATYPE;
         # If the tag is <base64> and we've been told to use filehandles, set
         # that up.
         if ($elem eq 'base64')
         {
-            return unless ($robj->[M_BASE64_TO_FH]);
+            if (! $robj->[M_BASE64_TO_FH])
+            {
+                return;
+            }
+
             require Symbol;
-			require File::Spec;
-			require File::Temp;
+            require File::Spec;
+            require File::Temp;
             my ($fh, $tmpdir) = (Symbol::gensym(), File::Spec->tmpdir);
 
-            $tmpdir = $robj->[M_BASE64_TEMP_DIR]
-                if ($robj->[M_BASE64_TEMP_DIR]);
-            unless ($fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir))
+            if ($robj->[M_BASE64_TEMP_DIR])
             {
-                push(@{$robj->[M_STACK]},
-                     "Error opening temp file for base64: $!", PARSE_ERROR);
+                $tmpdir = $robj->[M_BASE64_TEMP_DIR];
+            }
+            if (! ($fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
+            {
+                push @{$robj->[M_STACK]},
+                    "Error opening temp file for base64: $!", PARSE_ERROR;
                 $self->finish;
             }
             $robj->[M_CDATA] = $fh;
@@ -249,10 +269,12 @@ sub tag_start
     }
     else
     {
-        push(@{$robj->[M_STACK]},
-             "Unknown tag encountered: $elem", PARSE_ERROR);
+        push @{$robj->[M_STACK]},
+            "Unknown tag encountered: $elem", PARSE_ERROR;
         $self->finish;
     }
+
+    return;
 }
 
 # Very simple error-text generator, just to eliminate heavy reduncancy in the
@@ -260,17 +282,19 @@ sub tag_start
 sub error
 {
     my ($robj, $self, $mesg, $elem) = @_;
-    $elem ||= '';
+    $elem ||= q{};
 
     my $fmt = $elem ?
         '%s at document line %d, column %d (byte %d, closing tag %s)' :
         '%s at document line %d, column %d (byte %d)';
 
-    push(@{$robj->[M_STACK]},
-         sprintf($fmt, $mesg, $self->current_line, $self->current_column,
-                 $self->current_byte, $elem),
-         PARSE_ERROR);
+    push @{$robj->[M_STACK]},
+        sprintf($fmt, $mesg, $self->current_line, $self->current_column,
+                $self->current_byte, $elem),
+        PARSE_ERROR;
     $self->finish;
+
+    return;
 }
 
 # A shorter-cut for stack integrity errors
@@ -278,22 +302,22 @@ sub stack_error
 {
     my ($robj, $self, $elem) = @_;
 
-    error($robj, $self, 'Stack corruption detected', $elem);
+    return error($robj, $self, 'Stack corruption detected', $elem);
 }
 
 # This is a hairy subroutine-- what to do at the end-tag. The actions range
 # from simply new-ing a datatype all the way to building the final object.
-sub tag_end
+sub tag_end ## no critic (ProhibitExcessComplexity)
 {
     my ($robj, $self, $elem) = @_;
 
-    my ($op, $attr, $obj, $class, $list, $name, $err);
+    my ($op, $obj, $class, $list, $name);
 
     return if ($elem eq 'data');
     # This should always be one of the stack machine ops defined above
-    $op = pop(@{$robj->[M_STACK]});
+    $op = pop @{$robj->[M_STACK]};
 
-    my $cdata = '';
+    my $cdata = q{};
     if ($robj->[M_SPOOLING_BASE64_DATA])
     {
         $cdata = $robj->[M_CDATA];
@@ -301,46 +325,58 @@ sub tag_end
     }
     elsif ($robj->[M_CDATA])
     {
-        $cdata = join('', @{$robj->[M_CDATA]});
+        $cdata = join q{} => @{$robj->[M_CDATA]};
     }
 
     # Decide what to do from here
     # Note that the <nil /> element is not in VALIDTYPES, as it is only valid
     # when $RPC::XML::ALLOW_NIL is true.
-    if (VALIDTYPES->{$elem} || ($elem eq 'nil' && $RPC::XML::ALLOW_NIL))
+    if (VALIDTYPES->{$elem} || ## no critic (ProhibitCascadingIfElse)
+        ($elem eq 'nil' && $RPC::XML::ALLOW_NIL))
     {
         # This is the closing tag of one of the data-types.
         $class = $elem;
         # Cheaper than the regex that was here, and more locale-portable
-        $class = 'datetime_iso8601' if ($class eq 'dateTime.iso8601');
+        if ($class eq 'dateTime.iso8601')
+        {
+            $class = 'datetime_iso8601';
+        }
         # Some minimal data-integrity checking
         if ($class eq 'int' or $class eq 'i4' or $class eq 'i8')
         {
-            return error($robj, $self, 'Bad integer data read')
-                unless ($cdata =~ /^[-+]?\d+$/);
+            if ($cdata !~ /^[-+]?\d+$/)
+            {
+                return error($robj, $self, 'Bad integer data read');
+            }
         }
         elsif ($class eq 'double')
         {
-            return error($robj, $self, 'Bad floating-point data read')
-                unless ($cdata =~
-                        # Taken from perldata(1)
-                        /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/);
+            if ($cdata !~
+                # Taken from perldata(1)
+                /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/x)
+            {
+                return error($robj, $self, 'Bad floating-point data read');
+            }
         }
         elsif ($class eq 'nil')
         {
             # We passed the earlier test, so we know that <nil /> is allowed.
             # By definition though, it must be, well... nil.
-            return error($robj, $self, '<nil /> element must be empty')
-                if ($cdata !~ /^\s*$/);
+            if ($cdata !~ /^\s*$/)
+            {
+                return error($robj, $self, '<nil /> element must be empty');
+            }
         }
 
         $class = "RPC::XML::$class";
         # The string at the end is only seen by the RPC::XML::base64 class
         $obj = $class->new($cdata, 'base64 already encoded');
-        return error($robj, $self, 'Error instantiating data object: ' .
-                            $RPC::XML::ERROR)
-            unless ($obj);
-        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
+        if (! $obj)
+        {
+            return error($robj, $self, 'Error instantiating data object: ' .
+                         $RPC::XML::ERROR);
+        }
+        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
         if ($robj->[M_SPOOLING_BASE64_DATA])
         {
             $robj->[M_SPOOLING_BASE64_DATA] = 0;
@@ -353,9 +389,11 @@ sub tag_end
         # the marker token in which case the CDATA is used as a string value.
         if ($op == DATAOBJECT)
         {
-            ($op, $obj) = splice(@{$robj->[M_STACK]}, -2);
-            return stack_error($robj, $self, $elem)
-                unless ($op == VALUEMARKER);
+            ($op, $obj) = splice @{$robj->[M_STACK]}, -2;
+            if ($op != VALUEMARKER)
+            {
+                return stack_error($robj, $self, $elem);
+            }
         }
         elsif ($op == VALUEMARKER)
         {
@@ -367,88 +405,120 @@ sub tag_end
                          'No datatype found within <value> container');
         }
 
-        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
+        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
     }
     elsif ($elem eq 'param')
     {
         # Almost like above, since this is really a NOP anyway
-        return error($robj, $self, 'No <value> found within <param> container')
-            unless ($op == DATAOBJECT);
-        ($op, $obj) = splice(@{$robj->[M_STACK]}, -2);
-        return stack_error($robj, $self, $elem) unless ($op == PARAM);
-        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
+        if ($op != DATAOBJECT)
+        {
+            return error($robj, $self,
+                         'No <value> found within <param> container');
+        }
+        ($op, $obj) = splice @{$robj->[M_STACK]}, -2;
+        if ($op != PARAM)
+        {
+            return stack_error($robj, $self, $elem);
+        }
+        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
     }
     elsif ($elem eq 'params')
     {
         # At this point, there should be zero or more DATAOBJECT tokens on the
         # stack, each with a data object right below it.
         $list = [];
-        return stack_error($robj, $self, $elem)
-            unless ($op == DATAOBJECT or $op == PARAMSTART);
+        if (! ($op == DATAOBJECT or $op == PARAMSTART))
+        {
+            return stack_error($robj, $self, $elem);
+        }
         while ($op == DATAOBJECT)
         {
-            unshift(@$list, pop(@{$robj->[M_STACK]}));
-            $op = pop(@{$robj->[M_STACK]});
+            unshift @{$list}, pop @{$robj->[M_STACK]};
+            $op = pop @{$robj->[M_STACK]};
         }
         # Now that we see something ! DATAOBJECT, it needs to be PARAMSTART
-        return stack_error($robj, $self, $elem) unless ($op == PARAMSTART);
-        push(@{$robj->[M_STACK]}, $list, PARAMLIST);
+        if ($op != PARAMSTART)
+        {
+            return stack_error($robj, $self, $elem);
+        }
+        push @{$robj->[M_STACK]}, $list, PARAMLIST;
     }
     elsif ($elem eq 'fault')
     {
         # If we're finishing up a fault definition, there needs to be a struct
         # on the stack.
-        return stack_error($robj, $self, $elem) unless ($op == DATAOBJECT);
-        ($op, $obj) = splice(@{$robj->[M_STACK]}, -2);
-        return error($robj, $self,
-                     'Only a <struct> value may be within a <fault>')
-            unless ($obj->isa('RPC::XML::struct'));
-
+        if ($op != DATAOBJECT)
+        {
+            return stack_error($robj, $self, $elem);
+        }
+        ($op, $obj) = splice @{$robj->[M_STACK]}, -2;
+        if (! $obj->isa('RPC::XML::struct'))
+        {
+            return error($robj, $self,
+                         'Only a <struct> value may be within a <fault>');
+        }
         $obj = RPC::XML::fault->new($obj);
-        return error($robj, $self, 'Unable to instantiate fault object: ' .
-                            $RPC::XML::ERROR)
-            unless $obj;
-        push(@{$robj->[M_STACK]}, $obj, FAULTENT);
+        if (! $obj)
+        {
+            return error($robj, $self, 'Unable to instantiate fault object: ' .
+                         $RPC::XML::ERROR);
+        }
+
+        push @{$robj->[M_STACK]}, $obj, FAULTENT;
     }
     elsif ($elem eq 'member')
     {
         # We need to see a DATAOBJECT followed by a STRUCTNAME
-        return stack_error($robj, $self, $elem) unless ($op == DATAOBJECT);
-        ($op, $obj) = splice(@{$robj->[M_STACK]}, -2);
-        return stack_error($robj, $self, $elem) unless ($op == STRUCTNAME);
+        if ($op != DATAOBJECT)
+        {
+            return stack_error($robj, $self, $elem);
+        }
+        ($op, $obj) = splice @{$robj->[M_STACK]}, -2;
+        if ($op != STRUCTNAME)
+        {
+            return stack_error($robj, $self, $elem);
+        }
         # Get the name off the stack to clear the way for the STRUCTMEM marker
         # under it
-        ($op, $name) = splice(@{$robj->[M_STACK]}, -2);
+        ($op, $name) = splice @{$robj->[M_STACK]}, -2;
         # Push the name back on, with the value and the new marker (STRUCTMEM)
-        push(@{$robj->[M_STACK]}, $name, $obj, STRUCTMEM);
+        push @{$robj->[M_STACK]}, $name, $obj, STRUCTMEM;
     }
     elsif ($elem eq 'name')
     {
         # Fairly simple: just push the current content of CDATA on w/ a marker
-        push(@{$robj->[M_STACK]}, $cdata, STRUCTNAME);
+        push @{$robj->[M_STACK]}, $cdata, STRUCTNAME;
     }
     elsif ($elem eq 'struct')
     {
         # Create the hash table in-place, then pass the ref to the constructor
         $list = {};
         # First off the stack needs to be STRUCTMEM or STRUCT
-        return stack_error($robj, $self, $elem)
-            unless ($op == STRUCTMEM or $op == STRUCT);
+        if (! ($op == STRUCTMEM or $op == STRUCT))
+        {
+            return stack_error($robj, $self, $elem);
+        }
         while ($op == STRUCTMEM)
         {
             # Next on stack (in list-order): name, value
-            ($name, $obj) = splice(@{$robj->[M_STACK]}, -2);
+            ($name, $obj) = splice @{$robj->[M_STACK]}, -2;
             $list->{$name} = $obj;
-            $op = pop(@{$robj->[M_STACK]});
+            $op = pop @{$robj->[M_STACK]};
         }
         # Now that we see something ! STRUCTMEM, it needs to be STRUCT
-        return stack_error($robj, $self, $elem) unless ($op == STRUCT);
+        if ($op != STRUCT)
+        {
+            return stack_error($robj, $self, $elem);
+        }
         $obj = RPC::XML::struct->new($list);
-        return error($robj, $self,
-                     'Error creating a RPC::XML::struct object: ' .
-                     $RPC::XML::ERROR)
-            unless $obj;
-        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
+        if (! $obj)
+        {
+            return error($robj, $self,
+                         'Error creating a RPC::XML::struct object: ' .
+                         $RPC::XML::ERROR);
+        }
+
+        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
     }
     elsif ($elem eq 'array')
     {
@@ -457,31 +527,43 @@ sub tag_end
         # Create the list in-place, then pass the ref to the constructor
         $list = [];
         # Only DATAOBJECT or ARRAY should be visible
-        return stack_error($robj, $self, $elem)
-            unless ($op == DATAOBJECT or $op == ARRAY);
+        if (! ($op == DATAOBJECT or $op == ARRAY))
+        {
+            return stack_error($robj, $self, $elem);
+        }
         while ($op == DATAOBJECT)
         {
-            unshift(@$list, pop(@{$robj->[M_STACK]}));
-            $op = pop(@{$robj->[M_STACK]});
+            unshift @{$list}, pop @{$robj->[M_STACK]};
+            $op = pop @{$robj->[M_STACK]};
         }
         # Now that we see something ! DATAOBJECT, it needs to be ARRAY
-        return stack_error($robj, $self, $elem) unless ($op == ARRAY);
+        if ($op != ARRAY)
+        {
+            return stack_error($robj, $self, $elem);
+        }
         # Use the special-form of the constructor, for when a listref should
         # be dereferenced by the constructor (to avoid doing it here and
         # possibly creating a huge stack):
         $obj = RPC::XML::array->new(from => $list);
-        return error($robj, $self,
-                     'Error creating a RPC::XML::array object: ' .
-                     $RPC::XML::ERROR)
-            unless $obj;
-        push(@{$robj->[M_STACK]}, $obj, DATAOBJECT);
+        if (! $obj)
+        {
+            return error($robj, $self,
+                         'Error creating a RPC::XML::array object: ' .
+                         $RPC::XML::ERROR);
+        }
+
+        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
     }
     elsif ($elem eq 'methodName')
     {
-        return error($robj, $self,
-                     "<$elem> tag must immediately follow a <methodCall> tag")
-            unless ($robj->[M_STACK]->[$#{$robj->[M_STACK]}] == METHOD);
-        push(@{$robj->[M_STACK]}, $cdata, NAMEVAL);
+        if ($robj->[M_STACK]->[$#{$robj->[M_STACK]}] != METHOD)
+        {
+            return error(
+                $robj, $self,
+                "<$elem> tag must immediately follow a <methodCall> tag"
+            );
+        }
+        push @{$robj->[M_STACK]}, $cdata, NAMEVAL;
     }
     elsif ($elem eq 'methodCall')
     {
@@ -490,7 +572,7 @@ sub tag_end
         # opening tag. An ATTR_SET may follow the METHOD token.
         if ($op == PARAMLIST)
         {
-            ($op, $list) = splice(@{$robj->[M_STACK]}, -2);
+            ($op, $list) = splice @{$robj->[M_STACK]}, -2;
         }
         else
         {
@@ -498,18 +580,28 @@ sub tag_end
         }
         if ($op == NAMEVAL)
         {
-            ($op, $name) = splice(@{$robj->[M_STACK]}, -2);
+            ($op, $name) = splice @{$robj->[M_STACK]}, -2;
         }
-        return error($robj, $self,
-                     "No methodName tag detected during methodCall parsing")
-            unless $name;
-        return stack_error($robj, $self, $elem) unless ($op == METHOD);
+        if (! $name)
+        {
+            return error(
+                $robj, $self,
+                'No methodName tag detected during methodCall parsing'
+            );
+        }
+        if ($op != METHOD)
+        {
+            return stack_error($robj, $self, $elem);
+        }
         # Create the request object and push it on the stack
-        $obj = RPC::XML::request->new($name, @$list);
-        return error($robj, $self,
-                     "Error creating request object: $RPC::XML::ERROR")
-            unless $obj;
-        push(@{$robj->[M_STACK]}, $obj, METHODENT);
+        $obj = RPC::XML::request->new($name, @{$list});
+        if (! $obj)
+        {
+            return error($robj, $self,
+                         "Error creating request object: $RPC::XML::ERROR");
+        }
+
+        push @{$robj->[M_STACK]}, $obj, METHODENT;
     }
     elsif ($elem eq 'methodResponse')
     {
@@ -520,30 +612,42 @@ sub tag_end
             # To my knowledge, the XML-RPC spec limits the params list for
             # a response to exactly one object. Extract it from the listref
             # and put it back.
-            $list = pop(@{$robj->[M_STACK]});
-            return error($robj, $self,
-                         "Params list for <$elem> tag invalid")
-                unless (@$list == 1);
+            $list = pop @{$robj->[M_STACK]};
+            if (1 != @{$list})
+            {
+                return error($robj, $self,
+                             "Params list for <$elem> tag invalid");
+            }
             $obj = $list->[0];
-            return error($robj, $self,
-                         "Returned value on stack not a type reference")
-                unless (ref $obj and $obj->isa('RPC::XML::datatype'));
-            push(@{$robj->[M_STACK]}, $obj);
+            if (! (ref $obj and $obj->isa('RPC::XML::datatype')))
+            {
+                return error($robj, $self,
+                             'Returned value on stack not a type reference');
+            }
+            push @{$robj->[M_STACK]}, $obj;
         }
         elsif (! ($op == DATAOBJECT or $op == FAULTENT))
         {
             return error($robj, $self,
                          "No parameter was declared for the <$elem> tag");
         }
-        ($op, $list) = splice(@{$robj->[M_STACK]}, -2);
-        return stack_error($robj, $self, $elem) unless ($op == RESPONSE);
+        ($op, $list) = splice @{$robj->[M_STACK]}, -2;
+        if ($op != RESPONSE)
+        {
+            return stack_error($robj, $self, $elem);
+        }
         # Create the response object and push it on the stack
         $obj = RPC::XML::response->new($list);
-        return error($robj, $self,
-                     "Error creating response object: $RPC::XML::ERROR")
-            unless $obj;
-        push(@{$robj->[M_STACK]}, $obj, RESPONSEENT);
+        if (! $obj)
+        {
+            return error($robj, $self,
+                         "Error creating response object: $RPC::XML::ERROR");
+        }
+
+        push @{$robj->[M_STACK]}, $obj, RESPONSEENT;
     }
+
+    return;
 }
 
 # This just spools the character data until a closing tag makes use of it
@@ -559,6 +663,8 @@ sub char_data
      {
          push @{$robj->[M_CDATA]}, $data;
      }
+
+     return;
 }
 
 # At some future point, this may be expanded to provide more entities than
@@ -570,7 +676,8 @@ sub extern_ent
     local $" = ', ';
     warn ref($robj) . '::extern_ent: Attempt to reference external entity ' .
         "(@_)\n";
-    return '';
+
+    return q{};
 }
 
 # Exception-throwing stub in case this is called without first getting the
@@ -578,7 +685,7 @@ sub extern_ent
 sub parse_more
 {
     die __PACKAGE__ . '::parse_more: Must be called on a push-parser ' .
-        'instance obtained from parse()';
+        "instance obtained from parse()\n";
 }
 
 # Exception-throwing stub in case this is called without first getting the
@@ -586,7 +693,7 @@ sub parse_more
 sub parse_done
 {
     die __PACKAGE__ . '::parse_done: Must be called on a push-parser ' .
-        'instance obtained from parse()';
+        "instance obtained from parse()\n";
 }
 
 1;
@@ -612,7 +719,7 @@ This class implements the interface defined in the B<RPC::XML::Parser>
 factory-class (see L<RPC::XML::Parser>) using the B<XML::Parser> module
 to handle the actual manipulation of XML.
 
-=head1 METHODS
+=head1 SUBROUTINES/METHODS
 
 This module implements the public-facing methods as described in
 L<RPC::XML::Parser>:
@@ -649,6 +756,12 @@ is not a push-parser, an exception is thrown.
 
 =back
 
+=head1 DIAGNOSTICS
+
+All methods return some type of reference on success, or an error string on
+failure. Non-reference return values should always be interpreted as errors,
+except in the case of C<simple_request>.
+
 =head1 BUGS
 
 Please report any bugs or feature requests to
@@ -683,9 +796,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or

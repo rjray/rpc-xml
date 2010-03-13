@@ -43,8 +43,8 @@ package Apache::RPC::Status;
 use 5.006001;
 use strict;
 use warnings;
-use vars qw(%IS_INSTALLED $SERVER_VER $STARTED $PERL_VER $DEFAULT $SERVER_CLASS
-            %proto $newQ);
+use vars qw(%IS_INSTALLED $SERVER_VER $STARTED $PERL_VER $DEFAULT
+            $SERVER_CLASS);
 use subs qw(header footer main_screen server_summary server_detail
             method_summary method_detail);
 
@@ -61,48 +61,47 @@ require RPC::XML::Method;
 #$SERVER_VER = SERVER_VERSION;
 $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
-$PERL_VER   = $^V ? sprintf "v%vd", $^V : $];
+$PERL_VER   = $^V ? sprintf 'v%vd', $^V : $];
 
 our $VERSION = '1.10';
-$VERSION = eval $VERSION; ## no critic
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 #
 # %proto is the prototype set of screens/handlers that this class knows about.
 # It is used in new() to initialize the hash table.
 #
-%proto = ( main   => { title => 'Main Screen', call => \&main_screen },
-           server => { title => 'Server Detail Screen',
-                       call => \&server_detail },
-           method => { title => 'Method Detail Screen',
-                       call => \&method_detail } );
+my %proto = ( main   => { title => 'Main Screen', call => \&main_screen },
+              server => { title => 'Server Detail Screen',
+                          call => \&server_detail },
+              method => { title => 'Method Detail Screen',
+                          call => \&method_detail }, );
 
 # This is an artifact, but things don't seem to work without it
-$newQ = sub { CGI->new; };
+my $newq = sub { CGI->new; };
 
 #
 # This next bit graciously "borrowed" from Apache::Status
 #
 my %IS_INSTALLED = ();
 {
-    local $SIG{__DIE__};
+    local $SIG{__DIE__}; ## no critic (RequireInitializationForLocalVars)
     %IS_INSTALLED = map {
-        $_, (eval("require $_") || 0); ## no critic
+        ($_, (eval("require $_") || 0)); ## no critic (ProhibitStringyEval)
     } qw(Data::Dumper Devel::Symdump B Apache::Request Apache::Peek
          Apache::Symbol);
 }
 
 # Simple token-response method
-sub version { $Apache::RPC::Status::VERSION }
+sub version { return $Apache::RPC::Status::VERSION }
 
 sub new
 {
-    my $class = shift;
-    my @args  = @_;
+    my ($class, @args) = @_;
 
     my %self = %proto;
-    $class = ref($class) || $class;
+    $class = ref $class || $class;
 
-    bless \%self, $class;
+    return bless \%self, $class;
 }
 
 # This retrieves the default object for use within handler() below. Basically,
@@ -110,9 +109,11 @@ sub new
 # header() and footer() routines as methods to allow for subclassing.
 sub default_object
 {
+    my ($class, @args) = @_;
+
     return $DEFAULT if (ref $DEFAULT);
 
-    $DEFAULT = shift->new(@_);
+    return $DEFAULT = $class->new(@args);
 }
 
 ###############################################################################
@@ -136,19 +137,25 @@ sub handler ($$)
     my $self = shift;
     my $r    = shift;
 
-    my ($qs, $pick, %args);
+    my ($qs, $pick);
 
-    $self = $self->default_object() unless ref($self);
-    $qs = $newQ->($r);
+    if (! ref $self)
+    {
+        $self = $self->default_object();
+    }
+    $qs = $newq->($r);
     $pick = $qs->param('screen') || 'main';
     # One last check
-    return DECLINED unless exists $self->{$pick};
+    if (! exists $self->{$pick})
+    {
+        return DECLINED
+    }
 
     $self->header($r, $self->{$pick}{title});
     $r->print(@{$self->{$pick}{call}->($self, $r, $qs)});
     $self->footer($r);
 
-    OK;
+    return OK;
 }
 
 ###############################################################################
@@ -171,11 +178,12 @@ sub init_handler ($$)
 {
     my ($class, $r) = @_;
 
-    my $val;
+    if (my $val = $r->dir_config('ServerClass'))
+    {
+        $SERVER_CLASS = $val;
+    }
 
-    $SERVER_CLASS = $val if ($val = $r->dir_config('ServerClass'));
-
-    OK;
+    return OK;
 }
 
 ###############################################################################
@@ -202,14 +210,17 @@ sub apache_status_attach
 
     my $class = ref($self) || $self;
 
-    Apache::Status->
-          menu_item(XMLRPC => "$class Monitor",
-                    sub {
-                        my ($r, $q) = @_; #request and CGI objects
-                        my $hook = $q->param('screen') || 'main';
+    if (Apache->module('Apache::Status'))
+    {
+        Apache::Status->
+              menu_item(XMLRPC => "$class Monitor",
+                        sub {
+                            my ($r, $q) = @_; #request and CGI objects
+                            my $hook = $q->param('screen') || 'main';
 
-                        $self->{$hook}{call}->($self, $r, $q, 1);
-                    }) if Apache->module('Apache::Status');
+                            $self->{$hook}{call}->($self, $r, $q, 1);
+                        });
+    }
 
     return;
 }
@@ -237,10 +248,16 @@ sub header
 {
     my ($self, $r, $title) = @_;
 
-    $SERVER_VER = SERVER_VERSION unless ($SERVER_VER);
+    if (! $SERVER_VER)
+    {
+        $SERVER_VER = SERVER_VERSION;
+    }
 
-    $title = " - $title" if $title;
-    $title = (ref($self) || $self) . $title;
+    if ($title)
+    {
+        $title = " - $title";
+    }
+    $title = (ref $self || $self) . $title;
 
     $r->send_http_header('text/html');
     $r->print(<<"EOF");
@@ -272,7 +289,7 @@ sub footer
 {
     my ($self, $r) = @_;
 
-    my $name = ref($self) || $self;
+    my $name = ref $self || $self;
     my $vers = $self->version;
     my $date = scalar localtime;
 
@@ -312,17 +329,23 @@ sub make_url
 {
     my ($class, $query, $flag) = @_;
 
-    $query = $newQ->($query) unless (ref($query) eq 'CGI');
+    if (ref $query ne 'CGI')
+    {
+        $query = $newq->($query);
+    }
 
     my @params = map {
         ($_ eq 'keywords') ? () : "$_=" . $query->param($_)
     } ($query->param());
-    my $text = $query->url(-path => 1) . '?';
+    my $text = $query->url(-path => 1) . q{?};
 
-    unshift(@params, 'RPCXML') if ($flag);
-    $text .= join('&', @params);
+    if ($flag)
+    {
+        unshift @params, 'RPCXML';
+    }
+    $text .= join q{&} => @params;
 
-    $text;
+    return $text;
 }
 
 ###############################################################################
@@ -353,13 +376,14 @@ sub main_screen
     $uri = $self->make_url($Q, $flag);
     @servers = sort $SERVER_CLASS->list_servers();
 
-    push(@lines, $Q->p($Q->b('Apache XML-RPC Status Monitor')));
-    push(@lines, sprintf("<p>There %s %d server%s configured:</p>",
-                         (@servers == 1) ?
-                         ('is', 1, '') : ('are', scalar(@servers), 's')));
-    push(@lines,
+    push @lines, $Q->p($Q->b('Apache XML-RPC Status Monitor'));
+    push @lines,
+         sprintf '<p>There %s %d server%s configured:</p>',
+         (@servers == 1) ?
+         ('is', 1, q{}) : ('are', scalar(@servers), q{s});
+    push @lines,
          $Q->table({ -cellpadding => 15, -width => '75%', -border => 0 },
-                   (map {
+                   (map { ## no critic (ProhibitComplexMappings)
                        ($server = $_) =~ s/</&lt;/g;
 
                        $Q->TR({ -valign => 'top' },
@@ -371,9 +395,9 @@ sub main_screen
                               $Q->td(server_summary($Q,
                                                     $SERVER_CLASS->
                                                     get_server($_))));
-                   } (@servers))));
+                   } (@servers)));
 
-    \@lines;
+    return \@lines;
 }
 
 ###############################################################################
@@ -394,18 +418,18 @@ sub server_summary
 {
     my ($Q, $srv) = @_;
 
-    $Q->table($Q->TR({ -valign => 'top' },
-                     $Q->td($Q->b($Q->tt('URI:'))),
-                     $Q->td($srv->url())),
-              $Q->TR({ -valign => 'top' },
-                     $Q->td($Q->b($Q->tt('Requests:'))),
-                     $Q->td($srv->requests())),
-              $Q->TR({ -valign => 'top' },
-                     $Q->td($Q->b($Q->tt('Started:'))),
-                     $Q->td(scalar localtime $srv->started())),
-              $Q->TR({ -valign => 'top' },
-                     $Q->td($Q->b($Q->tt('Available methods:'))),
-                     $Q->td(scalar($srv->list_methods))));
+    return $Q->table($Q->TR({ -valign => 'top' },
+                            $Q->td($Q->b($Q->tt('URI:'))),
+                            $Q->td($srv->url())),
+                     $Q->TR({ -valign => 'top' },
+                            $Q->td($Q->b($Q->tt('Requests:'))),
+                            $Q->td($srv->requests())),
+                     $Q->TR({ -valign => 'top' },
+                            $Q->td($Q->b($Q->tt('Started:'))),
+                            $Q->td(scalar localtime $srv->started())),
+                     $Q->TR({ -valign => 'top' },
+                            $Q->td($Q->b($Q->tt('Available methods:'))),
+                            $Q->td(scalar($srv->list_methods))));
 }
 
 ###############################################################################
@@ -439,66 +463,66 @@ sub server_detail
     $base_url = $self->make_url($Q, $flag);
     if (! $server)
     {
-        return [ "Error: No server name specified when screen invoked" ];
+        return [ 'Error: No server name specified when screen invoked' ];
     }
     elsif (! ref($srv = $SERVER_CLASS->get_server($server)))
     {
         return [ "Error fetching server named $server: $srv" ];
     }
 
-    push(@lines, '<div align="center">', $Q->b('Server: '), $Q->tt($server));
-    push(@lines, $Q->br(), $Q->br());
-    push(@lines, '<table border="0" width="75%">');
-    push(@lines, $Q->TR({ -valign => 'top' },
+    push @lines, '<div align="center">', $Q->b('Server: '), $Q->tt($server);
+    push @lines, $Q->br(), $Q->br();
+    push @lines, '<table border="0" width="75%">';
+    push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('Server Tokens:')),
-                        $Q->td($Q->tt($srv->product_tokens))));
-    push(@lines, $Q->TR({ -valign => 'top' },
+                        $Q->td($Q->tt($srv->product_tokens)));
+    push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('Server URL:')),
-                        $Q->td($Q->tt($srv->url))));
-    push(@lines, $Q->TR({ -valign => 'top' },
+                        $Q->td($Q->tt($srv->url)));
+    push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('Server Started:')),
-                        $Q->td($Q->tt(scalar localtime $srv->started()))));
-    push(@lines, $Q->TR({ -valign => 'top' },
+                        $Q->td($Q->tt(scalar localtime $srv->started())));
+    push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('This Child Started:')),
-                        $Q->td($Q->tt(scalar localtime $srv->child_started))));
-    push(@lines, $Q->TR({ -valign => 'top' },
+                        $Q->td($Q->tt(scalar localtime $srv->child_started)));
+    push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('Requests Handled:')),
-                        $Q->td($Q->tt($srv->requests))));
-    push(@lines, $Q->TR({ -valign => 'top' },
+                        $Q->td($Q->tt($srv->requests)));
+    push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('Method Search Path:')),
-                        $Q->td($Q->tt(join($Q->br(), @{$srv->xpl_path})))));
-    push(@lines, $Q->TR($Q->td({ colspan => 2 }, '&nbsp;')));
+                        $Q->td($Q->tt(join $Q->br() => @{$srv->xpl_path})));
+    push @lines, $Q->TR($Q->td({ colspan => 2 }, '&nbsp;'));
     @methods = sort $srv->list_methods;
     if (@methods)
     {
-        push(@lines, $Q->TR($Q->td({ colspan => 2, -align => 'center' },
+        push @lines, $Q->TR($Q->td({ colspan => 2, -align => 'center' },
                                    $Q->b('Known Methods: '),
-                                   sprintf('(%d)', scalar(@methods)))));
-        push(@lines, '<tr><td colspan="2"><table width="100%" border="1">');
+                                   sprintf '(%d)', scalar @methods));
+        push @lines, '<tr><td colspan="2"><table width="100%" border="1">';
         while (@methods)
         {
-            ($meth1, $meth2) = splice(@methods, 0, 2);
-            push(@lines, '<tr valign="top"><td width="50%">');
-            push(@lines, method_summary($Q, $server, $srv->get_method($meth1),
-                                        $base_url));
-            push(@lines, '</td><td width="50%">');
+            ($meth1, $meth2) = splice @methods, 0, 2;
+            push @lines, '<tr valign="top"><td width="50%">';
+            push @lines, method_summary($Q, $server, $srv->get_method($meth1),
+                                        $base_url);
+            push @lines, '</td><td width="50%">';
             if ($meth2)
             {
-                push(@lines, method_summary($Q, $server,
+                push @lines, method_summary($Q, $server,
                                             $srv->get_method($meth2),
-                                            $base_url));
+                                            $base_url);
             }
             else
             {
-                push(@lines, '&nbsp;');
+                push @lines, '&nbsp;';
             }
-            push(@lines, '</td></tr>');
+            push @lines, '</td></tr>';
         }
-        push(@lines, '</table></td></tr>');
+        push @lines, '</table></td></tr>';
     }
-    push(@lines, '</table></div>');
+    push @lines, '</table></div>';
 
-    \@lines;
+    return \@lines;
 }
 
 ###############################################################################
@@ -523,7 +547,7 @@ sub method_summary
 {
     my ($Q, $server, $meth, $base_url) = @_;
 
-    $Q->table({ -width => '100%' },
+    return $Q->table({ -width => '100%' },
               $Q->TR({ -valign => 'top' },
                      $Q->td({ -width => '33%' }, $Q->b('Name:')),
                      $Q->td($Q->tt($Q->a({ -href =>
@@ -570,7 +594,7 @@ sub method_detail
 
     if (! $server)
     {
-        return [ "Error: No server name specified when screen invoked" ];
+        return [ 'Error: No server name specified when screen invoked' ];
     }
     elsif (! ref($srv = $SERVER_CLASS->get_server($server)))
     {
@@ -578,45 +602,47 @@ sub method_detail
     }
     if (! $method)
     {
-        return [ "Error: No method name specified when screen invoked" ];
+        return [ 'Error: No method name specified when screen invoked' ];
     }
     elsif (! ref($meth = $srv->get_method($method)))
     {
         return [ "Error: No method named $method found on server $server" ];
     }
 
-    push(@lines, '<div align="center">', $Q->b('Method: '), $Q->tt($method));
-    push(@lines, $Q->br(), $Q->br());
-    push(@lines, '<table border="0" width="75%">');
-    push(@lines, $Q->TR({ -valign => 'top' },
-                        $Q->td($Q->b('Version:')), $Q->td($Q->tt($tmp))))
-        if ($tmp = $meth->version);
-    push(@lines, $Q->TR({ -valign => 'top' },
+    push @lines, '<div align="center">', $Q->b('Method: '), $Q->tt($method);
+    push @lines, $Q->br(), $Q->br();
+    push @lines, '<table border="0" width="75%">';
+    if ($tmp = $meth->version)
+    {
+        push @lines, $Q->TR({ -valign => 'top' },
+                            $Q->td($Q->b('Version:')), $Q->td($Q->tt($tmp)));
+    }
+    push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td({ -width => '30%' }, $Q->b('Hidden from API:')),
-                        $Q->td($Q->tt($meth->hidden() ? 'Yes' : 'No'))));
-    push(@lines, $Q->TR({ -valign => 'top' },
+                        $Q->td($Q->tt($meth->hidden() ? 'Yes' : 'No')));
+    push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('Calls:')),
-                        $Q->td($Q->tt($meth->{called}))));
+                        $Q->td($Q->tt($meth->{called})));
     if ($meth->{file})
     {
-        push(@lines, $Q->TR({ -valign => 'top' },
+        push @lines, $Q->TR({ -valign => 'top' },
                             $Q->td($Q->b('Loaded from:')),
-                            $Q->td($Q->tt($meth->{file}))));
-        push(@lines, $Q->TR({ -valign => 'top' },
+                            $Q->td($Q->tt($meth->{file})));
+        push @lines, $Q->TR({ -valign => 'top' },
                             $Q->td($Q->b('File last updated:')),
-                            $Q->td($Q->tt(scalar localtime $meth->{mtime}))));
+                            $Q->td($Q->tt(scalar localtime $meth->{mtime})));
     }
-    push(@lines, $Q->TR({ -valign => 'top' },
+    push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('Signatures:')),
-                        $Q->td($Q->tt(join('<br>', @{$meth->signature})))));
+                        $Q->td($Q->tt(join '<br>' => @{$meth->signature})));
     if ($tmp = $meth->help)
     {
-        push(@lines, $Q->TR($Q->td({ -colspan => 2 }, $Q->b('Help string:'))));
-        push(@lines, $Q->TR($Q->td({ -colspan => 2 }, $Q->pre($Q->tt($tmp)))));
+        push @lines, $Q->TR($Q->td({ -colspan => 2 }, $Q->b('Help string:')));
+        push @lines, $Q->TR($Q->td({ -colspan => 2 }, $Q->pre($Q->tt($tmp))));
     }
-    push(@lines, '</table></div>');
+    push @lines, '</table></div>';
 
-    \@lines;
+    return \@lines;
 }
 
 1;
@@ -700,7 +726,7 @@ processes handling the RPC servers, several calls may be necessary to ensure
 that the child process answering the status request also has the most
 up-to-date impression of the server.)
 
-=head1 SUBCLASSING AND EXTENDING
+=head1 SUBROUTINES/METHODS
 
 This package is implemented as a method handler for Apache/mod_perl. This
 means that is should be relatively easy to subclass this package to implement
@@ -963,6 +989,10 @@ is now considered beta, this piece may yet undergo some alpha-like
 enhancements to the interface and such. However, the design and planning of
 this were carefully considered, so any such changes should be minimal.
 
+=head1 DIAGNOSTICS
+
+Diagnostics are not handled well in this module.
+
 =head1 BUGS
 
 Please report any bugs or feature requests to
@@ -997,9 +1027,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or
@@ -1017,7 +1047,7 @@ L<Apache::Status>, L<Apache::RPC::Server>, L<RPC::XML::Method>
 
 =head1 AUTHOR
 
-Randy J. Ray <rjray@blackperl.com>
+Randy J. Ray C<< <rjray@blackperl.com> >>
 
 =cut
 

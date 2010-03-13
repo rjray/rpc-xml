@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -53,8 +53,11 @@ use Scalar::Util 'blessed';
 
 use RPC::XML 'smart_encode';
 
-$VERSION = '1.20';
-$VERSION = eval $VERSION;    ## no critic
+# This module also provides RPC::XML::Method
+## no critic (ProhibitMultiplePackages)
+
+$VERSION = '1.21';
+$VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
 
 ###############################################################################
 #
@@ -74,8 +77,7 @@ $VERSION = eval $VERSION;    ## no critic
 ###############################################################################
 sub new
 {
-    my $class = shift;
-    my @argz  = @_;
+    my ($class , @argz) = @_;
 
     my $data;    # This will be a hashref that eventually gets blessed
 
@@ -88,7 +90,7 @@ sub new
     {
         # 1. A hashref containing all the relevant keys
         $data  = {};
-        %$data = %{$argz[0]};
+        %{$data} = %{$argz[0]};
     }
     elsif (@argz == 1)
     {
@@ -105,14 +107,22 @@ sub new
         if (defined $class)
         {
             $data = $class->load_XPL_file($argz[0]);
-            return $data unless ref $data;    # load_XPL_path signalled an error
+            if (! ref $data)
+            {
+                # load_XPL_path signalled an error
+                return $data;
+            }
         }
         else
         {
             # Spoofing the "class" argument to load_XPL_file makes me feel
             # even dirtier...
             $data = load_XPL_file(\$class, $argz[0]);
-            return $data unless ref $data;    # load_XPL_path signalled an error
+            if (! ref $data)
+            {
+                # load_XPL_path signalled an error
+                return $data;
+            }
             $class = "RPC::XML::$class";
         }
     }
@@ -125,14 +135,14 @@ sub new
         $data->{signature} = [];
         while (@argz)
         {
-            ($key, $val) = splice(@argz, 0, 2);
+            ($key, $val) = splice @argz, 0, 2;
             if ($key eq 'signature')
             {
                 # Since there may be more than one signature, we allow it to
                 # repeat. Of course, that's also why we can't just take @argz
                 # directly as a hash. *shrug*
-                push(@{$data->{signature}},
-                    ref($val) ? join(' ', @$val) : $val);
+                push @{$data->{signature}},
+                    ref $val ? join q{ } => @{$val} : $val;
             }
             elsif (exists $data->{$key})
             {
@@ -145,15 +155,18 @@ sub new
         }
     }
 
-    return "${class}::new: Missing required data"
-        unless (exists $data->{signature}
-        and (ref($data->{signature}) eq 'ARRAY')
-        and scalar(@{$data->{signature}})
-        and $data->{name}
-        and $data->{code});
+    if (! (exists $data->{signature} &&
+           (ref($data->{signature}) eq 'ARRAY') &&
+           scalar(@{$data->{signature}}) &&
+           $data->{name} &&
+           $data->{code}))
+    {
+        return "${class}::new: Missing required data";
+    }
     bless $data, $class;
+
     # This needs to happen post-bless in case of error (for error messages)
-    $data->make_sig_table;
+    return $data->make_sig_table;
 }
 
 ###############################################################################
@@ -180,62 +193,101 @@ sub make_sig_table
     delete $self->{sig_table};
     for my $sig (@{$self->{signature}})
     {
-        ($return, $rest) = split(/ /, $sig, 2);
-        $rest = '' unless $rest;
+        ($return, $rest) = split / /, $sig, 2;
+        if (! $rest)
+        {
+            $rest = q{};
+        }
         # If the key $rest already exists, then this is a collision
-        return
-            ref($self) . '::make_sig_table: Cannot have two different ' .
-            "return values for one set of params ($return vs. " .
-            "$self->{sig_table}->{$rest})"
-            if $self->{sig_table}->{$rest};
+        if ($self->{sig_table}->{$rest})
+        {
+            return
+                ref($self) . '::make_sig_table: Cannot have two different ' .
+                "return values for one set of params ($return vs. " .
+                "$self->{sig_table}->{$rest})";
+        }
+
         $self->{sig_table}->{$rest} = $return;
     }
 
-    $self;
+    return $self;
 }
 
 #
 # These are basic accessor/setting functions for the various attributes
 #
-sub name { $_[0]->{name}; }    # "name" cannot be changed at this level
-sub namespace { $_[0]->{namespace} || ''; }    # Nor can "namespace"
-sub help    { $_[1] and $_[0]->{help}    = $_[1]; $_[0]->{help}; }
-sub version { $_[1] and $_[0]->{version} = $_[1]; $_[0]->{version}; }
-sub hidden  { $_[1] and $_[0]->{hidden}  = $_[1]; $_[0]->{hidden}; }
+sub name { return shift->{name}; }    # "name" cannot be changed at this level
+sub namespace { return shift->{namespace} || q{}; }    # Nor can "namespace"
+
+sub help
+{
+    my ($self, $value) = @_;
+
+    $value and $self->{help} = $value;
+
+    return $self->{help};
+}
+
+sub version
+{
+    my ($self, $value) = @_;
+
+    $value and $self->{version} = $value;
+
+    return $self->{version};
+}
+
+sub hidden
+{
+    my ($self, $value) = @_;
+
+    $value and $self->{hidden} = $value;
+
+    return $self->{hidden};
+}
 
 sub code
 {
-    ref $_[1] eq 'CODE' and $_[0]->{code} = $_[1];
-    $_[0]->{code};
+    my ($self, $value) = @_;
+
+    ref $value eq 'CODE' and $self->{code} = $value;
+
+    return $self->{code};
 }
 
 sub signature
 {
-    if ($_[1] and ref $_[1] eq 'ARRAY')
+    my ($self, $sig) = @_;
+
+    if ($sig and ref $sig eq 'ARRAY')
     {
-        my $old = $_[0]->{signature};
-        $_[0]->{signature} = $_[1];
-        unless (ref($_[0]->make_sig_table))
+        my $old = $self->{signature};
+        $self->{signature} = $sig;
+        if (! ref $self->make_sig_table)
         {
             # If it failed to re-init the table, restore the old list (and old
             # table). We don't have to check this return, since it had worked
-            $_[0]->{signature} = $old;
-            $_[0]->make_sig_table;
+            # before.
+            $self->{signature} = $old;
+            $self->make_sig_table;
         }
     }
+
     # Return a copy of the array, not the original
-    [@{$_[0]->{signature}}];
+    return [ @{$self->{signature}} ];
 }
 
 package RPC::XML::Method;
 
 use strict;
+use base qw(RPC::XML::Procedure);
 
-@RPC::XML::Method::ISA = qw(RPC::XML::Procedure);
-
+# Needed for AutoSplit to be happy:
 package RPC::XML::Procedure;
 
 1;
+
+__END__
 
 =head1 NAME
 
@@ -277,7 +329,7 @@ clear, intuitive hash keys (rather than obfuscated as the other classes
 do). Thus it is important to be clear on the interface here before
 sub-classing this package.
 
-=head1 USAGE
+=head1 SUBROUTINES/METHODS
 
 The following methods are provided by this class:
 
@@ -665,9 +717,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or
@@ -689,8 +741,6 @@ Randy J. Ray C<< <rjray@blackperl.com> >>
 
 =cut
 
-__END__
-
 ###############################################################################
 #
 #   Sub Name:       clone
@@ -711,7 +761,7 @@ sub clone
     my $self = shift;
 
     my $new_self = {};
-    for (keys %$self)
+    for (keys %{$self})
     {
         next if $_ eq 'signature';
         $new_self->{$_} = $self->{$_};
@@ -719,7 +769,7 @@ sub clone
     $new_self->{signature} = [];
     @{$new_self->{signature}} = @{$self->{signature}};
 
-    bless $new_self, ref($self);
+    return bless $new_self, ref $self;
 }
 
 ###############################################################################
@@ -764,21 +814,21 @@ sub is_valid
 ###############################################################################
 sub add_signature
 {
-    my $self = shift;
-    my @args = @_;
+    my ($self, @args) = @_;
 
-    my (%sigs, $one_sig, $tmp, $old);
+    my (%sigs, $tmp, $old);
 
     # Preserve the original in case adding the new one causes a problem
     $old = $self->{signature};
     %sigs = map { $_ => 1 } @{$self->{signature}};
-    for $one_sig (@args)
+    for my $one_sig (@args)
     {
-        $tmp = (ref $one_sig) ? join(' ', @$one_sig) : $one_sig;
+        $tmp = (ref $one_sig) ? join q{ } => @{$one_sig} : $one_sig;
         $sigs{$tmp} = 1;
     }
-    $self->{signature} = [keys %sigs];
-    unless (ref($tmp = $self->make_sig_table))
+    $self->{signature} = [ keys %sigs ];
+    $tmp = $self->make_sig_table;
+    if (! ref $tmp)
     {
         # Because this failed, we have to restore the old table and return
         # an error
@@ -787,36 +837,36 @@ sub add_signature
         return ref($self) . '::add_signature: Error re-hashing table: ' . $tmp;
     }
 
-    $self;
+    return $self;
 }
 
 sub delete_signature
 {
-    my $self = shift;
-    my @args = @_;
+    my ($self, @args) = @_;
 
-    my (%sigs, $one_sig, $tmp, $old);
+    my (%sigs, $tmp, $old);
 
     # Preserve the original in case adding the new one causes a problem
     $old = $self->{signature};
     %sigs = map { $_ => 1 } @{$self->{signature}};
-    for $one_sig (@args)
+    for my $one_sig (@args)
     {
-        $tmp = (ref $one_sig) ? join(' ', @$one_sig) : $one_sig;
+        $tmp = (ref $one_sig) ? join q{ } => @{$one_sig} : $one_sig;
         delete $sigs{$tmp};
     }
-    $self->{signature} = [keys %sigs];
-    unless (ref($tmp = $self->make_sig_table))
+    $self->{signature} = [ keys %sigs ];
+    $tmp = $self->make_sig_table;
+    if  (! ref $tmp)
     {
         # Because this failed, we have to restore the old table and return
         # an error
         $self->{signature} = $old;
         $self->make_sig_table;
         return
-            ref($self) . '::delete_signature: Error re-hashing table: ' . $tmp;
+            ref $self . '::delete_signature: Error re-hashing table: ' . $tmp;
     }
 
-    $self;
+    return $self;
 }
 
 ###############################################################################
@@ -839,7 +889,10 @@ sub match_signature
     my $self = shift;
     my $sig  = shift;
 
-    $sig = join(' ', @$sig) if ref $sig;
+    if (ref $sig)
+    {
+        $sig = join q{ } => @{$sig};
+    }
 
     return $self->{sig_table}->{$sig} || 0;
 }
@@ -861,15 +914,21 @@ sub reload
 {
     my $self = shift;
 
-    return
-        ref($self) . '::reload: No file associated with method ' . $self->{name}
-        unless $self->{file};
+    if (! $self->{file})
+    {
+        return sprintf '%s::reload: No file associated with method %s',
+            ref $self, $self->{name};
+    }
+
     my $tmp = $self->load_XPL_file($self->{file});
 
     if (ref $tmp)
     {
         # Update the information on this actual object
-        $self->{$_} = $tmp->{$_} for (keys %$tmp);
+        for (keys %{$tmp})
+        {
+            $self->{$_} = $tmp->{$_};
+        }
         # Re-calculate the signature table, in case that changed as well
         return $self->make_sig_table;
     }
@@ -904,8 +963,7 @@ sub load_XPL_file
 
     require XML::Parser;
 
-    my ($me, $pkg, $data, $signature, $code, $codetext, $accum, $P, %attr);
-    local *F;
+    my ($me, $data, $signature, $code, $codetext, $accum, $P, %attr);
 
     if (ref($self) eq 'SCALAR')
     {
@@ -919,15 +977,14 @@ sub load_XPL_file
     $data = {};
     # So these don't end up undef, since they're optional elements
     $data->{hidden}  = 0;
-    $data->{version} = '';
-    $data->{help}    = '';
+    $data->{version} = q{};
+    $data->{help}    = q{};
     $data->{called}  = 0;
-    open(F, "< $file") or return "$me: Error opening $file for reading: $!";
     $P = XML::Parser->new(
         ErrorContext => 1,
         Handlers     => {
             Char => sub { $accum .= $_[1] },
-            Start => sub { %attr = splice(@_, 2) },
+            Start => sub { %attr = splice @_, 2 },
             End => sub {
                 my $elem = $_[1];
 
@@ -936,21 +993,25 @@ sub load_XPL_file
                 if ($elem eq 'signature')
                 {
                     $data->{signature} ||= [];
-                    push(@{$data->{signature}}, $accum);
+                    push @{$data->{signature}}, $accum;
                 }
                 elsif ($elem eq 'code')
                 {
-                    $data->{$elem} = $accum
-                        unless ($attr{language}
-                        and $attr{language} ne 'perl');
+                    if (! ($attr{language} &&
+                           $attr{language} ne 'perl'))
+                    {
+                        $data->{$elem} = $accum;
+                    }
                 }
-                elsif (substr($elem, -3) eq 'def')
+                elsif ('def' eq substr $elem, -3)
                 {
                     # Don't blindly store the container tag...
                     # We may need it to tell the caller what
                     # our type is
-                    $$self = ucfirst substr($elem, 0, -3)
-                        if (ref($self) eq 'SCALAR');
+                    if (ref $self eq 'SCALAR')
+                    {
+                        ${$self} = ucfirst substr $elem, 0, -3;
+                    }
                 }
                 else
                 {
@@ -958,15 +1019,23 @@ sub load_XPL_file
                 }
 
                 %attr  = ();
-                $accum = '';
-                }
+                $accum = q{};
+            }
         }
     );
-    return "$me: Error creating XML::Parser object" unless $P;
+    if (! $P)
+    {
+        return "$me: Error creating XML::Parser object";
+    }
+    open my $fh, '<', $file or
+        return "$me: Error opening $file for reading: $!";
     # Trap any errors
-    eval { $P->parse(*F) };
-    close(F);
-    return "$me: Error parsing $file: $@" if $@;
+    eval { $P->parse($fh); }; ## no critic (RequireCheckingReturnValueOfEval)
+    close $fh or return "$me: Error closing $file: $!";
+    if ($@)
+    {
+        return "$me: Error parsing $file: $@";
+    }
 
     # Try to normalize $codetext before passing it to eval
 
@@ -987,8 +1056,8 @@ sub load_XPL_file
     # Next step is to munge away any actual subroutine name so that the eval
     # yields an anonymous sub. Also insert the namespace declaration.
     ($codetext = $data->{code}) =~
-        s/sub[\s\n]+([\w:]+)?[\s\n]*\{/sub \{ package $data->{namespace}; /;
-    $code = eval $codetext;
+        s/sub[\s\n]+([\w:]+)?[\s\n]*\{/sub \{ package $data->{namespace}; /x;
+    $code = eval $codetext; ## no critic (ProhibitStringyEval)
     return "$me: Error creating anonymous sub: $@" if $@;
 
     $data->{code} = $code;
@@ -996,7 +1065,7 @@ sub load_XPL_file
     $data->{mtime} = (stat $file)[9];
     $data->{file}  = $file;
 
-    $data;
+    return $data;
 }
 
 ###############################################################################
@@ -1032,13 +1101,19 @@ sub call
     # The type for the response will be derived from the matching signature
     @paramtypes = map { $_->type } @data;
     @params     = map { $_->value } @data;
-    $signature = join(' ', @paramtypes);
+    $signature = join q{ } => @paramtypes;
     $resptype = $self->match_signature($signature);
     # Since there must be at least one signature with a return value (even
     # if the param list is empty), this tells us if the signature matches:
-    return $srv->server_fault(badsignature => "method $name has no matching " .
-            "signature for the argument list: [$signature]")
-        unless ($resptype);
+    if (! $resptype)
+    {
+        return $srv->server_fault(
+            badsignature =>
+            "method $name has no matching signature for the argument list: " .
+            "[$signature]"
+        );
+    }
+
     # Make sure that the response-type is a valid XML-RPC type
     if (($resptype ne 'scalar') && (! "RPC::XML::$resptype"->can('new')))
     {
@@ -1048,8 +1123,9 @@ sub call
     }
 
     # Set these in case the server object is part of the param list
-    local $srv->{signature} = [$resptype, @paramtypes];
-    local $srv->{method_name} = $name;
+    local $srv->{signature} =          ## no critic (ProhibitLocalVars)
+        [ $resptype, @paramtypes ];
+    local $srv->{method_name} = $name; ## no critic (ProhibitLocalVars)
     # If the method being called is "system.status", check to see if we should
     # increment the server call-count.
     $noinc =
@@ -1058,22 +1134,30 @@ sub call
             ($paramtypes[0] eq 'boolean') &&
             $params[0]) ? 1 : 0;
     # For RPC::XML::Method (and derivatives), pass the server object
-    unshift(@params, $srv) if ($self->isa('RPC::XML::Method'));
-
-    # Now take a deep breath and call the method with the arguments
-    eval { $response = $self->{code}->(@params); };
-    # On failure, propagate user-generated RPC::XML::fault exceptions, or
-    # transform Perl-level error/failure into such an object
-    if ($@)
+    if ($self->isa('RPC::XML::Method'))
     {
-        return (blessed $@ and $@->isa('RPC::XML::fault')) ?
-            $@ : $srv->server_fault(execerror =>
-                                    "Method $name returned error: $@");
+        unshift @params, $srv;
     }
 
-    $self->{called}++ unless $noinc;
+    # Now take a deep breath and call the method with the arguments
+    if (! eval { $response = $self->{code}->(@params); 1; })
+    {
+        # On failure, propagate user-generated RPC::XML::fault exceptions, or
+        # transform Perl-level error/failure into such an object
+        if ($@)
+        {
+            return (blessed $@ and $@->isa('RPC::XML::fault')) ?
+                $@ : $srv->server_fault(execerror =>
+                                        "Method $name returned error: $@");
+        }
+    }
+
+    if (! $noinc)
+    {
+        $self->{called}++;
+    }
     # Create a suitable return value
-    if (! ref($response))
+    if (! ref $response)
     {
         if ($resptype eq 'scalar')
         {
@@ -1090,5 +1174,5 @@ sub call
         }
     }
 
-    $response;
+    return $response;
 }

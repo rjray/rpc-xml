@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -33,8 +33,12 @@ use warnings;
 use vars qw($VERSION %AVAILABLE $PARSER_CLASS);
 use subs qw(import new register);
 
-$VERSION = '1.00';
-$VERSION = eval $VERSION; ## no critic
+# Because this is a factory class, there are some eval's that violate this
+# critic policy, but can't be worked around:
+## no critic (RequireCheckingReturnValueOfEval)
+
+$VERSION = '1.01';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # These are the known parsers supported, not including any that are specified
 # by the user at import-time.
@@ -74,7 +78,10 @@ sub import
 
     # As a special-case, this one parameter might be specified without the
     # key, if it is the ONLY thing passed:
-    @args = (class => @args) if (1 == @args);
+	if (1 == @args)
+	{
+		@args = (class => @args);
+	}
 
     # For now, the only arguments are key/value pairs so it's safe to coerce
     # this into a hash
@@ -108,14 +115,13 @@ sub import
 ###############################################################################
 sub new
 {
-    my $class = shift;
-    my %attrs = @_;
+    my ($class, %attrs) = @_;
 
     my $factory = delete $attrs{class} || $PARSER_CLASS;
 
     if ($class = $AVAILABLE{$factory})
     {
-        eval "require $class;"; ## no critic
+        eval "require $class;"; ## no critic (ProhibitStringyEval)
         if ($@)
         {
             $RPC::XML::ERROR = __PACKAGE__ . "::new: Error loading $class (" .
@@ -128,14 +134,14 @@ sub new
         # This means that the class is not one of the built-in ones. Try to
         # load it, then make sure it's a sub-class of this one:
         $class = $factory;
-        eval "require $class;"; ## no critic
+        eval "require $class;"; ## no critic (ProhibitStringyEval)
         if ($@)
         {
             $RPC::XML::ERROR = __PACKAGE__ . "::new: Error loading $class: $@";
             return;
         }
         # Loaded OK... is it a descendent?
-        unless ($class->isa(__PACKAGE__))
+        if  (! $class->isa(__PACKAGE__))
         {
             $RPC::XML::ERROR = __PACKAGE__ . "::new: Class '$class' cannot " .
               'be used, as it is not a sub-class of ' . __PACKAGE__;
@@ -143,7 +149,7 @@ sub new
         }
     }
 
-    $class->new(%attrs);
+    return $class->new(%attrs);
 }
 
 1;
@@ -215,7 +221,7 @@ must be explicitly requested.
 
 =back
 
-=head1 METHODS
+=head1 SUBROUTINES/METHODS
 
 The methods are:
 
@@ -281,9 +287,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or

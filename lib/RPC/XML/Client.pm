@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -42,6 +42,7 @@ use HTTP::Request;
 use URI;
 use Scalar::Util 'blessed';
 use File::Temp;
+use IO::Handle;
 
 use RPC::XML;
 require RPC::XML::ParserFactory;
@@ -49,12 +50,18 @@ require RPC::XML::ParserFactory;
 BEGIN
 {
     # Check for compression support
-    eval { require Compress::Zlib; };
-    $COMPRESSION_AVAILABLE = ($@) ? '' : 'deflate';
+    if (eval { require Compress::Zlib; 1; })
+    {
+        $COMPRESSION_AVAILABLE = ($@) ? q{} : 'deflate';
+    }
+    else
+    {
+        $COMPRESSION_AVAILABLE = q{};
+    }
 }
 
-$VERSION = '1.31';
-$VERSION = eval $VERSION; ## no critic
+$VERSION = '1.32';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
 #
@@ -76,20 +83,21 @@ $VERSION = eval $VERSION; ## no critic
 ###############################################################################
 sub new
 {
-    my $class = shift;
-    my $location = shift;
-    my %attrs = @_;
+    my ($class, $location, %attrs) = @_;
 
     $class = ref($class) || $class;
-    return "${class}::new: Missing location argument" unless $location;
+    if (! $location)
+    {
+        return "${class}::new: Missing location argument";
+    }
 
-    my ($self, $UA, $REQ, $PARSER);
+    my ($self, $UA, $REQ);
 
     # Start by getting the LWP::UA object
     $UA = LWP::UserAgent->new((exists $attrs{useragent}) ?
                               @{$attrs{useragent}} : ()) or
         return "${class}::new: Unable to get LWP::UserAgent object";
-    $UA->agent(sprintf("%s/%s %s", $class, $VERSION, $UA->agent));
+    $UA->agent(sprintf '%s/%s %s', $class, $VERSION, $UA->agent);
     $self->{__useragent} = $UA;
     delete $attrs{useragent};
 
@@ -107,8 +115,10 @@ sub new
     # Also (for now) I prefer to manipulate the private keys directly, before
     # blessing $self, rather than using accessors. This is just for performance
     # and I might change my mind later.
-    $REQ->header(Accept_Encoding => $self->{__compress})
-        if $self->{__compress};
+    if ($self->{__compress})
+    {
+        $REQ->header(Accept_Encoding => $self->{__compress});
+    }
     $self->{__compress_thresh} = $attrs{compress_thresh} || 4096;
     $self->{__compress_re} = qr/$self->{__compress}/;
     # They can change this value with a method
@@ -119,8 +129,8 @@ sub new
     # files due to size, and where to home the temp files. Start with a size
     # threshhold of 1Meg and no specific dir (which will fall-through to the
     # tmpdir() method of File::Spec).
-    $self->{__message_file_thresh} = $attrs{message_file_thresh} || 1048576;
-    $self->{__message_temp_dir}    = $attrs{message_temp_dir}    || '';
+    $self->{__message_file_thresh} = $attrs{message_file_thresh} || 1_048_576;
+    $self->{__message_temp_dir}    = $attrs{message_temp_dir}    || q{};
     delete @attrs{qw(message_file_thresh message_temp_dir)};
 
     # Note and preserve any error or fault handlers. Check the combo-handler
@@ -149,9 +159,12 @@ sub new
     delete $attrs{parser};
 
     # Now preserve any remaining attributes passed in
-    $self->{$_} = $attrs{$_} for (keys %attrs);
+    for (keys %attrs)
+    {
+        $self->{$_} = $attrs{$_};
+    }
 
-    bless $self, $class;
+    return bless $self, $class;
 }
 
 ###############################################################################
@@ -178,15 +191,16 @@ sub simple_request
 
     my ($return, $value);
 
-    $RPC::XML::ERROR = '';
+    $RPC::XML::ERROR = q{};
 
     $return = $self->send_request(@args);
-    unless (ref $return)
+    if (! ref $return)
     {
         $RPC::XML::ERROR = ref($self) . "::simple_request: $return";
         return;
     }
-    $return->value;
+
+    return $return->value;
 }
 
 ###############################################################################
@@ -205,7 +219,7 @@ sub simple_request
 #                   Failure:    error string
 #
 ###############################################################################
-sub send_request
+sub send_request ## no critic (ProhibitExcessComplexity)
 {
     my ($self, $req, @args) = @_;
 
@@ -214,11 +228,14 @@ sub send_request
 
     $me = ref($self) . '::send_request';
 
-    unless (blessed $req and $req->isa('RPC::XML::request'))
+    if (! (blessed $req and $req->isa('RPC::XML::request')))
     {
         # Assume that $req is the name of the routine to be called
-        return "$me: Error creating RPC::XML::request object: $RPC::XML::ERROR"
-            unless ($req = RPC::XML::request->new($req, @args));
+        if (! ($req = RPC::XML::request->new($req, @args)))
+        {
+            return "$me: Error creating RPC::XML::request object: " .
+                $RPC::XML::ERROR;
+        }
     }
 
     # Start by setting up the request-clone for using in this instance
@@ -245,11 +262,13 @@ sub send_request
         # Start by creating a temp-file
         $tmpdir = $self->message_temp_dir || File::Spec->tmpdir;
         $req_fh = Symbol::gensym();
-        return "$me: Error opening tmpfile: $!"
-             unless ($req_fh = File::Temp->new(UNLINK=>1, DIR=>$tmpdir));
-        binmode($req_fh);
+        if (! ($req_fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
+        {
+            return "$me: Error opening tmpfile: $!";
+        }
+        binmode $req_fh;
         # Make it auto-flush
-        my $old_fh = select($req_fh); $| = 1; select($old_fh);
+        $req_fh->autoflush();
 
         # Now that we have it, spool the request to it. This is a little
         # hairy, since we still have to allow for compression. And though the
@@ -259,51 +278,66 @@ sub send_request
         if ($do_compress && ($req->length >= $self->compress_thresh))
         {
             my $fh2 = Symbol::gensym();
-            return "$me: Error opening tmpfile: $!"
-                unless ($fh2 = File::Temp->new(UNLINK=>1, DIR=>$tmpdir));
+            if (! ($fh2 = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
+            {
+                return "$me: Error opening tmpfile: $!";
+            }
             # Make it auto-flush
-            $old_fh = select($fh2); $| = 1; select($old_fh);
+            $fh2->autoflush();
 
             # Write the request to the second FH
             $req->serialize($fh2);
-            seek($fh2, 0, 0);
+            seek $fh2, 0, 0;
 
             # Spin up the compression engine
             $com_engine = Compress::Zlib::deflateInit();
-            return "$me: Unable to initialize the Compress::Zlib engine"
-                unless $com_engine;
+            if (! $com_engine)
+            {
+                return "$me: Unable to initialize the Compress::Zlib engine";
+            }
 
             # Spool from the second FH through the compression engine, into
             # the intended FH.
-            my $buf = '';
+            my $buf = q{};
             my $out;
-            while (read($fh2, $buf, 4096))
+            while (read $fh2, $buf, 4096)
             {
                 $out = $com_engine->deflate(\$buf);
-                return "$me: Compression failure in deflate()"
-                    unless defined $out;
-                print $req_fh $out;
+                if (! defined $out)
+                {
+                    return "$me: Compression failure in deflate()";
+                }
+                print {$req_fh} $out;
             }
             # Make sure we have all that's left
             $out = $com_engine->flush;
-            return "$me: Compression flush failure in deflate()"
-                unless defined $out;
-            print $req_fh $out;
+            if (! defined $out)
+            {
+                return "$me: Compression flush failure in deflate()";
+            }
+            print {$req_fh} $out;
 
             # Close the secondary FH. Rewinding the primary is done later.
-            close($fh2);
+            if (! close $fh2)
+            {
+                return "$me: Error closing spool-file: $!";
+            }
         }
         else
         {
             $req->serialize($req_fh);
         }
-        seek($req_fh, 0, 0);
+        seek $req_fh, 0, 0;
 
         $reqclone->content_length(-s $req_fh);
         $reqclone->content(sub {
-                               my $b = '';
-                               return unless defined(read($req_fh, $b, 4096));
-                               $b;
+                               my $b = q{};
+                               if (! defined read $req_fh, $b, 4096)
+                               {
+                                   return;
+                               }
+
+                               return $b;
                            });
     }
     else
@@ -311,10 +345,13 @@ sub send_request
         # Treat the content strictly in-memory
         $content = $req->as_string;
         RPC::XML::utf8_downgrade($content);
-        $content = Compress::Zlib::compress($content) if $do_compress;
+        if ($do_compress)
+        {
+            $content = Compress::Zlib::compress($content);
+        }
         $reqclone->content($content);
         # Because $content has been force-downgraded, length() should work
-        $reqclone->content_length(length($content));
+        $reqclone->content_length(length $content);
     }
 
     # Content used to be handled as an in-memory string. Now, to avoid eating
@@ -327,25 +364,31 @@ sub send_request
     my $cb = sub {
         my ($data, $resp) = @_;
 
-        unless (defined $compression)
+        if (! defined $compression)
         {
             $compression =
-                (($resp->content_encoding || '') =~
+                (($resp->content_encoding || q{}) =~
                  $self->compress_re) ? 1 : 0;
-            die "$me: Compressed content encoding not supported"
-                if ($compression and (! $can_compress));
+            if ($compression and (! $can_compress))
+            {
+                die "$me: Compressed content encoding not supported\n";
+            }
             if ($compression)
             {
-                die "$me: Unable to initialize de-compression engine"
-                    unless ($com_engine = Compress::Zlib::inflateInit());
+                if (! ($com_engine = Compress::Zlib::inflateInit()))
+                {
+                    die "$me: Unable to initialize de-compression engine\n";
+                }
             }
         }
 
         if ($compression)
         {
             my $error;
-            die "$me: Error in inflate() expanding data: $error"
-                unless (($data, $error) = $com_engine->inflate($data));
+            if (! (($data, $error) = $com_engine->inflate($data)))
+            {
+                die "$me: Error in inflate() expanding data: $error\n";
+            }
         }
 
         $parser->parse_more($data);
@@ -356,41 +399,43 @@ sub send_request
     if ($message = $response->headers->header('X-Died'))
     {
         # One of the die's was triggered
-        return (ref($self->error_handler) eq 'CODE') ?
+        return ('CODE' eq ref $self->error_handler) ?
             $self->error_handler->($message) : $message;
     }
-    unless ($response->is_success)
+    if (! $response->is_success)
     {
         $message =  "$me: HTTP server error: " . $response->message;
-        return (ref($self->error_handler) eq 'CODE') ?
+        return ('CODE' eq ref $self->error_handler) ?
             $self->error_handler->($message) : $message;
     }
 
     # Whee. No errors from the callback or the server. Finalize the parsing
     # process.
-    eval { $value = $parser->parse_done(); };
-    if ($@)
+    if (! eval { $value = $parser->parse_done(); 1; })
     {
-        # One of the die's was triggered
-        return (ref($self->error_handler) eq 'CODE') ?
-            $self->error_handler->($@) : $@;
+        if ($@)
+        {
+            # One of the die's was triggered
+            return ('CODE' eq ref $self->error_handler) ?
+                $self->error_handler->($@) : $@;
+        }
     }
 
     # Check if there is a callback to be invoked in the case of
     # errors or faults
-    if (! ref($value))
+    if (! ref $value)
     {
         $message =  "$me: parse-level error: $value";
-        return (ref($self->error_handler) eq 'CODE') ?
+        return ('CODE' eq ref $self->error_handler) ?
             $self->error_handler->($message) : $message;
     }
     elsif ($value->is_fault)
     {
-        return (ref($self->fault_handler) eq 'CODE') ?
+        return ('CODE' eq ref $self->fault_handler) ?
             $self->fault_handler->($value->value) : $value->value;
     }
 
-    $value->value;
+    return $value->value;
 }
 
 ###############################################################################
@@ -407,10 +452,11 @@ sub send_request
 #   Returns:        Return value from LWP::UserAgent->timeout()
 #
 ###############################################################################
-sub timeout
+sub timeout ## no critic (RequireArgUnpacking)
 {
     my $self = shift;
-    $self->useragent->timeout(@_);
+
+    return $self->useragent->timeout(@_);
 }
 
 ###############################################################################
@@ -426,10 +472,11 @@ sub timeout
 #   Returns:        Current URI, undef if trying to set an invalid URI
 #
 ###############################################################################
-sub uri
+sub uri ## no critic (RequireArgUnpacking)
 {
     my $self = shift;
-    $self->request->uri(@_);
+
+    return $self->request->uri(@_);
 }
 
 ###############################################################################
@@ -454,17 +501,18 @@ sub credentials
 
     my $uri = URI->new($self->uri);
     $self->useragent->credentials($uri->host_port, $realm, $user, $pass);
-    $self;
+
+    return $self;
 }
 
 # Immutable accessor methods
 BEGIN
 {
-    no strict 'refs'; ## no critic
+    no strict 'refs'; ## no critic (ProhibitNoStrict)
 
     for my $method (qw(useragent request compress_re compress parser))
     {
-        *$method = sub { shift->{"__$method"} }
+        *{$method} = sub { shift->{"__$method"} }
     }
 }
 
@@ -472,22 +520,28 @@ BEGIN
 sub compress_thresh
 {
     my $self = shift;
-    my $set = shift || 0;
+    my $value = shift || 0;
 
     my $old = $self->{__compress_thresh};
-    $self->{__compress_thresh} = $set if ($set);
+    if ($value)
+    {
+        $self->{__compress_thresh} = $value;
+    }
 
-    $old;
+    return $old;
 }
 
 # This doesn't actually *get* the original value, it only sets the value
 sub compress_requests
 {
-    my $self = shift;
+    my ($self, $value) = @_;
 
-    return $self->{__compress_requests} unless @_;
+    if (! $value)
+    {
+        return $self->{__compress_requests};
+    }
 
-    $self->{__compress_requests} = $_[0] ? 1 : 0;
+    return $self->{__compress_requests} = $value ? 1 : 0;
 }
 
 # These are get/set accessors for the fault-handler, error-handler and the
@@ -497,48 +551,68 @@ sub fault_handler
     my ($self, $newval) = @_;
 
     my $val = $self->{__fault_cb};
-    $self->{__fault_cb} = $newval if ($newval and ref($newval));
+    if ($newval and ref $newval)
+    {
+        $self->{__fault_cb} = $newval;
+    }
     # Special: an explicit undef is used to clear the callback
-    $self->{__fault_cb} = undef if (@_ == 2 and (! defined $newval));
+    if (@_ == 2 and (! defined $newval))
+    {
+        $self->{__fault_cb} = undef;
+    }
 
-    $val;
+    return $val;
 }
+
 sub error_handler
 {
     my ($self, $newval) = @_;
 
     my $val = $self->{__error_cb};
-    $self->{__error_cb} = $newval if ($newval and ref($newval));
+    if ($newval and ref $newval)
+    {
+        $self->{__error_cb} = $newval;
+    }
     # Special: an explicit undef is used to clear the callback
-    $self->{__error_cb} = undef if (@_ == 2 and (! defined $newval));
+    if (@_ == 2 and (! defined $newval))
+    {
+        $self->{__error_cb} = undef;
+    }
 
-    $val;
+    return $val;
 }
+
 sub combined_handler
 {
     my ($self, $newval) = @_;
 
-    ($self->fault_handler($newval), $self->error_handler($newval));
+    return ($self->fault_handler($newval), $self->error_handler($newval));
 }
 
 # Control whether, and at what point, messages are considered too large to
 # handle in-memory.
 sub message_file_thresh
 {
-    my $self = shift;
+    my ($self, $thresh) = @_;
 
-    return $self->{__message_file_thresh} unless @_;
+    if (! $thresh)
+    {
+        return $self->{__message_file_thresh};
+    }
 
-    $self->{__message_file_thresh} = shift;
+    return $self->{__message_file_thresh} = $thresh;
 }
 
 sub message_temp_dir
 {
-    my $self = shift;
+    my ($self, $dir) = @_;
 
-    return $self->{__message_temp_dir} unless @_;
+    if (! $dir)
+    {
+        return $self->{__message_temp_dir};
+    }
 
-    $self->{__message_temp_dir} = shift;
+    return $self->{__message_temp_dir} = $dir;
 }
 
 1;
@@ -567,7 +641,7 @@ This is an XML-RPC client built upon the B<RPC::XML> data classes, and using
 B<LWP::UserAgent> and B<HTTP::Request> for the communication layer. This
 client supports the full XML-RPC specification.
 
-=head1 METHODS
+=head1 SUBROUTINES/METHODS
 
 The following methods are available:
 
@@ -823,9 +897,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or

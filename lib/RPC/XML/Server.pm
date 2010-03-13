@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -68,11 +68,12 @@ use 5.006001;
 use strict;
 use warnings;
 use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR %FAULT_TABLE  @XPL_PATH
-    $IO_SOCKET_SSL_HACK_NEEDED $COMPRESSION_AVAILABLE);
+            $IO_SOCKET_SSL_HACK_NEEDED $COMPRESSION_AVAILABLE);
 
-use Carp 'carp';
+use Carp qw(carp croak);
 use AutoLoader 'AUTOLOAD';
 use File::Spec;
+use IO::Handle;
 
 use HTTP::Status;
 use HTTP::Response;
@@ -95,20 +96,22 @@ BEGIN
     $IO_SOCKET_SSL_HACK_NEEDED = 1;
 
     # Check for compression support
-    eval { require Compress::Zlib; };
-    $COMPRESSION_AVAILABLE = ($@) ? '' : 'deflate';
+    if (! eval { require Compress::Zlib; $COMPRESSION_AVAILABLE = 'deflate'; })
+    {
+        $COMPRESSION_AVAILABLE = q{};
+    }
 
     # Set up the initial table of fault-types and their codes/messages
     %FAULT_TABLE = (
-        badxml       => [100 => 'XML parse error: %s'],
-        badmethod    => [200 => 'Method lookup error: %s'],
-        badsignature => [201 => 'Method signature error: %s'],
-        execerror    => [300 => 'Code execution error: %s'],
+        badxml       => [ 100 => 'XML parse error: %s' ],
+        badmethod    => [ 200 => 'Method lookup error: %s' ],
+        badsignature => [ 201 => 'Method signature error: %s' ],
+        execerror    => [ 300 => 'Code execution error: %s' ],
     );
 }
 
-$VERSION = '1.55';
-$VERSION = eval $VERSION;    ## no critic
+$VERSION = '1.56';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
 #
@@ -126,10 +129,9 @@ $VERSION = eval $VERSION;    ## no critic
 #                   Failure:    error string
 #
 ###############################################################################
-sub new
+sub new ## no critic (ProhibitExcessComplexity)
 {
-    my $class = shift;
-    my %args  = @_;
+    my ($class, %args) = @_;
 
     my (
         $self,     $http,        $resp, $host,
@@ -146,15 +148,15 @@ sub new
 
     if (delete $args{no_http})
     {
-        $self->{__host} = delete $args{host} || '';
-        $self->{__port} = delete $args{port} || '';
+        $self->{__host} = delete $args{host} || q{};
+        $self->{__port} = delete $args{port} || q{};
     }
     else
     {
         require HTTP::Daemon;
 
-        $host  = delete $args{host}  || '';
-        $port  = delete $args{port}  || '';
+        $host  = delete $args{host}  || q{};
+        $port  = delete $args{port}  || q{};
         $queue = delete $args{queue} || 5;
         $http  = HTTP::Daemon->new(
             Reuse => 1,
@@ -162,8 +164,10 @@ sub new
             ($port  ? (LocalPort => $port)  : ()),
             ($queue ? (Listen    => $queue) : ())
         );
-        return "${class}::new: Unable to create HTTP::Daemon object"
-            unless $http;
+        if (! $http)
+        {
+            return "${class}::new: Unable to create HTTP::Daemon object";
+        }
         $URI              = URI->new($http->url);
         $self->{__host}   = $URI->host;
         $self->{__port}   = $URI->port;
@@ -172,8 +176,11 @@ sub new
 
     # Create and store the cached response object for later cloning and use
     $resp = HTTP::Response->new();
-    return "${class}::new: Unable to create HTTP::Response object"
-        unless $resp;
+    if (! $resp)
+    {
+        return "${class}::new: Unable to create HTTP::Response object";
+    }
+
     $resp->header(    # This is essentially the same string returned by the
                       # default "identity" method that may be loaded from a
                       # XPL file. But it hasn't been loaded yet, and may not
@@ -189,7 +196,7 @@ sub new
     $self->{__response} = $resp;
 
     # Basic (scalar) properties
-    $self->{__path}         = delete $args{path} || '';
+    $self->{__path}         = delete $args{path} || q{};
     $self->{__started}      = 0;
     $self->{__method_table} = {};
     $self->{__requests}     = 0;
@@ -202,13 +209,16 @@ sub new
         $args{parser} ? @{delete $args{parser}} : ());
 
     # Set up the default methods unless requested not to
-    $self->add_default_methods unless (delete $args{no_default});
+    if (! delete $args{no_default})
+    {
+        $self->add_default_methods;
+    }
 
     # Compression support
-    $self->{__compress} = '';
+    $self->{__compress} = q{};
     if (delete $args{no_compress})
     {
-        $self->{__compress} = '';
+        $self->{__compress} = q{};
     }
     else
     {
@@ -216,8 +226,10 @@ sub new
         # Add some more headers to the default response object for compression.
         # It looks wasteful to keep using the hash key, but it makes it easier
         # to change the string in just one place (above) if I have to.
-        $resp->header(Accept_Encoding => $self->{__compress})
-            if $self->{__compress};
+        if ($self->{__compress})
+        {
+            $resp->header(Accept_Encoding => $self->{__compress});
+        }
         $self->{__compress_thresh} = delete $args{compress_thresh} || 4096;
         # Yes, I know this is redundant. It's for future expansion/flexibility.
         $self->{__compress_re} =
@@ -229,8 +241,8 @@ sub new
     # threshhold of 1Meg and no specific dir (which will fall-through to the
     # tmpdir() method of File::Spec).
     $self->{__message_file_thresh} = delete $args{message_file_thresh} ||
-        1048576;
-    $self->{__message_temp_dir} = delete $args{message_temp_dir} || '';
+        1_048_576;
+    $self->{__message_temp_dir} = delete $args{message_temp_dir} || q{};
 
     # Set up the table of response codes/messages that will be used when the
     # server is sending a controlled error message to a client (as opposed to
@@ -257,34 +269,43 @@ sub new
     {
         my $local_table = delete $args{fault_table};
         # Merge any data from this table into the object's fault-table
-        for my $key (keys %$local_table)
+        for my $key (keys %{$local_table})
         {
-            $self->{__fault_table}->{$key} =
-                  (ref $local_table->{$key})
-                ? [@{$local_table->{$key}}]
-                : $local_table->{$key};
+            $self->{__fault_table}->{$key} = (ref $local_table->{$key}) ?
+                [ @{$local_table->{$key}} ] : $local_table->{$key};
         }
     }
 
     # Copy the remaining args over untouched
-    $self->{$_} = $args{$_} for (keys %args);
+    for (keys %args)
+    {
+        $self->{$_} = $args{$_};
+    }
 
-    $self;
+    return $self;
 }
 
 # Most of these tiny subs are accessors to the internal hash keys. They not
 # only control access to the internals, they ease sub-classing.
 
-sub version { $RPC::XML::Server::VERSION }
+sub version { return $RPC::XML::Server::VERSION }
 
-sub INSTALL_DIR { $INSTALL_DIR }
+sub INSTALL_DIR { return $INSTALL_DIR }
 
 sub url
 {
     my $self = shift;
 
-    return $self->{__daemon}->url if $self->{__daemon};
-    return unless (my $host = $self->host);
+    my $host;
+
+    if ($self->{__daemon})
+    {
+        return $self->{__daemon}->url;
+    }
+    if (! ($host = $self->host))
+    {
+        return;
+    }
 
     my $path = $self->path;
     my $port = $self->port;
@@ -304,7 +325,9 @@ sub url
 
 sub product_tokens
 {
-    sprintf "%s/%s", (ref $_[0] || $_[0]), $_[0]->version;
+    my $self = shift;
+
+    return sprintf '%s/%s', (ref $self || $self), $self->version;
 }
 
 # This fetches/sets the internal "started" timestamp. Unlike the other
@@ -312,50 +335,58 @@ sub product_tokens
 # rather a non-null argument sets it from the current time.
 sub started
 {
-    my ($self, $set) = @_;
+    my ($self, $set_started) = @_;
 
     my $old = $self->{__started} || 0;
-    $self->{__started} = time if $set;
+    if ($set_started)
+    {
+        $self->{__started} = time;
+    }
 
-    $old;
+    return $old;
 }
 
 BEGIN
 {
-    no strict 'refs';    ## no critic
+    no strict 'refs'; ## no critic (ProhibitNoStrict)
 
     # These are mutable member values for which the logic only differs in
     # the name of the field to modify:
     for my $method (qw(compress_thresh message_file_thresh message_temp_dir))
     {
-        *$method = sub {
-            my ($self, $set) = @_;
+        *{$method} = sub {
+            my ($self, $value) = @_;
 
             my $old = $self->{"__$method"};
-            $self->{"__$method"} = $set if (defined $set);
+            if (defined $value)
+            {
+                $self->{"__$method"} = $value;
+            }
 
             $old;
-            }
+        }
     }
 
     # These are immutable member values, so this simple block applies to all
-    for my $method (
-        qw(path host port requests response compress compress_re
-        parser)
-        )
+    for my $method (qw(path host port requests response compress compress_re
+                       parser))
     {
-        *$method = sub { shift->{"__$method"} }
+        *{$method} = sub { shift->{"__$method"} }
     }
 }
 
 # Get/set the search path for XPL files
 sub xpl_path
 {
-    my $self = shift;
+    my ($self, $path) = @_;
     my $ret  = $self->{__xpl_path};
 
-    $self->{__xpl_path} = $_[0] if ($_[0] and ref($_[0]) eq 'ARRAY');
-    $ret;
+    if ($path && ref $path eq 'ARRAY')
+    {
+        $self->{__xpl_path} = $path;
+    }
+
+    return $ret;
 }
 
 ###############################################################################
@@ -374,17 +405,14 @@ sub xpl_path
 ###############################################################################
 sub add_method
 {
-    my $self = shift;
-    my $meth = shift;
-
-    my ($name, $val);
+    my ($self, $meth) = @_;
 
     my $me = ref($self) . '::add_method';
 
-    if (!ref($meth))
+    if (! ref $meth)
     {
-        $val = $self->method_from_file($meth);
-        if (!ref($val))
+        my $val = $self->method_from_file($meth);
+        if (! ref $val)
         {
             return "$me: Error loading from file $meth: $val";
         }
@@ -393,35 +421,36 @@ sub add_method
             $meth = $val;
         }
     }
-    elsif (ref($meth) eq 'HASH')
+    elsif (ref $meth eq 'HASH')
     {
         my $class = 'RPC::XML::' . ucfirst($meth->{type} || 'method');
         $meth = $class->new($meth);
     }
-    elsif (!(blessed $meth and $meth->isa('RPC::XML::Procedure')))
+    elsif (! (blessed $meth and $meth->isa('RPC::XML::Procedure')))
     {
         return "$me: Method argument must be a file name, a hash " .
             'reference or an object derived from RPC::XML::Procedure';
     }
 
     # Do some sanity-checks
-    return "$me: Method missing required data; check name, code and/or " .
-        'signature'
-        unless $meth->is_valid;
+    if (! $meth->is_valid)
+    {
+        return "$me: Method missing required data; check name, code and/or " .
+            'signature';
+    }
 
-    $name = $meth->name;
-    $self->{__method_table}->{$name} = $meth;
+    $self->{__method_table}->{$meth->name} = $meth;
 
-    $self;
+    return $self;
 }
 
 1;
 
-=pod
+__END__
 
 =head1 NAME
 
-RPC::XML::Server - A sample server implementation based on RPC::XML
+RPC::XML::Server - A server base-class for XML-RPC
 
 =head1 SYNOPSIS
 
@@ -436,10 +465,11 @@ RPC::XML::Server - A sample server implementation based on RPC::XML
 
 =head1 DESCRIPTION
 
-This is a sample XML-RPC server built upon the B<RPC::XML> data classes, and
-using B<HTTP::Daemon> and B<HTTP::Response> for the communication layer.
+This is both a base-class for developing XML-RPC servers, and a working server
+class in its own right. It is built upon the B<RPC::XML> data classes, and
+defaults to using B<HTTP::Daemon> for the communication layer.
 
-=head1 USAGE
+=head1 SUBROUTINES/METHODS
 
 Use of the B<RPC::XML::Server> is based on an object model. A server is
 instantiated from the class, methods (subroutines) are made public by adding
@@ -602,9 +632,9 @@ Specify one or more fault types to either add to or override the built-in set
 of faults for the server object. The value of this parameter is a hash
 reference whose keys are the fault type and whose values are either a scalar
 (which is taken to be the numerical code) or a list reference with two elements
-(the code followed by the string). See L</"Server Faults"> for the list of faults
-that are built-in to the server class, and for more information on defining
-your own.
+(the code followed by the string). See L</"Server Faults"> for the list of
+faults that are built-in to the server class, and for more information on
+defining your own.
 
 =back
 
@@ -1328,9 +1358,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or
@@ -1352,8 +1382,6 @@ Randy J. Ray C<< <rjray@blackperl.com> >>
 
 =cut
 
-__END__
-
 ###############################################################################
 #
 #   Sub Name:       add_proc
@@ -1374,9 +1402,12 @@ sub add_proc
     my ($self, $meth) = @_;
 
     # Anything else but a hash-reference goes through unaltered
-    $meth->{type} = 'procedure' if (ref($meth) eq 'HASH');
+    if (ref($meth) eq 'HASH')
+    {
+        $meth->{type} = 'procedure';
+    }
 
-    $self->add_method($meth);
+    return $self->add_method($meth);
 }
 
 ###############################################################################
@@ -1397,29 +1428,42 @@ sub add_proc
 ###############################################################################
 sub method_from_file
 {
-    my $self = shift;
-    my $file = shift;
+    my ($self, $file) = @_;
 
-    unless (File::Spec->file_name_is_absolute($file))
+    if (! File::Spec->file_name_is_absolute($file))
     {
         my ($path, @path);
-        push(@path, @{$self->xpl_path}) if (ref $self);
+        if (ref $self)
+        {
+            push @path, @{$self->xpl_path};
+        }
         for (@path, @XPL_PATH)
         {
             $path = File::Spec->catfile($_, $file);
-            if (-e $path) { $file = File::Spec->canonpath($path); last; }
+            if (-e $path)
+            {
+                $file = File::Spec->canonpath($path);
+                last;
+            }
         }
     }
     # Just in case it still didn't appear in the path, we really want an
     # absolute path:
-    $file = File::Spec->rel2abs($file)
-        unless (File::Spec->file_name_is_absolute($file));
+    if (! File::Spec->file_name_is_absolute($file))
+    {
+        $file = File::Spec->rel2abs($file);
+    }
 
-    RPC::XML::Procedure::new(undef, $file);
+    return RPC::XML::Procedure::new(undef, $file);
 }
 
 # Same as above, but for name-symmetry
-sub proc_from_file { shift->method_from_file(@_) }
+sub proc_from_file
+{
+    my ($self, $file) = @_;
+
+    return $self->method_from_file($file);
+}
 
 ###############################################################################
 #
@@ -1440,11 +1484,10 @@ sub proc_from_file { shift->method_from_file(@_) }
 ###############################################################################
 sub get_method
 {
-    my $self = shift;
-    my $name = shift;
+    my ($self, $name) = @_;
 
     my $meth = $self->{__method_table}->{$name};
-    unless (defined $meth)
+    if (! defined $meth)
     {
         if ($self->{__auto_methods})
         {
@@ -1454,8 +1497,10 @@ sub get_method
             $self->add_method("$loadname.xpl");
         }
         # If method is still not in the table, we were unable to load it
-        return "Unknown method: $name"
-            unless $meth = $self->{__method_table}->{$name};
+        if (! ($meth = $self->{__method_table}->{$name}))
+        {
+            return "Unknown method: $name";
+        }
     }
     # Check the mod-time of the file the method came from, if the test is on
     if ($self->{__auto_updates} &&
@@ -1463,14 +1508,22 @@ sub get_method
         ($meth->{mtime} < (stat $meth->{file})[9]))
     {
         my $ret = $meth->reload;
-        return "Reload of method $name failed: $ret" unless ref($ret);
+        if (! ref $ret)
+        {
+            return "Reload of method $name failed: $ret";
+        }
     }
 
-    $meth;
+    return $meth;
 }
 
 # Same as above, but for name-symmetry
-sub get_proc { shift->get_method(@_) }
+sub get_proc
+{
+    my ($self, $name) = @_;
+
+    return $self->get_method($name);
+}
 
 ###############################################################################
 #
@@ -1479,6 +1532,9 @@ sub get_proc { shift->get_method(@_) }
 #   Description:    Enter a server-loop situation, using the accept() loop of
 #                   HTTP::Daemon if $self has such an object, or falling back
 #                   Net::Server otherwise.
+#
+#                   The critic disabling is because we may manipulate @_
+#                   when using Net::Server.
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object of this class
@@ -1489,14 +1545,13 @@ sub get_proc { shift->get_method(@_) }
 #   Returns:        string if error, otherwise void
 #
 ###############################################################################
-sub server_loop
+sub server_loop ## no critic (RequireArgUnpacking,ProhibitExcessComplexity)
 {
     my $self = shift;
 
     if ($self->{__daemon})
     {
-        my ($conn, $req, $resp, $reqxml, $return, $respxml, $exit_now,
-            $timeout);
+        my ($conn, $req, $resp, $reqxml, $respxml, $exit_now, $timeout);
 
         my %args = @_;
 
@@ -1518,19 +1573,28 @@ sub server_loop
         $self->started('set');
         $exit_now = 0;
         $timeout  = $self->{__daemon}->timeout(1);
-        while (!$exit_now)
+        while (! $exit_now)
         {
             $conn = $self->{__daemon}->accept;
 
-            last if $exit_now;
-            next unless $conn;
+            if ($exit_now)
+            {
+                last;
+            }
+            if (! $conn)
+            {
+                next;
+            }
             $conn->timeout($self->timeout);
             $self->process_request($conn);
             $conn->close;
             undef $conn;    # Free up any lingering resources
         }
 
-        $self->{__daemon}->timeout($timeout) if defined $timeout;
+        if (defined $timeout)
+        {
+            $self->{__daemon}->timeout($timeout);
+        }
     }
     else
     {
@@ -1542,35 +1606,40 @@ sub server_loop
         my $port_flag      = 0;
         my $host_flag      = 0;
 
-        for (my $i = 0; $i < @_; $i += 2)
+        # Disable critic on the C-style for-loop because we need to step by
+        # 2 as we check for Net::Server arguments...
+        for (my $i = 0; $i < @_; $i += 2) ## no critic (ProhibitCStyleForLoops)
         {
-            $conf_file_flag = 1 if ($_[$i] eq 'conf_file');
-            $port_flag      = 1 if ($_[$i] eq 'port');
-            $host_flag      = 1 if ($_[$i] eq 'host');
+            if ($_[$i] eq 'conf_file') { $conf_file_flag = 1; }
+            if ($_[$i] eq 'port')      { $port_flag      = 1; }
+            if ($_[$i] eq 'host')      { $host_flag      = 1; }
         }
 
         # An explicitly-given conf-file trumps any specified at creation
         if (exists($self->{conf_file}) and (!$conf_file_flag))
         {
-            push(@_, 'conf_file', $self->{conf_file});
+            push @_, 'conf_file', $self->{conf_file};
             $conf_file_flag = 1;
         }
 
         # Don't do this next part if they've already given a port, or are
         # pointing to a config file:
-        unless ($conf_file_flag or $port_flag)
+        if (! ($conf_file_flag || $port_flag))
         {
-            push(@_, 'port', $self->{port} || $self->port || 9000);
-            push(@_, 'host', $self->{host} || $self->host || '*');
+            push @_, 'port', $self->{port} || $self->port || 9000;
+            push @_, 'host', $self->{host} || $self->host || q{*};
         }
 
         # Try to load the Net::Server::MultiType module
-        eval { require Net::Server::MultiType; };
-        return
-            ref($self) .
-            "::server_loop: Error loading Net::Server::MultiType: $@"
-            if ($@);
-        unshift(@RPC::XML::Server::ISA, 'Net::Server::MultiType');
+        if (! eval { require Net::Server::MultiType; 1; })
+        {
+            if ($@)
+            {
+                return ref($self) .
+                    "::server_loop: Error loading Net::Server::MultiType: $@";
+            }
+        }
+        unshift @RPC::XML::Server::ISA, 'Net::Server::MultiType';
 
         $self->started('set');
         # ...and we're off!
@@ -1600,7 +1669,7 @@ sub post_configure_hook
     $self->{__host} = $self->{server}->{host};
     $self->{__port} = $self->{server}->{port};
 
-    $self;
+    return $self;
 }
 
 ###############################################################################
@@ -1613,15 +1682,17 @@ sub post_configure_hook
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object instance
 #
-#   Globals:       %ENV
-#
 #   Returns:        $self
 #
 ###############################################################################
 sub pre_loop_hook
 {
+    my $self = shift;
+
     # We have to disable the __DIE__ handler for the sake of XML::Parser::Expat
-    $SIG{__DIE__} = '';
+    $SIG{__DIE__} = q{}; ## no critic (RequireLocalizedPunctuationVars)
+
+    return $self;
 }
 
 ###############################################################################
@@ -1639,7 +1710,7 @@ sub pre_loop_hook
 #   Returns:        void
 #
 ###############################################################################
-sub process_request
+sub process_request ## no critic (ProhibitExcessComplexity)
 {
     my $self = shift;
     my $conn = shift;
@@ -1651,21 +1722,24 @@ sub process_request
     );
 
     my $me = ref($self) . '::process_request';
-    unless ($conn and ref($conn))
+    if (! ($conn && ref $conn))
     {
         $conn = $self->{server}->{client};
         bless $conn, 'HTTP::Daemon::ClientConn';
-        ${*$conn}{'httpd_daemon'} = $self;
+        ${*{$conn}}{'httpd_daemon'} = $self;
 
-        if (    $IO::Socket::SSL::VERSION
-            and $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED)
+        if ($IO::Socket::SSL::VERSION &&
+            $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED)
         {
-            no strict 'vars';
+            no strict 'vars'; ## no critic (ProhibitNoStrict)
             # RT 43019: Don't do this if Socket6/IO::Socket::INET6 is in
             # effect, as it causes calls to unpack_sockaddr_in6 to break.
-            unshift @HTTP::Daemon::ClientConn::ISA, 'IO::Socket::SSL'
-                unless (defined $Socket6::VERSION
-                or defined $IO::Socket::INET6::VERSION);
+            if (! (defined $Socket6::VERSION ||
+                   defined $IO::Socket::INET6::VERSION))
+            {
+                unshift @HTTP::Daemon::ClientConn::ISA, 'IO::Socket::SSL';
+            }
+
             $RPC::XML::Server::IO_SOCKET_SSL_HACK_NEEDED = 0;
         }
     }
@@ -1690,9 +1764,9 @@ sub process_request
             # Get a XML::Parser::ExpatNB object
             $parser = $self->parser->parse();
 
-            if (($req->content_encoding || '') =~ $self->compress_re)
+            if (($req->content_encoding || q{}) =~ $self->compress_re)
             {
-                unless ($self->compress)
+                if (! $self->compress)
                 {
                     $conn->send_error(RC_BAD_REQUEST,
                         "$me: Compression not permitted in " . 'requests');
@@ -1702,11 +1776,11 @@ sub process_request
                 $do_compress = 1;
             }
 
-            if (($req->content_encoding || '') =~ /chunked/i)
+            if (($req->content_encoding || q{}) =~ /chunked/i)
             {
                 # Technically speaking, we're not supposed to honor chunked
                 # transfer-encoding...
-                die "$me: 'chunked' content-encoding not (yet) supported";
+                croak "$me: 'chunked' content-encoding not (yet) supported";
             }
             else
             {
@@ -1714,7 +1788,7 @@ sub process_request
                 if ($do_compress)
                 {
                     # Spin up the compression engine
-                    unless ($com_engine = Compress::Zlib::inflateInit())
+                    if (! ($com_engine = Compress::Zlib::inflateInit()))
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
                             "$me: Unable to initialize the " .
@@ -1723,7 +1797,7 @@ sub process_request
                     }
                 }
 
-                $buf = '';
+                $buf = q{};
                 while ($length > 0)
                 {
                     if ($buf = $conn->read_buffer)
@@ -1731,15 +1805,14 @@ sub process_request
                         # Anything that get_request read, but didn't use, was
                         # left in the read buffer. The call to sysread() should
                         # NOT be made until we've emptied this source, first.
-                        $read = length($buf);
-                        $conn->read_buffer('');   # Clear it, now that it's read
+                        $read = length $buf;
+                        $conn->read_buffer(q{}); # Clear it, now that it's read
                     }
                     else
                     {
-                        $read =
-                            sysread($conn, $buf,
-                            ($length < 2048) ? $length : 2048);
-                        unless ($read)
+                        $read = sysread $conn, $buf,
+                            ($length < 2048) ? $length : 2048;
+                        if (! $read)
                         {
                             # Convert this print to a logging-hook call.
                             # Umm, when I have real logging hooks, I mean.
@@ -1748,13 +1821,13 @@ sub process_request
                             # taking over SIGPIPE as well as the ones it
                             # already monopolizes.
                             #print STDERR "Error: Connection Dropped\n";
-                            return undef;
+                            return;
                         }
                     }
                     $length -= $read;
                     if ($do_compress)
                     {
-                        unless ($buf = $com_engine->inflate($buf))
+                        if (! ($buf = $com_engine->inflate($buf)))
                         {
                             $conn->send_error(RC_INTERNAL_SERVER_ERROR,
                                 "$me: Error inflating " . 'compressed data');
@@ -1766,25 +1839,31 @@ sub process_request
                         }
                     }
 
-                    eval { $parser->parse_more($buf); };
-                    if ($@)
+                    if (! eval { $parser->parse_more($buf); 1; })
                     {
-                        $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                            "$me: Parse error in (compressed) " .
-                                "XML request (mid): $@");
-                        # Again, the stream is likely corrupted
-                        $conn->force_last_request;
-                        next;
+                        if ($@)
+                        {
+                            $conn->send_error(
+                                RC_INTERNAL_SERVER_ERROR,
+                                "$me: Parse error in (compressed) " .
+                                "XML request (mid): $@"
+                            );
+                            # Again, the stream is likely corrupted
+                            $conn->force_last_request;
+                            next;
+                        }
                     }
                 }
 
-                eval { $reqxml = $parser->parse_done(); };
-                if ($@)
+                if (! eval { $reqxml = $parser->parse_done(); 1; })
                 {
-                    $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                        "$me: Parse error in (compressed) " .
-                            "XML request (end): $@");
-                    next;
+                    if ($@)
+                    {
+                        $conn->send_error(RC_INTERNAL_SERVER_ERROR,
+                                          "$me: Parse error in (compressed) " .
+                                          "XML request (end): $@");
+                        next;
+                    }
                 }
             }
 
@@ -1795,6 +1874,7 @@ sub process_request
             if (ref $reqxml)
             {
                 # Set localized keys on $self, based on the connection info
+                ## no critic (ProhibitLocalVars)
                 local $self->{peeraddr} = $peeraddr;
                 local $self->{peerhost} = $peerhost;
                 local $self->{peerport} = $peerport;
@@ -1810,32 +1890,29 @@ sub process_request
             $resp = $self->response->clone;
             # Should we apply compression to the outgoing response?
             $do_compress = 0;    # In case it was set above for incoming data
-            if (    $self->compress
-                and ($respxml->length > $self->compress_thresh)
-                and
-                (($req->header('Accept-Encoding') || '') =~ $self->compress_re))
+            if ($self->compress &&
+                ($respxml->length > $self->compress_thresh) &&
+                (($req->header('Accept-Encoding') || q{}) =~
+                 $self->compress_re))
             {
                 $do_compress = 1;
                 $resp->header(Content_Encoding => $self->compress);
             }
             # Next step, determine the response disposition. If it is above the
             # threshhold for a requested file cut-off, send it to a temp file
-            if (    $self->message_file_thresh
-                and $self->message_file_thresh < $respxml->length)
+            if ($self->message_file_thresh &&
+                $self->message_file_thresh < $respxml->length)
             {
-                require File::Spec;
                 # Start by creating a temp-file
                 $tmpdir = $self->message_temp_dir || File::Spec->tmpdir;
-                unless ($resp_fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir))
+                if (! ($resp_fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
                 {
                     $conn->send_error(RC_INTERNAL_SERVER_ERROR,
                         "$me: Error opening tmpfile: $!");
                     next;
                 }
                 # Make it auto-flush
-                my $old_fh = select($resp_fh);
-                $| = 1;
-                select($old_fh);
+                $resp_fh->autoflush();
 
                 # Now that we have it, spool the response to it. This is a
                 # little hairy, since we still have to allow for compression.
@@ -1845,23 +1922,21 @@ sub process_request
                 if ($do_compress)
                 {
                     my $fh2;
-                    unless ($fh2 = File::Temp->new(UNLINK => 1, DIR => $tmpdir))
+                    if (! ($fh2 = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
                             "$me: Error opening tmpfile: $!");
                         next;
                     }
                     # Make it auto-flush
-                    $old_fh = select($fh2);
-                    $|      = 1;
-                    select($old_fh);
+                    $fh2->autoflush();
 
                     # Write the request to the second FH
                     $respxml->serialize($fh2);
-                    seek($fh2, 0, 0);
+                    seek $fh2, 0, 0;
 
                     # Spin up the compression engine
-                    unless ($com_engine = Compress::Zlib::deflateInit())
+                    if (! ($com_engine = Compress::Zlib::deflateInit()))
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
                             "$me: Unable to initialize the " .
@@ -1871,44 +1946,49 @@ sub process_request
 
                     # Spool from the second FH through the compression engine,
                     # into the intended FH.
-                    $buf = '';
+                    $buf = q{};
                     my $out;
-                    while (read($fh2, $buf, 4096))
+                    while (read $fh2, $buf, 4096)
                     {
-                        unless (defined($out = $com_engine->deflate(\$buf)))
+                        if (! defined($out = $com_engine->deflate(\$buf)))
                         {
                             $conn->send_error(RC_INTERNAL_SERVER_ERROR,
                                 "$me: Compression failure in " . 'deflate()');
                             next;
                         }
-                        print $resp_fh $out;
+                        print {$resp_fh} $out;
                     }
                     # Make sure we have all that's left
-                    unless (defined($out = $com_engine->flush))
+                    if (! defined($out = $com_engine->flush))
                     {
                         $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                            "$me: Compression flush failure in" . ' deflate()');
+                            "$me: Compression flush failure in deflate()");
                         next;
                     }
-                    print $resp_fh $out;
+                    print {$resp_fh} $out;
 
                     # Close the secondary FH. Rewinding the primary is done
                     # later.
-                    close($fh2);
+                    if (! close $fh2)
+                    {
+                        carp "Error closing temp file: $!";
+                    }
                 }
                 else
                 {
                     $respxml->serialize($resp_fh);
                 }
-                seek($resp_fh, 0, 0);
+                seek $resp_fh, 0, 0;
 
                 $resp->content_length(-s $resp_fh);
                 $resp->content(
                     sub {
-                        my $b = '';
-                        return undef
-                            unless defined(read($resp_fh, $b, 4096));
-                        $b;
+                        my $buffer = q{};
+                        if (! defined(read $resp_fh, $buffer, 4096))
+                        {
+                            return;
+                        }
+                        $buffer;
                     }
                 );
             }
@@ -1917,22 +1997,26 @@ sub process_request
                 # Treat the content strictly in-memory
                 $buf = $respxml->as_string;
                 RPC::XML::utf8_downgrade($buf);
-                $buf = Compress::Zlib::compress($buf) if $do_compress;
+                if ($do_compress)
+                {
+                    $buf = Compress::Zlib::compress($buf);
+                }
                 $resp->content($buf);
                 # With $buf force-downgraded to octets, length() should work
                 $resp->content_length(length $buf);
             }
 
-			eval {
-				local $SIG{PIPE} = sub { die "Caught SIGPIPE\n"; };
-				$conn->send_response($resp);
-			};
-			if ($@ and $@ =~ /Caught SIGPIPE/)
-			{
-				# Client disconnected, maybe even before we started sending
-				# our response. Either way, $conn is useless now.
-				undef $conn;
-			}
+            my $eval = eval {
+                local $SIG{PIPE} = sub { die "Caught SIGPIPE\n"; };
+                $conn->send_response($resp);
+                1;
+            };
+            if (! $eval && $@ && $@ =~ /Caught SIGPIPE/)
+            {
+                # Client disconnected, maybe even before we started sending
+                # our response. Either way, $conn is useless now.
+                undef $conn;
+            }
             undef $resp;
         }
         else
@@ -1970,28 +2054,34 @@ sub dispatch
 
     my ($reqobj, @data, $response, $name, $meth);
 
-    if (ref($xml) eq 'SCALAR')
+    if (ref $xml eq 'SCALAR')
     {
-        $reqobj = $self->parser->parse($$xml);
-        return RPC::XML::response->new($self->server_fault(badxml => $reqobj))
-            unless (ref $reqobj);
+        $reqobj = $self->parser->parse(${$xml});
+        if (! ref $reqobj)
+        {
+            return RPC::XML::response->
+                new($self->server_fault(badxml => $reqobj));
+        }
     }
-    elsif (ref($xml) eq 'ARRAY')
+    elsif (ref $xml eq 'ARRAY')
     {
         # This is sort of a cheat, to make the system.multicall API call a
         # lot easier. The syntax isn't documented in the manual page, for good
         # reason.
-        $reqobj = RPC::XML::request->new(shift(@$xml), @$xml);
+        $reqobj = RPC::XML::request->new(@{$xml});
     }
-    elsif (ref($xml) and $xml->isa('RPC::XML::request'))
+    elsif (blessed $xml && $xml->isa('RPC::XML::request'))
     {
         $reqobj = $xml;
     }
     else
     {
         $reqobj = $self->parser->parse($xml);
-        return RPC::XML::response->new($self->server_fault(badxml => $reqobj))
-            unless (ref $reqobj);
+        if (! ref $reqobj)
+        {
+            return RPC::XML::response->
+                new($self->server_fault(badxml => $reqobj));
+        }
     }
 
     @data = @{$reqobj->args};
@@ -1999,14 +2089,17 @@ sub dispatch
 
     # Get the method, call it, and bump the internal requests counter. Create
     # a fault object if there is problem with the method object itself.
-    if (ref($meth = $self->get_method($name)))
+    $meth = $self->get_method($name);
+    if (ref $meth)
     {
         $response = $meth->call($self, @data);
-        $self->{__requests}++
-            unless (($name eq 'system.status') &&
-            @data &&
-            ($data[0]->type eq 'boolean') &&
-            ($data[0]->value));
+        if (! (($name eq 'system.status') &&
+               @data &&
+               ($data[0]->type eq 'boolean') &&
+               ($data[0]->value)))
+        {
+            $self->{__requests}++;
+        }
     }
     else
     {
@@ -2014,7 +2107,7 @@ sub dispatch
     }
 
     # All the eval'ing and error-trapping happened within the method class
-    RPC::XML::response->new($response);
+    return RPC::XML::response->new($response);
 }
 
 ###############################################################################
@@ -2048,8 +2141,13 @@ sub call
     # Second, if the normal return value is not distinguishable from a string,
     # then the caller may not recognize if an error occurs.
 
-    return $meth unless ref($meth = $self->get_method($name));
-    $meth->call($self, @args);
+    $meth = $self->get_method($name);
+    if (! ref $meth)
+    {
+        return $meth;
+    }
+
+    return $meth->call($self, @args);
 }
 
 ###############################################################################
@@ -2071,7 +2169,9 @@ sub call
 ###############################################################################
 sub add_default_methods
 {
-    shift->add_methods_in_dir($INSTALL_DIR, @_);
+    my ($self, @details) = @_;
+
+    return $self->add_methods_in_dir($INSTALL_DIR, @details);
 }
 
 ###############################################################################
@@ -2092,9 +2192,7 @@ sub add_default_methods
 ###############################################################################
 sub add_methods_in_dir
 {
-    my $self    = shift;
-    my $dir     = shift;
-    my @details = @_;
+    my ($self, $dir, @details) = @_;
 
     my $negate = 0;
     my $detail = 0;
@@ -2106,32 +2204,52 @@ sub add_methods_in_dir
         if ($details[0] =~ /^-?except/i)
         {
             $negate = 1;
-            shift(@details);
+            shift @details;
         }
-        for (@details) { $_ .= '.xpl' unless /\.xpl$/ }
+        for (@details)
+        {
+            if (! /\.xpl$/)
+            {
+                $_ .= '.xpl';
+            }
+        }
         @details{@details} = (1) x @details;
     }
 
-    local (*D);
-    opendir(D, $dir) || return "Error opening $dir for reading: $!";
-    my @files = grep($_ =~ /\.xpl$/, readdir(D));
-    closedir D;
+    my $dh;
+    if (! opendir $dh, $dir)
+    {
+        return "Error opening $dir for reading: $!";
+    }
+    my @files = grep { $_ =~ /\.xpl$/ } readdir $dh;
+    closedir $dh;
 
-    for (@files)
+    for my $file (@files)
     {
         # Use $detail as a short-circuit to avoid the other tests when we can
-        next if ($detail
-            and $negate ? $details{$_} : !$details{$_});
+        if ($detail &&
+            ($negate ? $details{$file} : ! $details{$file}))
+        {
+            next;
+        }
         # n.b.: Giving the full path keeps add_method from having to search
-        $ret = $self->add_method(File::Spec->catfile($dir, $_));
-        return $ret unless ref $ret;
+        $ret = $self->add_method(File::Spec->catfile($dir, $file));
+        if (! ref $ret)
+        {
+            return $ret;
+        }
     }
 
-    $self;
+    return $self;
 }
 
 # Same as above, but for name-symmetry
-sub add_procs_in_dir { shift->add_methods_in_dir(@_) }
+sub add_procs_in_dir
+{
+    my ($self, @args) = @_;
+
+    return $self->add_methods_in_dir(@args);
+}
 
 ###############################################################################
 #
@@ -2152,25 +2270,30 @@ sub add_procs_in_dir { shift->add_methods_in_dir(@_) }
 ###############################################################################
 sub delete_method
 {
-    my $self = shift;
-    my $name = shift;
+    my ($self, $name) = @_;
 
     if ($name)
     {
         if ($self->{__method_table}->{$name})
         {
             delete $self->{__method_table}->{$name};
-            return $self;
         }
     }
     else
     {
-        return ref($self) . "::delete_method: No such method $name";
+        return ref $self . "::delete_method: No such method $name";
     }
+
+    return $self;
 }
 
 # Same as above, but for name-symmetry
-sub delete_proc { shift->delete_method(@_) }
+sub delete_proc
+{
+    my ($self, $name) = @_;
+
+    return $self->delete_method($name);
+}
 
 ###############################################################################
 #
@@ -2187,11 +2310,16 @@ sub delete_proc { shift->delete_method(@_) }
 ###############################################################################
 sub list_methods
 {
-    keys %{$_[0]->{__method_table}};
+    return keys %{shift->{__method_table}};
 }
 
 # Same as above, but for name-symmetry
-sub list_procs { shift->list_methods(@_) }
+sub list_procs
+{
+    my ($self) = @_;
+
+    return $self->list_methods();
+}
 
 ###############################################################################
 #
@@ -2211,30 +2339,35 @@ sub list_procs { shift->list_methods(@_) }
 ###############################################################################
 sub share_methods
 {
-    my $self    = shift;
-    my $src_srv = shift;
-    my @names   = @_;
+    my ($self, $src_srv, @names) = @_;
 
-    my ($me, $pkg, %tmp, @tmp, $tmp, $meth, @list, @missing);
+    my ($me, $pkg, %tmp, @tmp, $meth, @list, @missing);
 
     $me  = ref($self) . '::share_methods';
-    $pkg = __PACKAGE__;                     # So it can go inside quoted strings
+    $pkg = __PACKAGE__; # So it can go inside quoted strings
 
-    return "$me: First arg not derived from $pkg, cannot share"
-        unless (blessed $src_srv && $src_srv->isa($pkg));
-    return "$me: Must specify at least one method name for sharing"
-        unless @names;
+    if (! (blessed $src_srv && $src_srv->isa($pkg)))
+    {
+        return "$me: First arg not derived from $pkg, cannot share";
+    }
+    if (! @names)
+    {
+        return "$me: Must specify at least one method name for sharing";
+    }
 
     # Scan @names for any regex objects, and if found insert the matches into
     # the list.
     #
     # Only do this once:
     @tmp = keys %{$src_srv->{__method_table}};
-    for $tmp (@names)
+    for my $tmp (@names)
     {
-        if (ref($names[$tmp]) eq 'Regexp')
+        if (ref $tmp eq 'Regexp')
         {
-            $tmp{$_}++ for (grep($_ =~ $tmp, @tmp));
+            for (grep { $_ =~ $tmp } @tmp)
+            {
+                $tmp{$_}++;
+            }
         }
         else
         {
@@ -2253,28 +2386,37 @@ sub share_methods
         $meth = $src_srv->get_method($_);
         if (ref $meth)
         {
-            push(@list, $meth);
+            push @list, $meth;
         }
         else
         {
-            push(@missing, $_);
+            push @missing, $_;
         }
     }
 
     if (@missing)
     {
-        return "$me: One or more methods not found on source object: @missing";
+        return "$me: One or more methods not found on source object: " .
+            join q{ } => @missing;
     }
     else
     {
-        $self->add_method($_) for (@list);
+        for (@list)
+        {
+            $self->add_method($_);
+        }
     }
 
-    $self;
+    return $self;
 }
 
 # Same as above, but for name-symmetry
-sub share_procs { shift->share_methods(@_) }
+sub share_procs
+{
+    my ($self, @args) = @_;
+
+    return $self->share_methods(@args);
+}
 
 ###############################################################################
 #
@@ -2296,30 +2438,35 @@ sub share_procs { shift->share_methods(@_) }
 ###############################################################################
 sub copy_methods
 {
-    my $self    = shift;
-    my $src_srv = shift;
-    my @names   = shift;
+    my ($self, $src_srv, @names) = @_;
 
-    my ($me, $pkg, %tmp, @tmp, $tmp, $meth, @list, @missing);
+    my ($me, $pkg, %tmp, @tmp, $meth, @list, @missing);
 
     $me  = ref($self) . '::copy_methods';
-    $pkg = __PACKAGE__;                     # So it can go inside quoted strings
+    $pkg = __PACKAGE__; # So it can go inside quoted strings
 
-    return "$me: First arg not derived from $pkg, cannot copy"
-        unless (blessed $src_srv && $src_srv->isa($pkg));
-    return "$me: Must specify at least one method name/regex for copying"
-        unless @names;
+    if (! (blessed $src_srv && $src_srv->isa($pkg)))
+    {
+        return "$me: First arg not derived from $pkg, cannot copy";
+    }
+    if (! @names)
+    {
+        return "$me: Must specify at least one method name/regex for copying";
+    }
 
     # Scan @names for any regez objects, and if found insert the matches into
     # the list.
     #
     # Only do this once:
     @tmp = keys %{$src_srv->{__method_table}};
-    for $tmp (@names)
+    for my $tmp (@names)
     {
-        if (ref($names[$tmp]) eq 'Regexp')
+        if (ref $names[$tmp] eq 'Regexp')
         {
-            $tmp{$_}++ for (grep($_ =~ $tmp, @tmp));
+            for (grep { $_ =~ $tmp } @tmp)
+            {
+                $tmp{$_}++;
+            }
         }
         else
         {
@@ -2338,11 +2485,11 @@ sub copy_methods
         $meth = $src_srv->get_method($_);
         if (ref $meth)
         {
-            push(@list, $meth->clone);
+            push @list, $meth->clone;
         }
         else
         {
-            push(@missing, $_);
+            push @missing, $_;
         }
     }
 
@@ -2352,14 +2499,22 @@ sub copy_methods
     }
     else
     {
-        $self->add_method($_) for (@list);
+        for (@list)
+        {
+            $self->add_method($_);
+        }
     }
 
-    $self;
+    return $self;
 }
 
 # Same as above, but for name-symmetry
-sub copy_procs { shift->copy_methods(@_) }
+sub copy_procs
+{
+    my ($self, @args) = @_;
+
+    return $self->copy_methods(@args);
+}
 
 ###############################################################################
 #
@@ -2379,14 +2534,14 @@ sub copy_procs { shift->copy_methods(@_) }
 ###############################################################################
 sub timeout
 {
-    my $self    = shift;
-    my $timeout = shift;
+    my ($self, $timeout) = @_;
 
     my $old_timeout = $self->{__timeout};
     if ($timeout)
     {
         $self->{__timeout} = $timeout;
     }
+
     return $old_timeout;
 }
 
@@ -2408,7 +2563,7 @@ sub timeout
 sub server_fault
 {
     my ($self, $err, $message) = @_;
-    $message ||= ''; # Avoid any "undef" warnings
+    $message ||= q{}; # Avoid any "undef" warnings
 
     my ($code, $text);
 
@@ -2417,7 +2572,7 @@ sub server_fault
         if (ref $fault)
         {
             # This specifies both code and message
-            ($code, $text) = @$fault;
+            ($code, $text) = @{$fault};
             # Replace (the first) "%s" with $message
             $text =~ s/%s/$message/;
         }
@@ -2433,5 +2588,5 @@ sub server_fault
         $text = "Unknown error class '$err' (message is '$message')";
     }
 
-    RPC::XML::fault->new($code, $text);
+    return RPC::XML::fault->new($code, $text);
 }

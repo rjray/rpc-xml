@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -25,18 +25,19 @@ package RPC::XML;
 use 5.006001;
 use strict;
 use warnings;
-use vars qw(@EXPORT @EXPORT_OK %EXPORT_TAGS @ISA $VERSION $ERROR
-            %xmlmap $xmlre $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);
+use vars qw(@EXPORT_OK %EXPORT_TAGS $VERSION $ERROR
+            %XMLMAP $XMLRE $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);
 use subs qw(time2iso8601 smart_encode utf8_downgrade);
+use base 'Exporter';
+
+use Scalar::Util qw(blessed reftype);
 
 ## no critic (ProhibitSubroutinePrototypes)
+## no critic (ProhibitMultiplePackages)
+## no critic (Capitalization)
 
 BEGIN
 {
-    %xmlmap = ( '>' => '&gt;',   '<' => '&lt;', '&' => '&amp;',
-                '"' => '&quot;', "'" => '&apos;');
-    $xmlre = join('', keys %xmlmap); $xmlre = qr/([$xmlre])/;
-
     # Default encoding:
     $ENCODING = 'us-ascii';
 
@@ -52,10 +53,6 @@ BEGIN
         \&utf8::downgrade : sub { };
 }
 
-use Scalar::Util qw(blessed reftype);
-require Exporter;
-
-@ISA = qw(Exporter);
 @EXPORT_OK = qw(time2iso8601 smart_encode
                 RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_DATETIME_ISO8601
                 RPC_BASE64 RPC_STRING RPC_NIL
@@ -64,22 +61,60 @@ require Exporter;
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.49';
-$VERSION = eval $VERSION; ## no critic
+$VERSION = '1.50';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
-$ERROR = '';
+$ERROR = q{};
+
+# These are used for stringifying XML-sensitive characters that may appear
+# in struct keys:
+%XMLMAP = (
+    q{>} => '&gt;',
+    q{<} => '&lt;',
+    q{&} => '&amp;',
+    q{"} => '&quot;',
+    q{'} => '&apos;',
+);
+$XMLRE = join q{} => keys %XMLMAP; $XMLRE = qr/([$XMLRE])/;
 
 # All of the RPC_* functions are convenience-encoders
-sub RPC_STRING           ($)   { RPC::XML::string->new($_[0]) }
-sub RPC_BOOLEAN          ($)   { RPC::XML::boolean->new($_[0]) }
-sub RPC_INT              ($)   { RPC::XML::int->new($_[0]) }
-sub RPC_I4               ($)   { RPC::XML::i4->new($_[0]) }
-sub RPC_I8               ($)   { RPC::XML::i8->new($_[0]) }
-sub RPC_DOUBLE           ($)   { RPC::XML::double->new($_[0]) }
-sub RPC_DATETIME_ISO8601 ($)   { RPC::XML::datetime_iso8601->new($_[0]) }
-sub RPC_BASE64           ($;$) { RPC::XML::base64->new(@_) }
-sub RPC_NIL              ()    { RPC::XML::nil->new() }
+sub RPC_STRING ($)
+{
+    return RPC::XML::string->new(shift);
+}
+sub RPC_BOOLEAN ($)
+{
+    return RPC::XML::boolean->new(shift);
+}
+sub RPC_INT ($)
+{
+    return RPC::XML::int->new(shift);
+}
+sub RPC_I4 ($)
+{
+    return RPC::XML::i4->new(shift);
+}
+sub RPC_I8 ($)
+{
+    return RPC::XML::i8->new(shift);
+}
+sub RPC_DOUBLE ($)
+{
+    return RPC::XML::double->new(shift);
+}
+sub RPC_DATETIME_ISO8601 ($)
+{
+    return RPC::XML::datetime_iso8601->new(shift);
+}
+sub RPC_BASE64 ($;$)
+{
+    return RPC::XML::base64->new(shift, shift);
+}
+sub RPC_NIL ()
+{
+    return RPC::XML::nil->new();
+}
 
 # This is a dead-simple ISO8601-from-UNIX-time stringifier. Always expresses
 # time in UTC. The format isn't strictly ISO8601, though, as the XML-RPC spec
@@ -87,33 +122,33 @@ sub RPC_NIL              ()    { RPC::XML::nil->new() }
 sub time2iso8601
 {
     my $time = shift || time;
-    my $zone = shift || '';
+    my $zone = shift || q{};
 
-    my @time = gmtime($time);
-    $time = sprintf("%4d-%02d-%02dT%02d:%02d:%02dZ",
-                    $time[5] + 1900, $time[4] + 1, @time[3, 2, 1, 0]);
+    my @time = gmtime $time;
+    $time = sprintf '%4d-%02d-%02dT%02d:%02d:%02dZ',
+                    $time[5] + 1900, $time[4] + 1, @time[3, 2, 1, 0];
     if ($zone)
     {
-        my $char = $zone > 0 ? '+' : '-';
+        my $char = $zone > 0 ? q{+} : q{-};
         chop $time; # Lose the Z if we're specifying a zone
-        $time .= $char . sprintf('%02d:00', abs($zone));
+        $time .= $char . sprintf '%02d:00', abs $zone;
     }
 
-    $time;
+    return $time;
 }
 
 # This is a (futile?) attempt to provide a "smart" encoding method that will
 # take a Perl scalar and promote it to the appropriate RPC::XML::_type_.
 {
-    my $MaxInt      = 2147483647;
-    my $MinInt      = -2147483648;
-    my $MaxBigInt   = 9223372036854775807;
-    my $MinBigInt   = -9223372036854775808;
+    my $MAX_INT      = 2_147_483_647;
+    my $MIN_INT      = -2_147_483_648;
+    my $MAX_BIG_INT   = 9_223_372_036_854_775_807;
+    my $MIN_BIG_INT   = -9_223_372_036_854_775_808;
 
-    my $MaxDouble   = 1e37;
-    my $MinDouble   = $MaxDouble * -1;
+    my $MAX_DOUBLE   = 1e37;
+    my $MIN_DOUBLE   = $MAX_DOUBLE * -1;
 
-    sub smart_encode
+    sub smart_encode ## no critic (ProhibitExcessComplexity)
     {
         my @values = @_;
         my ($type, $seenrefs, @newvalues);
@@ -124,7 +159,7 @@ sub time2iso8601
         if ((blessed $values[0]) && ($values[0]->isa('RPC::XML::refmap')))
         {
             # Peel it off of the list
-            $seenrefs = shift(@values);
+            $seenrefs = shift @values;
         }
         else
         {
@@ -134,17 +169,17 @@ sub time2iso8601
 
         foreach (@values)
         {
-            if (! defined $_)
+            if (! defined $_) ## no critic (ProhibitCascadingIfElse)
             {
                 $type = $ALLOW_NIL ?
-                    RPC::XML::nil->new() : RPC::XML::string->new('');
+                    RPC::XML::nil->new() : RPC::XML::string->new(q{});
             }
             elsif (ref $_)
             {
                 # Skip any that we've already seen
                 next if $seenrefs->{$_}++;
 
-                if (blessed($_) &&
+                if (blessed($_) && ## no critic (ProhibitCascadingIfElse)
                     ($_->isa('RPC::XML::datatype') || $_->isa('DateTime')))
                 {
                     # Only if the reference is a datatype or a DateTime
@@ -169,7 +204,7 @@ sub time2iso8601
                     # copy of the hash with locally-recursively-encoded
                     # values
                     my %newhash;
-                    for my $key (keys %$_)
+                    for my $key (keys %{$_})
                     {
                         # Forcing this into a list-context *should* make the
                         # test be true even if the return value is a hard
@@ -191,44 +226,47 @@ sub time2iso8601
                     # be treated as single elements, as one would expect
                     # (see RT 35106)
                     # Per RT 41063, looks like I get to deref $_ after all...
-                    $type =
-                        RPC::XML::array->new(from =>
-                                             [ smart_encode($seenrefs, @$_) ]);
+                    $type = RPC::XML::array->new(
+                        from => [ smart_encode($seenrefs, @{$_}) ]
+                    );
                 }
                 elsif (reftype($_) eq 'SCALAR')
                 {
                     # This is a rare excursion into recursion, since the scalar
                     # nature (de-refed from the object, so no longer magic)
                     # will prevent further recursing.
-                    $type = smart_encode($seenrefs, $$_);
+                    $type = smart_encode($seenrefs, ${$_});
                 }
                 else
                 {
                     # If the user passed in a reference that didn't pass one
                     # of the above tests, we can't do anything with it:
-                    my $type = reftype $_;
-                    die "Un-convertable reference: $type, cannot use";
+                    $type = reftype $_;
+                    die "Un-convertable reference: $type, cannot use\n";
                 }
             }
             # You have to check ints first, because they match the
             # next pattern too
-            elsif (! $FORCE_STRING_ENCODING and /^[-+]?\d+$/
-                   and $_ > $MinBigInt and $_ < $MaxBigInt)
+            elsif (! $FORCE_STRING_ENCODING &&
+                   /^[-+]?\d+$/ &&
+                   $_ > $MIN_BIG_INT &&
+                   $_ < $MAX_BIG_INT)
             {
-                $type = (abs($_) > $MaxInt) ? 'RPC::XML::i8' : 'RPC::XML::int';
+                $type = (abs($_) > $MAX_INT) ? 'RPC::XML::i8' : 'RPC::XML::int';
                 $type = $type->new($_);
             }
             # Pattern taken from perldata(1)
-            elsif (! $FORCE_STRING_ENCODING and
-                   /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/
-                   and $_ > $MinDouble and $_ < $MaxDouble)
+            elsif (! $FORCE_STRING_ENCODING &&
+                   /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/x &&
+                   $_ > $MIN_DOUBLE &&
+                   $_ < $MAX_DOUBLE)
             {
                 $type = RPC::XML::double->new($_);
             }
             # The XMLRPC spec only allows for the incorrect iso8601 format
             # without dashes, but dashes are part of the standard so we include
             # them (DateTime->now->iso8601 includes them).
-            elsif (/
+            elsif (m{
                        ^           # start
                        \d{4}       # 4 digit year
                        -?          # "optional" dash
@@ -242,7 +280,7 @@ sub time2iso8601
                        (?:\.\d+)?  # optional fractional seconds
                        Z?          # optional "Z" to indicate UTC
                        $           # end
-                   /x)
+                }x)
             {
                 $type = RPC::XML::datetime_iso8601->new($_);
             }
@@ -251,7 +289,7 @@ sub time2iso8601
                 $type = RPC::XML::string->new($_);
             }
 
-            push(@newvalues, $type);
+            push @newvalues, $type;
         }
 
         return (wantarray ? @newvalues : $newvalues[0]);
@@ -262,8 +300,17 @@ sub time2iso8601
 # complex types, so that their derivatives may be universally type-checked.
 package RPC::XML::datatype;
 
-sub type { my $class = ref($_[0]) || $_[0]; $class =~ s/.*://; $class }
-sub is_fault { 0 }
+sub type
+{
+    my $self = shift;
+
+    my $class = ref($self) || $self;
+    $class =~ s/.*://;
+
+    return $class;
+}
+
+sub is_fault { return 0; }
 
 ###############################################################################
 #
@@ -286,14 +333,14 @@ sub new
     my $class = shift;
     my $value = shift;
 
-    $RPC::XML::ERROR = '';
+    $RPC::XML::ERROR = q{};
     $class = ref($class) || $class;
     if (ref $value)
     {
         # If it is a scalar reference, just deref
         if (reftype($value) eq 'SCALAR')
         {
-            $value = $$value;
+            $value = ${$value};
         }
         else
         {
@@ -302,7 +349,8 @@ sub new
                 'reference not derived from scalar';
         }
     }
-    bless \$value, $class;
+
+    return bless \$value, $class;
 }
 
 # value - a generic accessor
@@ -310,7 +358,7 @@ sub value
 {
     my $self = shift;
 
-    $$self;
+    return ${$self};
 }
 
 # as_string - return the value as an XML snippet
@@ -318,13 +366,19 @@ sub as_string
 {
     my $self = shift;
 
-    my $class;
-    return unless ($class = ref($self));
+    my $class = ref $self;
+    if (! $class)
+    {
+        return;
+    }
     $class =~ s/^.*\://;
     $class =~ s/_/./g;
-    substr($class, 0, 8) = 'dateTime' if (substr($class, 0, 8) eq 'datetime');
+    if (substr($class, 0, 8) eq 'datetime')
+    {
+        substr $class, 0, 8, 'dateTime';
+    }
 
-    "<$class>$$self</$class>";
+    return "<$class>$$self</$class>";
 }
 
 # Serialization for simple types is just a matter of sending as_string over
@@ -335,17 +389,19 @@ sub serialize
     my $str = $self->as_string;
     RPC::XML::utf8_downgrade($str);
 
-    print $fh $str;
+    print {$fh} $str;
+    return;
 }
 
 # The switch to serialization instead of in-memory strings means having to
 # calculate total size in bytes for Content-Length headers:
-sub length
+sub length ## no critic (ProhibitBuiltinHomonyms)
 {
     my $self = shift;
 
     RPC::XML::utf8_downgrade(my $str = $self->as_string);
-    length($str);
+
+    return length $str;
 }
 
 ###############################################################################
@@ -400,10 +456,15 @@ sub as_string
 {
     my $self = shift;
 
-    return unless (my $class = $self->type);
-    (my $value = sprintf("%.20f", $$self)) =~ s/(\.\d+?)0+$/$1/;
+    my $class = $self->type;
+    if (! $class)
+    {
+        return;
+    }
 
-    "<$class>$value</$class>";
+    (my $value = sprintf '%.20f', ${$self}) =~ s/(\.\d+?)0+$/$1/;
+
+    return "<$class>$value</$class>";
 }
 
 ###############################################################################
@@ -425,12 +486,16 @@ sub as_string
 
     my ($class, $value);
 
-    return unless ($class = $self->type);
+    $class = $self->type;
+    if (! $class)
+    {
+        return;
+    }
 
-    ($value = defined $$self ? $$self : '' )
-        =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
+    ($value = defined ${$self} ? ${$self} : q{} )
+        =~ s/$RPC::XML::XMLRE/$RPC::XML::XMLMAP{$1}/ge;
 
-    "<$class>$value</$class>";
+    return "<$class>$value</$class>";
 }
 
 ###############################################################################
@@ -451,7 +516,7 @@ sub new
     my $class = shift;
     my $value = shift || 0;
 
-    $RPC::XML::ERROR = '';
+    $RPC::XML::ERROR = q{};
     if ($value =~ /true|yes|1/i)
     {
         $value = 1;
@@ -468,7 +533,7 @@ sub new
         return;
     }
 
-    bless \$value, $class;
+    return bless \$value, $class;
 }
 
 ###############################################################################
@@ -485,25 +550,31 @@ use base 'RPC::XML::simple_type';
 
 use Scalar::Util 'reftype';
 
-sub type { 'dateTime.iso8601' };
+sub type { return 'dateTime.iso8601'; };
 
 # Check the value passed in for sanity, and normalize the string representation
 sub new
 {
     my ($class, $value) = @_;
 
-    $value = $$value if (ref($value) && reftype($value) eq 'SCALAR');
+    if (ref($value) && reftype($value) eq 'SCALAR')
+    {
+        $value = ${$value};
+    }
 
-    if ($value && $value =~ /^(\d{4})-?([01]\d)-?([0123]\d)T
-                             ([012]\d):([012345]\d):([012345]\d)(\.\d+)?
-                             (Z|[-+]\d\d:\d\d)?$/x)
+    if ($value && $value =~ m{^(\d{4})-?([01]\d)-?([0123]\d)T
+                              ([012]\d):([012345]\d):([012345]\d)(\.\d+)?
+                              (Z|[-+]\d\d:\d\d)?$}x)
     {
         # This is the WRONG way to represent this, but it's the way it is
         # given in the spec, so assume that other implementations can only
         # accept this form. Also, this should match the form that time2iso8601
         # produces.
         $value = $7 ? "$1-$2-$3T$4:$5:$6$7" : "$1-$2-$3T$4:$5:$6";
-        $value .= $8 if $8;
+        if ($8)
+        {
+            $value .= $8;
+        }
     }
     else
     {
@@ -513,7 +584,7 @@ sub new
         return;
     }
 
-    bless \$value, $class;
+    return bless \$value, $class;
 }
 
 ###############################################################################
@@ -534,27 +605,29 @@ sub new
     my $class = shift;
     my $value = undef;
 
-    unless ($RPC::XML::ALLOW_NIL)
+    if (! $RPC::XML::ALLOW_NIL)
     {
         $RPC::XML::ERROR = "${class}::new: \$RPC::XML::ALLOW_NIL must be set" .
             'for RPC::XML::nil objects to be supported';
         return;
     }
 
-    bless \$value, $class;
+    return bless \$value, $class;
 }
 
 # Stringification and serialsation are trivial..
 sub as_string
 {
-    '<nil/>';
+    return '<nil/>';
 }
 
 sub serialize
 {
     my ($self, $fh) = @_;
 
-    print $fh $self->as_string; # In case someone sub-classes this
+    print {$fh} $self->as_string; # In case someone sub-classes this
+
+    return;
 }
 
 ###############################################################################
@@ -587,7 +660,7 @@ sub new
 
     # Ensure that each argument passed in is itself one of the data-type
     # class instances.
-    bless [ RPC::XML::smart_encode(@args) ], $class;
+    return bless [ RPC::XML::smart_encode(@args) ], $class;
 }
 
 # This became more complex once it was shown that there may be a need to fetch
@@ -600,24 +673,24 @@ sub value
 
     if ($no_recurse)
     {
-        $ret = [ @$self ];
+        $ret = [ @{$self} ];
     }
     else
     {
-        $ret = [ map { $_->value } @$self ];
+        $ret = [ map { $_->value } @{$self} ];
     }
 
-    $ret;
+    return $ret;
 }
 
 sub as_string
 {
     my $self = shift;
 
-    join('',
-         '<array><data>',
-         (map { ('<value>', $_->as_string(), '</value>') } (@$self)),
-         '</data></array>');
+    return join q{},
+                '<array><data>',
+                (map { ('<value>', $_->as_string(), '</value>') } (@{$self})),
+                '</data></array>';
 }
 
 # Serialization for arrays is not as straight-forward as it is for simple
@@ -629,26 +702,28 @@ sub serialize
 {
     my ($self, $fh) = @_;
 
-    print $fh '<array><data>';
-    for (@$self)
+    print {$fh} '<array><data>';
+    for (@{$self})
     {
-        print $fh '<value>';
+        print {$fh} '<value>';
         $_->serialize($fh);
-        print $fh '</value>';
+        print {$fh} '</value>';
     }
-    print $fh '</data></array>';
+    print {$fh} '</data></array>';
+
+    return;
 }
 
 # Length calculation starts to get messy here, due to recursion
-sub length
+sub length ## no critic (ProhibitBuiltinHomonyms)
 {
     my $self = shift;
 
     # Start with the constant components in the text
     my $len = 28; # That the <array><data></data></array> part
-    for (@$self) { $len += (15 + $_->length) } # 15 is for <value></value>
+    for (@{$self}) { $len += (15 + $_->length) } # 15 is for <value></value>
 
-    $len;
+    return $len;
 }
 
 ###############################################################################
@@ -670,18 +745,19 @@ use Scalar::Util qw(blessed reftype);
 # The constructor for this class mainly needs to sanity-check the value data
 sub new
 {
-    my $class = shift;
-    my %args = (ref($_[0]) and reftype($_[0]) eq 'HASH') ? %{$_[0]} : @_;
+    my ($class, @args) = @_;
+    my %args = (ref $args[0] and reftype($args[0]) eq 'HASH') ?
+        %{$args[0]} : @args;
 
     # RT 41063: If all the values are datatype objects, either they came in
     # that way or we've already laundered them through smart_encode(). If there
     # is even one that isn't, then we have to pass the whole mess to be
     # encoded.
     my $ref =
-        (grep(! (blessed($_) && $_->isa('RPC::XML::datatype')), values %args))
+        (grep { ! (blessed($_) && $_->isa('RPC::XML::datatype')) } values %args)
             ? RPC::XML::smart_encode(\%args) : \%args;
 
-    bless $ref, $class;
+    return bless $ref, $class;
 }
 
 # This became more complex once it was shown that there may be a need to fetch
@@ -694,14 +770,14 @@ sub value
 
     if ($no_recurse)
     {
-        %value = map { $_, $self->{$_} } (keys %$self);
+        %value = map { ($_, $self->{$_}) } (keys %{$self});
     }
     else
     {
-        %value = map { $_, $self->{$_}->value } (keys %$self);
+        %value = map { ($_, $self->{$_}->value) } (keys %{$self});
     }
 
-    \%value;
+    return \%value;
 }
 
 sub as_string
@@ -709,15 +785,22 @@ sub as_string
     my $self = shift;
     my $key;
 
-    join('',
-         '<struct>',
-         (map {
-             ($key = $_) =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
-             ("<member><name>$key</name><value>",
-              $self->{$_}->as_string,
-              '</value></member>')
-         } (keys %$self)),
-         '</struct>');
+    # Clean the keys of $self, in case they have any HTML-special characters
+    my %clean;
+    for (keys %{$self})
+    {
+        ($key = $_) =~ s/$RPC::XML::XMLRE/$RPC::XML::XMLMAP{$1}/ge;
+        $clean{$key} = $self->{$_}->as_string;
+    }
+
+    return join q{},
+                '<struct>',
+                (map {
+                    ("<member><name>$_</name><value>",
+                     $clean{$_},
+                     '</value></member>')
+                } (keys %clean)),
+                '</struct>';
 }
 
 # As with the array type, serialization here isn't cut and dried, since one or
@@ -727,33 +810,35 @@ sub serialize
     my ($self, $fh) = @_;
     my $key;
 
-    print $fh '<struct>';
-    for (keys %$self)
+    print {$fh} '<struct>';
+    for (keys %{$self})
     {
-        ($key = $_) =~ s/$RPC::XML::xmlre/$RPC::XML::xmlmap{$1}/ge;
+        ($key = $_) =~ s/$RPC::XML::XMLRE/$RPC::XML::XMLMAP{$1}/ge;
         RPC::XML::utf8_downgrade($key);
-        print $fh "<member><name>$key</name><value>";
+        print {$fh} "<member><name>$key</name><value>";
         $self->{$_}->serialize($fh);
-        print $fh '</value></member>';
+        print {$fh} '</value></member>';
     }
-    print $fh '</struct>';
+    print {$fh} '</struct>';
+
+    return;
 }
 
 # Length calculation is a real pain here. But not as bad as base64 promises
-sub length
+sub length ## no critic (ProhibitBuiltinHomonyms)
 {
     my $self = shift;
 
     my $len = 17; # <struct></struct>
-    for my $key (keys %$self)
+    for my $key (keys %{$self})
     {
         $len += 45; # For all the constant XML presence
         $len += $self->{$key}->length;
         RPC::XML::utf8_downgrade($key);
-        $len += length($key);
+        $len += length $key;
     }
 
-    $len;
+    return $len;
 }
 
 ###############################################################################
@@ -774,50 +859,51 @@ use Scalar::Util 'reftype';
 
 sub new
 {
-    require MIME::Base64;
     my ($class, $value, $encoded) = @_;
+
+    require MIME::Base64;
 
     my $self = {};
 
-    $RPC::XML::ERROR = '';
+    $RPC::XML::ERROR = q{};
 
     $self->{encoded} = $encoded ? 1 : 0; # Is this already Base-64?
     $self->{inmem}   = 0;                # To signal in-memory vs. filehandle
 
     # First, determine if the call sent actual data, a reference to actual
     # data, or an open filehandle.
-    if (ref($value) and reftype($value) eq 'GLOB')
+    if (ref $value and reftype($value) eq 'GLOB')
     {
         # This is a seekable filehandle (or acceptable substitute thereof).
         # This assignment increments the ref-count, and prevents destruction
         # in other scopes.
         binmode $value;
         $self->{value_fh} = $value;
-        $self->{fh_pos}   = tell($value);
+        $self->{fh_pos}   = tell $value;
     }
     else
     {
         # Not a filehandle. Might be a scalar ref, but other than that it's
         # in-memory data.
         $self->{inmem}++;
-        $self->{value} = ref($value) ? $$value : ($value || '');
+        $self->{value} = ref($value) ? ${$value} : ($value || q{});
         # We want in-memory data to always be in the clear, to reduce the tests
         # needed in value(), below.
         if ($self->{encoded})
         {
-            local($^W) = 0; # Disable warnings in case the data is underpadded
+            local $^W = 0; # Disable warnings in case the data is underpadded
             $self->{value} = MIME::Base64::decode_base64($self->{value});
             $self->{encoded} = 0;
         }
     }
 
-    bless $self, $class;
+    return bless $self, $class;
 }
 
 sub value
 {
-    my $self      = shift;
-    my $as_base64 = (defined $_[0] and $_[0]) ? 1 : 0;
+    my ($self, $flag) = @_;
+    my $as_base64 = (defined $flag and $flag) ? 1 : 0;
 
     # There are six cases here, based on whether or not the data exists in
     # Base-64 or clear form, and whether the data is in-memory or needs to be
@@ -827,7 +913,7 @@ sub value
         # This is simplified into two cases (rather than four) since we always
         # keep in-memory data as cleartext
         return $as_base64 ?
-            MIME::Base64::encode_base64($self->{value}, '') : $self->{value};
+            MIME::Base64::encode_base64($self->{value}, q{}) : $self->{value};
     }
     else
     {
@@ -838,14 +924,14 @@ sub value
         # just accept whatever non-false value the caller sent. It makes this
         # first test possible.
         my ($accum, $pos, $res);
-        $accum = '';
+        $accum = q{};
 
-        $self->{fh_pos} = tell($self->{value_fh});
-        seek($self->{value_fh}, 0, 0);
+        $self->{fh_pos} = tell $self->{value_fh};
+        seek $self->{value_fh}, 0, 0;
         if ($as_base64 == $self->{encoded})
         {
             $pos = 0;
-            while ($res = read($self->{value_fh}, $accum, 1024, $pos))
+            while ($res = read $self->{value_fh}, $accum, 1024, $pos)
             {
                 $pos += $res;
             }
@@ -857,10 +943,10 @@ sub value
                 # We're reading cleartext and converting it to Base-64. Read in
                 # multiples of 57 bytes for best Base-64 calculation. The
                 # choice of 60 for the multiple is purely arbitrary.
-                $res = '';
-                while (read($self->{value_fh}, $res, 60*57))
+                $res = q{};
+                while (read $self->{value_fh}, $res, 60*57)
                 {
-                    $accum .= MIME::Base64::encode_base64($res, '');
+                    $accum .= MIME::Base64::encode_base64($res, q{});
                 }
             }
             else
@@ -868,7 +954,7 @@ sub value
                 # Reading Base-64 and converting it back to cleartext. If the
                 # Base-64 data doesn't have any line-breaks, no telling how
                 # much memory this will eat up.
-                local($^W) = 0; # Disable padding-length warnings
+                local $^W = 0; # Disable padding-length warnings
                 $pos = $self->{value_fh};
                 while (defined($res = <$pos>))
                 {
@@ -876,7 +962,7 @@ sub value
                 }
             }
         }
-        seek($self->{value_fh}, $self->{fh_pos}, 0);
+        seek $self->{value_fh}, $self->{fh_pos}, 0;
 
         return $accum;
     }
@@ -887,7 +973,7 @@ sub as_string
 {
     my $self = shift;
 
-    '<base64>' . $self->value('encoded') . '</base64>';
+    return '<base64>' . $self->value('encoded') . '</base64>';
 }
 
 # If it weren't for Tellme and their damnable WAV files, and ViAir and their
@@ -901,43 +987,45 @@ sub serialize
     # If the data is in-memory, just call as_string and pass it down the pipe
     if ($self->{inmem})
     {
-        print $fh $self->as_string;
+        print {$fh} $self->as_string;
     }
     else
     {
         # If it's a filehandle, at least we take comfort in knowing that we
         # always want Base-64 at this level.
-        my $buf = '';
-        $self->{fh_pos} = tell($self->{value_fh});
-        seek($self->{value_fh}, 0, 0);
-        print $fh '<base64>';
+        my $buf = q{};
+        $self->{fh_pos} = tell $self->{value_fh};
+        seek $self->{value_fh}, 0, 0;
+        print {$fh} '<base64>';
         if ($self->{encoded})
         {
             # Easy-- just use read() to send it down in palatably-sized chunks
-            while (read($self->{value_fh}, $buf, 4096))
+            while (read $self->{value_fh}, $buf, 4096)
             {
-                print $fh $buf;
+                print {$fh} $buf;
             }
         }
         else
         {
             # This actually requires work. As with value(), the 60*57 is based
             # on ideal Base-64 chunks, with the 60 part being arbitrary.
-            while (read($self->{value_fh}, $buf, 60*57))
+            while (read $self->{value_fh}, $buf, 60*57)
             {
-                print $fh &MIME::Base64::encode_base64($buf, '');
+                print {$fh} MIME::Base64::encode_base64($buf, q{});
             }
         }
-        print $fh '</base64>';
-        seek($self->{value_fh}, $self->{fh_pos}, 0);
+        print {$fh} '</base64>';
+        seek $self->{value_fh}, $self->{fh_pos}, 0;
     }
+
+    return;
 }
 
 # This promises to be a big enough pain that I seriously considered opening
 # an anon-temp file (one that's unlinked for security, and survives only as
 # long as the FH is open) and passing that to serialize just to -s on the FH.
 # But I'll do this the "right" way instead...
-sub length
+sub length ## no critic (ProhibitBuiltinHomonyms)
 {
     my $self = shift;
 
@@ -947,7 +1035,7 @@ sub length
     if ($self->{inmem})
     {
         # If it's in-memory, it's cleartext. Size the encoded version
-        $len += length(MIME::Base64::encode_base64($self->{value}, ''));
+        $len += length(MIME::Base64::encode_base64($self->{value}, q{}));
     }
     else
     {
@@ -959,20 +1047,20 @@ sub length
         else
         {
             # Oh bugger. We have to encode it.
-            my $buf = '';
+            my $buf = q{};
             my $cnt = 0;
 
-            $self->{fh_pos} = tell($self->{value_fh});
-            seek($self->{value_fh}, 0, 0);
-            while ($cnt = read($self->{value_fh}, $buf, 60*57))
+            $self->{fh_pos} = tell $self->{value_fh};
+            seek$self->{value_fh}, 0, 0;
+            while ($cnt = read $self->{value_fh}, $buf, 60*57)
             {
-                $len += length(MIME::Base64::encode_base64($buf, ''));
+                $len += length(MIME::Base64::encode_base64($buf, q{}));
             }
-            seek($self->{value_fh}, $self->{fh_pos}, 0);
+            seek $self->{value_fh}, $self->{fh_pos}, 0;
         }
     }
 
-    $len;
+    return $len;
 }
 
 # This allows writing the decoded data to an arbitrary file. It's useful when
@@ -983,7 +1071,7 @@ sub to_file
 {
     my ($self, $file) = @_;
 
-    my ($fh, $buf, $do_close, $count) = (undef, '', 0, 0);
+    my ($fh, $buf, $do_close, $count) = (undef, q{}, 0, 0);
 
     if (ref $file and reftype($file) eq 'GLOB')
     {
@@ -993,7 +1081,7 @@ sub to_file
     {
         require Symbol;
         $fh = Symbol::gensym();
-        unless (open($fh, '>', $file))
+        if (! open $fh, '>', $file) ## no critic (RequireBriefOpen)
         {
             $RPC::XML::ERROR = $!;
             return -1;
@@ -1006,7 +1094,7 @@ sub to_file
     # don't have to jump through hoops in moving it to the filehandle.
     if ($self->{inmem})
     {
-        print $fh $self->{value};
+        print {$fh} $self->{value};
         $count = CORE::length($self->{value});
     }
     else
@@ -1015,34 +1103,42 @@ sub to_file
 
         # Now determine if the data can be copied over directly, or if we have
         # to decode it along the way.
-        $self->{fh_pos} = tell($self->{value_fh});
-        seek($self->{value_fh}, 0, 0);
+        $self->{fh_pos} = tell $self->{value_fh};
+        seek $self->{value_fh}, 0, 0;
         if ($self->{encoded})
         {
             # As with the caveat in value(), if the base-64 data doesn't have
             # any line-breaks, no telling how much memory this will eat up.
-            local($^W) = 0; # Disable padding-length warnings
+            local $^W = 0; # Disable padding-length warnings
             my $tmp_fh = $self->{value_fh};
             while (defined($_ = <$tmp_fh>))
             {
                 $buf = MIME::Base64::decode_base64($_);
-                print $fh $buf;
+                print {$fh} $buf;
                 $count += CORE::length($buf);
             }
         }
         else
         {
             my $size;
-            while ($size = read($self->{value_fh}, $buf, 4096))
+            while ($size = read $self->{value_fh}, $buf, 4096)
             {
-                print $fh $buf;
+                print {$fh} $buf;
                 $count += $size;
             }
         }
-        seek($self->{value_fh}, $self->{fh_pos}, 0);
+        seek $self->{value_fh}, $self->{fh_pos}, 0;
     }
 
-    close($fh) if $do_close;
+    if ($do_close)
+    {
+        if (! close $fh)
+        {
+            $RPC::XML::ERROR = $!;
+            return -1;
+        }
+    }
+
     return $count;
 }
 
@@ -1069,12 +1165,11 @@ use Scalar::Util 'blessed';
 # For our new(), we only need to ensure that we have the two required members
 sub new
 {
-    my $class = shift;
-    my @args = @_;
+    my ($class, @args) = @_;
 
     my ($self, %args);
 
-    $RPC::XML::ERROR = '';
+    $RPC::XML::ERROR = q{};
     if (blessed $args[0] and $args[0]->isa('RPC::XML::struct'))
     {
         # Take the keys and values from the struct object as our own
@@ -1091,7 +1186,7 @@ sub new
         %args = @args;
     }
 
-    unless ($args{faultCode} and $args{faultString})
+    if (! ($args{faultCode} and $args{faultString}))
     {
         $class = ref($class) || $class;
         $RPC::XML::ERROR = "${class}::new: Missing required struct fields";
@@ -1104,7 +1199,7 @@ sub new
         return;
     }
 
-    $self = $class->SUPER::new(%args);
+    return $class->SUPER::new(%args);
 }
 
 # This only differs from the display of a struct in that it has some extra
@@ -1113,7 +1208,7 @@ sub as_string
 {
     my $self = shift;
 
-    '<fault><value>' . $self->SUPER::as_string . '</value></fault>';
+    return '<fault><value>' . $self->SUPER::as_string . '</value></fault>';
 }
 
 # Again, only differs from struct in that it has some extra wrapped around it.
@@ -1121,25 +1216,27 @@ sub serialize
 {
     my ($self, $fh) = @_;
 
-    print $fh '<fault><value>';
+    print {$fh} '<fault><value>';
     $self->SUPER::serialize($fh);
-    print $fh '</value></fault>';
+    print {$fh} '</value></fault>';
+
+    return;
 }
 
 # Because of the slight diff above, length() has to be different from struct
-sub length
+sub length ## no critic (ProhibitBuiltinHomonyms)
 {
     my $self = shift;
 
-    $self->SUPER::length + 30; # For constant XML content
+    return $self->SUPER::length + 30; # For constant XML content
 }
 
 # Convenience methods:
-sub code   { $_[0]->{faultCode}->value   }
-sub string { $_[0]->{faultString}->value }
+sub code   { return shift->{faultCode}->value;   }
+sub string { return shift->{faultString}->value; }
 
 # This is the only one to override this method, for obvious reasons
-sub is_fault { 1 }
+sub is_fault { return 1; }
 
 ###############################################################################
 #
@@ -1182,41 +1279,31 @@ use Scalar::Util 'blessed';
 ###############################################################################
 sub new
 {
-    my $class = shift;
-    my @argz = @_;
+    my ($class, @argz) = @_;
 
-    my ($self, $name);
+    my $name;
 
     $class = ref($class) || $class;
-    $RPC::XML::ERROR = '';
+    $RPC::XML::ERROR = q{};
 
-    unless (@argz)
+    if (! @argz)
     {
         $RPC::XML::ERROR = 'RPC::XML::request::new: At least a method name ' .
             'must be specified';
         return;
     }
 
-    if (blessed $argz[0] and $argz[0]->isa('RPC::XML::request'))
-    {
-        # Maybe this will be a clone operation
-    }
-    else
-    {
-        # This is the method name to be called
-        $name = shift(@argz);
-        # All the remaining args must be data.
-        @argz = RPC::XML::smart_encode(@argz);
-        $self = { args => [ @argz ], name => $name };
-        bless $self, $class;
-    }
+    # This is the method name to be called
+    $name = shift @argz;
+    # All the remaining args must be data.
+    @argz = RPC::XML::smart_encode(@argz);
 
-    $self;
+    return bless { args => [ @argz ], name => $name }, $class;
 }
 
 # Accessor methods
-sub name       { shift->{name}       }
-sub args       { shift->{args} || [] }
+sub name { return shift->{name}; }
+sub args { return shift->{args} || []; }
 
 ###############################################################################
 #
@@ -1240,7 +1327,7 @@ sub as_string
 
     my $text;
 
-    $RPC::XML::ERROR = '';
+    $RPC::XML::ERROR = q{};
 
     $text = qq(<?xml version="1.0" encoding="$RPC::XML::ENCODING"?>);
 
@@ -1251,7 +1338,7 @@ sub as_string
     }
     $text .= '</params></methodCall>';
 
-    $text;
+    return $text;
 }
 
 # The difference between stringifying and serializing a request is much like
@@ -1263,25 +1350,27 @@ sub serialize
     my $name = $self->{name};
     RPC::XML::utf8_downgrade($name);
 
-    print $fh qq(<?xml version="1.0" encoding="$RPC::XML::ENCODING"?>);
+    print {$fh} qq(<?xml version="1.0" encoding="$RPC::XML::ENCODING"?>);
 
-    print $fh "<methodCall><methodName>$name</methodName><params>";
+    print {$fh} "<methodCall><methodName>$name</methodName><params>";
     for (@{$self->{args}})
     {
-        print $fh '<param><value>';
+        print {$fh} '<param><value>';
         $_->serialize($fh);
-        print $fh '</value></param>';
+        print {$fh} '</value></param>';
     }
-    print $fh '</params></methodCall>';
+    print {$fh} '</params></methodCall>';
+
+    return;
 }
 
 # Compared to base64, length-calculation here is pretty easy, much like struct
-sub length
+sub length ## no critic (ProhibitBuiltinHomonyms)
 {
     my $self = shift;
 
-    my $len = 100 + length($RPC::XML::ENCODING); # All the constant XML present
-    $len += length($self->{name});
+    my $len = 100 + length $RPC::XML::ENCODING; # All the constant XML present
+    $len += length $self->{name};
 
     for (@{$self->{args}})
     {
@@ -1289,7 +1378,7 @@ sub length
         $len += $_->length;
     }
 
-    $len;
+    return $len;
 }
 
 ###############################################################################
@@ -1329,43 +1418,32 @@ use Scalar::Util 'blessed';
 ###############################################################################
 sub new
 {
-    my $class = shift;
-    my @argz = @_;
-
-    my ($self, %extra, %attr);
+    my ($class, @argz) = @_;
 
     $class = ref($class) || $class;
 
-    $RPC::XML::ERROR = '';
+    $RPC::XML::ERROR = q{};
     if (! @argz)
     {
         $RPC::XML::ERROR = 'RPC::XML::response::new: One of a datatype, ' .
             'value or a fault object must be specified';
-    }
-    elsif (blessed $argz[0] and $argz[0]->isa('RPC::XML::response'))
-    {
-        # This will eventually be a clone-operation. For now, just return it
-        $self = $argz[0];
+        return;
     }
     elsif (@argz > 1)
     {
         $RPC::XML::ERROR = 'RPC::XML::response::new: Responses may take ' .
             'only one argument';
-    }
-    else
-    {
-        $argz[0] = RPC::XML::smart_encode($argz[0]);
-
-        $self = { value => $argz[0] };
-        bless $self, $class;
+        return;
     }
 
-    $self;
+    $argz[0] = RPC::XML::smart_encode($argz[0]);
+
+    return bless { value => $argz[0] }, $class;
 }
 
 # Accessor/status methods
-sub value      { $_[0]->{value} }
-sub is_fault   { $_[0]->{value}->is_fault }
+sub value      { return shift->{value}; }
+sub is_fault   { return shift->{value}->is_fault; }
 
 ###############################################################################
 #
@@ -1389,7 +1467,7 @@ sub as_string
 
     my $text;
 
-    $RPC::XML::ERROR = '';
+    $RPC::XML::ERROR = q{};
 
     $text = qq(<?xml version="1.0" encoding="$RPC::XML::ENCODING"?>);
 
@@ -1405,7 +1483,7 @@ sub as_string
     }
     $text .= '</methodResponse>';
 
-    $text;
+    return $text;
 }
 
 # See the comment for serialize() above in RPC::XML::request
@@ -1413,9 +1491,9 @@ sub serialize
 {
     my ($self, $fh) = @_;
 
-    print $fh qq(<?xml version="1.0" encoding="$RPC::XML::ENCODING"?>);
+    print {$fh} qq(<?xml version="1.0" encoding="$RPC::XML::ENCODING"?>);
 
-    print $fh '<methodResponse>';
+    print {$fh} '<methodResponse>';
     if ($self->{value}->isa('RPC::XML::fault'))
     {
         # A fault lacks the params-boilerplate
@@ -1423,25 +1501,31 @@ sub serialize
     }
     else
     {
-        print $fh '<params><param><value>';
+        print {$fh} '<params><param><value>';
         $self->{value}->serialize($fh);
-        print $fh '</value></param></params>';
+        print {$fh} '</value></param></params>';
     }
-    print $fh '</methodResponse>';
+    print {$fh} '</methodResponse>';
+
+    return;
 }
 
 # Compared to base64, length-calculation here is pretty easy, much like struct
-sub length
+sub length ## no critic (ProhibitBuiltinHomonyms)
 {
     my $self = shift;
 
-    my $len = 66 + length($RPC::XML::ENCODING); # All the constant XML present
+    my $len = 66 + length $RPC::XML::ENCODING; # All the constant XML present
 
     # This boilerplate XML is only present when it is NOT a fault
-    $len += 47 unless ($self->{value}->isa('RPC::XML::fault'));
+    if (! $self->{value}->isa('RPC::XML::fault'))
+    {
+        $len += 47;
+    }
+
     $len += $self->{value}->length;
 
-    $len;
+    return $len;
 }
 
 1;
@@ -1483,9 +1567,9 @@ This module does not actually provide any transport implementation or
 server basis. For these, see L<RPC::XML::Client> and L<RPC::XML::Server>,
 respectively.
 
-=head1 EXPORTABLE FUNCTIONS
+=head1 SUBROUTINES/METHODS
 
-At present, three simple functions are available for import. They must be
+At present, three simple subroutines are available for import. They must be
 explicitly imported as part of the C<use> statement, or with a direct call to
 C<import>:
 
@@ -1897,9 +1981,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or

@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -31,6 +31,7 @@ package Apache::RPC::Server;
 use 5.006001;
 use strict;
 use warnings;
+use base qw(RPC::XML::Server);
 
 use Socket;
 use File::Spec;
@@ -40,8 +41,6 @@ use Apache::File; # For ease-of-use methods like set_last_modified
 use Apache::Constants ':common';
 
 use RPC::XML;
-use RPC::XML::Server;
-@Apache::RPC::Server::ISA = qw(RPC::XML::Server);
 
 ## no critic (ProhibitSubroutinePrototypes)
 
@@ -51,31 +50,33 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-our $VERSION = '1.34';
-$VERSION = eval $VERSION; ## no critic
+our $VERSION = '1.35';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
-sub version { $Apache::RPC::Server::VERSION }
+sub version { return $Apache::RPC::Server::VERSION }
 
-sub INSTALL_DIR { $Apache::RPC::Server::INSTALL_DIR }
+sub INSTALL_DIR { return $Apache::RPC::Server::INSTALL_DIR }
 
 # Return a list (not list reference) of currently-known server objects,
 # represented as the text-keys from the hash table.
-sub list_servers { keys %Apache::RPC::Server::SERVER_TABLE }
+sub list_servers { return keys %Apache::RPC::Server::SERVER_TABLE }
 
 # This is kinda funny, since I don't actually have a debug() method in the
 # RPC::XML::Server class at the moment...
 sub debug
 {
-    my $self = shift;
-    my $fmt  = shift;
+    my ($self, $fmt, @args) = @_;
 
     my $debug = ref($self) ? $self->SUPER::debug() : 1;
 
-    $fmt && $debug &&
-        Apache::log_error(sprintf("%p ($$): $fmt",
-                                  (ref $self) ? $self : 0, @_));
+    if ($fmt && $debug)
+    {
+        Apache::log_error(
+            sprintf "%p ($$): $fmt", (ref $self) ? $self : 0, @args
+        );
+    }
 
-    $debug;
+    return $debug;
 }
 
 ###############################################################################
@@ -95,7 +96,7 @@ sub debug
 #   Returns:        Response code
 #
 ###############################################################################
-sub handler ($$)
+sub handler ($$) ## no critic (ProhibitExcessComplexity)
 {
     my $class = shift;
     my $r = shift;
@@ -106,7 +107,7 @@ sub handler ($$)
 
     $srv = (ref $class) ? $class : $class->get_server($r);
     $me = (ref($class) || $class) . '::handler';
-    unless (ref $srv)
+    if (! ref $srv)
     {
         $r->log_error("$me: PANIC! " . $srv);
         return SERVER_ERROR;
@@ -115,7 +116,7 @@ sub handler ($$)
     # Set the relevant headers
     $hdrs_out = $r->headers_out;
     $hdrs = $srv->response->headers;
-    for (keys %$hdrs) { $hdrs_out->{$_} = $hdrs->{$_} }
+    for (keys %{$hdrs}) { $hdrs_out->{$_} = $hdrs->{$_} }
     $r->content_type('text/xml');
     # We're essentially done if this was a HEAD request
     if ($r->header_only)
@@ -128,12 +129,16 @@ sub handler ($$)
     elsif ($r->method eq 'POST')
     {
         # Step 1: Do we have the correct content-type?
-        return DECLINED unless ($r->header_in('Content-Type') =~ m|text/xml|i);
+        if ($r->header_in('Content-Type') !~ m{text/xml}i)
+        {
+            return DECLINED;
+        }
         $compress = $srv->compress;
-        $do_compress = 1
-            if ($compress and
-                ($r->header_in('Content-Encoding') || '') =~
-                 $srv->compress_re);
+        if ($compress and
+            ($r->header_in('Content-Encoding') || q{}) =~ $srv->compress_re)
+        {
+            $do_compress = 1;
+        }
 
         # Step 2: Read the request in and convert it to a request object
         # Note that this currently binds us to the Content-Length header a lot
@@ -143,7 +148,7 @@ sub handler ($$)
         if ($do_compress)
         {
             # Spin up the compression engine
-            unless ($com_engine = Compress::Zlib::inflateInit())
+            if (! ($com_engine = Compress::Zlib::inflateInit()))
             {
                 $r->log_error("$me: Unable to init the Compress::Zlib engine");
                 return SERVER_ERROR;
@@ -153,28 +158,32 @@ sub handler ($$)
         while ($length)
         {
             $r->read($content, ($length < 2048) ? $length : 2048);
-            $length -= length($content);
+            $length -= length $content;
             if ($do_compress)
             {
-                unless ($content = $com_engine->inflate($content))
+                if (! ($content = $com_engine->inflate($content)))
                 {
                     $r->log_error("$me: Error inflating compressed data");
                     return SERVER_ERROR;
                 }
             }
-            eval { $parser->parse_more($content); };
-            if ($@)
+            if (! eval { $parser->parse_more($content); 1; })
             {
-                $r->log_error("$me: XML parse error: $@");
-                return SERVER_ERROR;
+                if ($@)
+                {
+                    $r->log_error("$me: XML parse error: $@");
+                    return SERVER_ERROR;
+                }
             }
         }
 
-        eval { $content = $parser->parse_done; };
-        if ($@)
+        if (! eval { $content = $parser->parse_done; 1; })
         {
-            $r->log_error("$me: XML parse error at end: $@");
-            return SERVER_ERROR;
+            if ($@)
+            {
+                $r->log_error("$me: XML parse error at end: $@");
+                return SERVER_ERROR;
+            }
         }
 
         # Step 3: Process the request and encode the outgoing response
@@ -185,6 +194,8 @@ sub handler ($$)
             $c = $r->connection;
             ($peerport, $peeraddr) = unpack_sockaddr_in($c->remote_addr);
             $peerhost = inet_ntoa($peeraddr);
+            # Set localized keys on $srv, based on the connection info
+            ## no critic (ProhibitLocalVars)
             local $srv->{peeraddr} = $peeraddr;
             local $srv->{peerhost} = $peerhost;
             local $srv->{peerport} = $peerport;
@@ -195,7 +206,7 @@ sub handler ($$)
         $r->no_cache(1);
         $do_compress = 0; # Clear it
         if ($compress and ($resp->length > $srv->compress_thresh) and
-            (($r->header_in('Accept-Encoding') || '') =~ $srv->compress_re))
+            (($r->header_in('Accept-Encoding') || q{}) =~ $srv->compress_re))
         {
             $do_compress = 1;
             $hdrs_out->{'Content-Encoding'} = $compress;
@@ -204,7 +215,7 @@ sub handler ($$)
         if ($srv->message_file_thresh and
             $srv->message_file_thresh < $resp->length)
         {
-            unless ($resp_fh = Apache::File->tmpfile)
+            if (! ($resp_fh = Apache::File->tmpfile))
             {
                 $r->log_error("$me: Error opening tmpfile");
                 return SERVER_ERROR;
@@ -218,7 +229,7 @@ sub handler ($$)
             if ($do_compress)
             {
                 my $fh2 = Apache::File->tmpfile;
-                unless ($fh2)
+                if (! $fh2)
                 {
                     $r->log_error("$me: Error opening second tmpfile");
                     return SERVER_ERROR;
@@ -226,10 +237,10 @@ sub handler ($$)
 
                 # Write the request to the second FH
                 $resp->serialize($fh2);
-                seek($fh2, 0, 0);
+                seek $fh2, 0, 0;
 
                 # Spin up the compression engine
-                unless ($com_engine = Compress::Zlib::deflateInit())
+                if (! ($com_engine = Compress::Zlib::deflateInit()))
                 {
                     $r->log_error("$me: Unable to initialize the " .
                                   'Compress::Zlib engine');
@@ -238,34 +249,34 @@ sub handler ($$)
 
                 # Spool from the second FH through the compression engine,
                 # into the intended FH.
-                my $buf = '';
+                my $buf = q{};
                 my $out;
-                while (read($fh2, $buf, 4096))
+                while (read $fh2, $buf, 4096)
                 {
-                    unless (defined($out = $com_engine->deflate(\$buf)))
+                    if (! (defined($out = $com_engine->deflate(\$buf))))
                     {
                         $r->log_error("$me: Compression failure in deflate()");
                         return SERVER_ERROR;
                     }
-                    print $resp_fh $out;
+                    print {$resp_fh} $out;
                 }
                 # Make sure we have all that's left
-                unless (defined($out = $com_engine->flush))
+                if  (! defined($out = $com_engine->flush))
                 {
                     $r->log_error("$me: Compression flush failure in deflate");
                     return SERVER_ERROR;
                 }
-                print $resp_fh $out;
+                print {$resp_fh} $out;
 
                 # Close the secondary FH. Rewinding the primary is done
                 # later.
-                close($fh2);
+                close $fh2; ## no critic (RequireCheckedClose)
             }
             else
             {
                 $resp->serialize($resp_fh);
             }
-            seek($resp_fh, 0, 0);
+            seek $resp_fh, 0, 0;
 
             $r->set_content_length(-s $resp_fh);
             $r->send_http_header;
@@ -275,7 +286,10 @@ sub handler ($$)
         {
             # Treat the content strictly in-memory
             $content = $resp->as_string;
-            $content = Compress::Zlib::compress($content) if $do_compress;
+            if ($do_compress)
+            {
+                $content = Compress::Zlib::compress($content);
+            }
             $r->set_content_length(length $content);
             $r->send_http_header;
             $r->print($content);
@@ -287,7 +301,7 @@ sub handler ($$)
         return DECLINED;
     }
 
-    OK;
+    return OK;
 }
 
 ###############################################################################
@@ -312,9 +326,12 @@ sub init_handler ($$)
 {
     my ($class, $r) = @_;
 
-    $_->child_started(1) for (values %Apache::RPC::Server::SERVER_TABLE);
+    for (values %Apache::RPC::Server::SERVER_TABLE)
+    {
+        $_->child_started(1);
+    }
 
-    OK;
+    return OK;
 }
 
 ###############################################################################
@@ -336,10 +353,9 @@ sub init_handler ($$)
 #                   Failure:    error string
 #
 ###############################################################################
-sub new
+sub new ## no critic (ProhibitExcessComplexity)
 {
-    my $class = shift;
-    my @argz  = @_;
+    my ($class, @argz)  = @_;
 
     my ($R, $servid, $prefix, $self, @dirs, @files, $ret, $no_def, $debug,
         $do_auto, $do_mtime, %argz);
@@ -350,16 +366,20 @@ sub new
     $R      = $argz{apache} || Apache->server; delete $argz{apache};
     $servid = $argz{server_id};                delete $argz{server_id};
     $prefix = $argz{prefix};                   delete $argz{prefiz};
-    $argz{path} = $R->location unless $argz{path};
-    $servid = substr($argz{path}, 1) unless ($servid);
+    if (! $argz{path})
+    {
+        $argz{path} = $R->location;
+    }
+    if (! $servid)
+    {
+        $servid = substr $argz{path}, 1;
+    }
 
-    #
     # For these Apache-conf type of settings, something explicitly passed in
     # via @argz is allowed to override the config file. So after pulling the
     # value, it is only applied if the corresponding key doesn't already exist
-    #
 
-    unless (exists $argz{debug})
+    if (! exists $argz{debug})
     {
         # Is debugging requested?
         $debug = $R->dir_config("${prefix}RpcDebugLevel") || 0;
@@ -370,14 +390,20 @@ sub new
     $do_auto  = $R->dir_config("${prefix}RpcAutoMethods") || 0;
     $do_mtime = $R->dir_config("${prefix}RpcAutoUpdates") || 0;
     foreach ($do_auto, $do_mtime) { $_ = (/yes/i) ? 1 : 0 }
-    $argz{auto_methods} = $do_auto  unless exists $argz{auto_methods};
-    $argz{auto_updates} = $do_mtime unless exists $argz{auto_updates};
+    if (! exists $argz{auto_methods})
+    {
+        $argz{auto_methods} = $do_auto;
+    }
+    if (! exists $argz{auto_updates})
+    {
+        $argz{auto_updates} = $do_mtime;
+    }
 
     # If there is already an xpl_path, ensure that ours is on the top,
     # otherwise add it.
     if ($argz{xpl_path})
     {
-        push(@{$argz{xpl_path}}, $Apache::RPC::Server::INSTALL_DIR);
+        push @{$argz{xpl_path}}, $Apache::RPC::Server::INSTALL_DIR;
     }
     else
     {
@@ -385,21 +411,25 @@ sub new
     }
 
     # Create the object, ensuring that the defaults are not yet loaded:
-    my $Raux = (ref($R) eq 'Apache') ? $R->server : $R;
+    my $raux = (ref($R) eq 'Apache') ? $R->server : $R;
     $self = $class->SUPER::new(no_default => 1, no_http => 1,
                                path => $argz{path},
-                               host => $Raux->server_hostname || 'localhost',
-                               port => $Raux->port,
+                               host => $raux->server_hostname || 'localhost',
+                               port => $raux->port,
                                %argz);
-    return $self unless (ref $self); # Non-ref means an error message
+    # Non-ref means an error message
+    if (! ref $self)
+    {
+        return $self;
+    }
     $self->started('set');
 
     # Check to see if we should suppress the default methods.
     # The default is "no" (don't suppress the default methods), so use || in
     # the evaluation in case neither were set.
     $no_def = $argz{no_default} ? 1 :
-        (($R->dir_config("${prefix}RpcDefMethods") || '') =~ /no/i) ? 1 : 0;
-    unless ($no_def)
+        (($R->dir_config("${prefix}RpcDefMethods") || q{}) =~ /no/i) ? 1 : 0;
+    if (! $no_def)
     {
         $self->add_default_methods(-except => 'status.xpl');
         # This should find the Apache version of system.status instead
@@ -407,43 +437,50 @@ sub new
     }
 
     # Determine what methods we are configuring for this server instance
-    @dirs    = split(/:/, $R->dir_config("${prefix}RpcMethodDir"));
-    @files   = split(/:/, $R->dir_config("${prefix}RpcMethod"));
+    @dirs  = split /:/, $R->dir_config("${prefix}RpcMethodDir");
+    @files = split /:/, $R->dir_config("${prefix}RpcMethod");
     # Load the directories first, then the individual files. This allows the
     # files to potentially override entries in the directories.
     for (@dirs)
     {
         $ret = $self->add_methods_in_dir($_);
-        return $ret unless ref $ret;
+        if (! ref $ret)
+        {
+            return $ret;
+        }
     }
     for (@files)
     {
         $ret = $self->add_method($_);
-        return $ret unless ref $ret;
+        if (! ref $ret)
+        {
+            return $ret;
+        }
     }
     if (@dirs)
     {
         # If there were any dirs specified for wholesale inclusion, add them
         # to the search path for later reference.
         $ret = $self->xpl_path;
-        unshift(@$ret, @dirs);
+        unshift @{$ret}, @dirs;
         $self->xpl_path($ret);
     }
 
-    $Apache::RPC::Server::SERVER_TABLE{$servid} = $self;
-    $self;
+    return $Apache::RPC::Server::SERVER_TABLE{$servid} = $self;
 }
 
 # Accessor similar to started() that has a time localized to this child process
 sub child_started
 {
-    my $self = shift;
-    my $set  = shift || 0;
+    my ($self, $set_started) = @_;
 
     my $old = $self->{__child_started} || $self->started || 0;
-    $self->{__child_started} = time if $set;
+    if ($set_started)
+    {
+        $self->{__child_started} = time;
+    }
 
-    $old;
+    return $old;
 }
 
 ###############################################################################
@@ -467,8 +504,7 @@ sub child_started
 ###############################################################################
 sub get_server
 {
-    my $self     = shift;
-    my $r        = shift;
+    my ($self, $r) = @_;
 
     my ($prefix, $servid, $nocomp);
 
@@ -477,9 +513,9 @@ sub get_server
         # Presume $r to in fact be an Apache reference, and use it as such.
         # If the server that matches this is already in the table, return it.
         # If it isn't, create it from the information we have available.
-        $prefix = $r->dir_config('RPCOptPrefix') || '';
+        $prefix = $r->dir_config('RPCOptPrefix') || q{};
         $servid = $r->dir_config("${prefix}RpcServer") || '<default>';
-        $nocomp = $r->dir_config('NoCompression') || '';
+        $nocomp = $r->dir_config('NoCompression') || q{};
 
 
         return $Apache::RPC::Server::SERVER_TABLE{$servid} ||
@@ -551,9 +587,8 @@ dialect explained in L<RPC::XML::Server>. A subclass derived from this class
 may of course use the methods provided by this class and its parent class for
 adding and manipulating the method table.
 
-=head1 USAGE
+=head1 SUBROUTINES/METHODS
 
-This module is designed to be dropped in with little (if any) modification.
 The methods that the server publishes are provided by a combination of the
 installation files and Apache configuration values. Details on remote method
 syntax and semantics is covered in L<RPC::XML::Server>.
@@ -908,9 +943,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or
@@ -928,6 +963,6 @@ L<RPC::XML::Server>, L<RPC::XML>
 
 =head1 AUTHOR
 
-Randy J. Ray <rjray@blackperl.com>
+Randy J. Ray C<< <rjray@blackperl.com> >>
 
 =cut

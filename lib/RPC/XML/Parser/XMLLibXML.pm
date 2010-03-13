@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2009 by Randy J. Ray, all rights reserved
+# This file copyright (c) 2010 by Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -42,11 +42,11 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '0.100';
-$VERSION = eval $VERSION; ## no critic
+$VERSION = '0.101';
+$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
-%VALIDTYPES = map { $_, $_ } (qw(int i4 i8 double boolean));
+%VALIDTYPES = map { ($_, $_) } (qw(int i4 i8 double boolean));
 $VALIDTYPES{'dateTime.iso8601'} = 'datetime_iso8601';
 
 ###############################################################################
@@ -67,7 +67,7 @@ sub new
 {
     my ($class, %args) = @_;
 
-    bless \%args, $class;
+    return bless \%args, $class;
 }
 
 ###############################################################################
@@ -92,7 +92,7 @@ sub parse
 
     my $parser = XML::LibXML->new(no_network => 1);
 
-    unless ($stream)
+    if (! $stream)
     {
         # If no stream is given, initialize the DOM push-parser interface and
         # return the object ref
@@ -105,7 +105,7 @@ sub parse
     # Determine if the stream is a string or a filehandle, and use the apropos
     # method to parse it.
     my $doc;
-    if (ref($stream))
+    if (ref $stream)
     {
         if (reftype($stream) eq 'GLOB')
         {
@@ -113,7 +113,7 @@ sub parse
         }
         elsif (reftype($stream) eq 'SCALAR')
         {
-            $doc = $parser->parse_string($$stream);
+            $doc = $parser->parse_string(${$stream});
         }
         else
         {
@@ -125,7 +125,7 @@ sub parse
         $doc = $parser->parse_string($stream);
     }
 
-    $self->dom_to_obj($doc);
+    return $self->dom_to_obj($doc);
 }
 
 ###############################################################################
@@ -146,9 +146,12 @@ sub parse_more
 {
     my ($self, @data) = @_;
 
-    $self->{parser}->push($_) for @data;
+    for (@data)
+    {
+        $self->{parser}->push($_);
+    }
 
-    $self;
+    return $self;
 }
 
 ###############################################################################
@@ -171,7 +174,7 @@ sub parse_done
 
     my $doc = $self->{parser}->finish_push();
 
-    $self->dom_to_obj($doc);
+    return $self->dom_to_obj($doc);
 }
 
 ###############################################################################
@@ -213,7 +216,7 @@ sub dom_to_obj
         return "Unknown tag: $data";
     }
 
-    $retval;
+    return $retval;
 }
 
 # Parse the part of the DOM rooted at $dom as a XML-RPC request
@@ -235,7 +238,7 @@ sub dom_request
         $method_name = $nodes[0]->textContent;
         $method_name =~ s/^\s+//;
         $method_name =~ s/\s+$//;
-        if ($method_name !~ m|[\w\.:/]+|)
+        if ($method_name !~ m{[\w\.:/]+})
         {
             return qq{methodName value "$method_name" not a valid name};
         }
@@ -254,7 +257,10 @@ sub dom_request
             # delegated by it:
             @args = $self->dom_params($nodes[1]);
             # Return if it was an error message
-            return $args[0] if ($args[0] && ! ref($args[0]));
+            if ($args[0] && ! ref $args[0])
+            {
+                return $args[0];
+            }
         }
         else
         {
@@ -263,7 +269,7 @@ sub dom_request
         }
     }
 
-    RPC::XML::request->new($method_name, @args);
+    return RPC::XML::request->new($method_name, @args);
 }
 
 # Parse the part of the DOM rooted at $dom as a XML-RPC response
@@ -313,28 +319,36 @@ sub dom_response
         }
 
         $param = $self->dom_value($children[0]);
-        return $param unless ref($param); # Return if it was an error message
+        if (! ref $param)
+        {
+            # Return if it was an error message
+            return $param;
+        }
     }
     elsif ($node->nodeName eq 'fault')
     {
         # Make sure that we have a single <value></value> container
-        my @children = $node->childNodes;
-        if (1 != @children)
+        my @sub_children = $node->childNodes;
+        if (1 != @sub_children)
         {
             return
                 "$me: Illegal content within fault: too many child elements";
         }
-        elsif ($children[0]->nodeName ne 'value')
+        elsif ($sub_children[0]->nodeName ne 'value')
         {
             return qq($me: Invalid content within fault tag: Unknown tag ") .
-                $children[0]->nodeName . '", expected "value"';
+                $sub_children[0]->nodeName . '", expected "value"';
         }
 
         # Use the dom_value() routine that is generally called by dom_params()
         # to get the underlying struct out, then pass that to the constructor
         # of RPC::XML::fault:
-        my $value = $self->dom_value($children[0]);
-        return $value unless ref($value); # Return if it was an error message
+        my $value = $self->dom_value($sub_children[0]);
+        if (! ref $value)
+        {
+            # Return if it was an error message
+            return $value;
+        }
         $param = RPC::XML::fault->new($value->value);
     }
     else
@@ -343,7 +357,7 @@ sub dom_response
             '" in "methodResponse" body';
     }
 
-    RPC::XML::response->new($param);
+    return RPC::XML::response->new($param);
 }
 
 # Parse the <params> block, returning a list of the parsed <value> elements
@@ -372,15 +386,15 @@ sub dom_params
             return "$me: Unknown tag in param: $tag (expected 'value')";
         }
 
-        push(@values, $self->dom_value($children[0]));
+        push @values, $self->dom_value($children[0]);
     }
 
-    @values;
+    return @values;
 }
 
 # Extract a single XML-RPC value from within a <value> tag and return the
 # apropos RPC::XML::* instance.
-sub dom_value
+sub dom_value ## no critic(ProhibitExcessComplexity)
 {
     my ($self, $node) = @_;
     my ($nodename, $value);
@@ -408,10 +422,14 @@ sub dom_value
     }
     elsif ($nodename eq 'nil')
     {
-        return "$me: The nil tag is only allowed if you explicitly enable it"
-            unless $RPC::XML::ALLOW_NIL;
-        return "$me: The nil tag must be empty"
-            if ($children[0]->hasChildNodes());
+        if (! $RPC::XML::ALLOW_NIL)
+        {
+            return "$me: The nil tag is only allowed if explicitly enabled";
+        }
+        if ($children[0]->hasChildNodes())
+        {
+            return "$me: The nil tag must be empty";
+        }
 
         $value = RPC::XML::nil->new();
     }
@@ -432,7 +450,7 @@ sub dom_value
         @children = $children[0]->childNodes;
 
         # Make sure every child node is a <value> tag
-        if (my @bad = grep($_->nodeName() ne 'value', @children))
+        if (my @bad = grep { $_->nodeName() ne 'value' } @children)
         {
             return qq($me: Bad tag within array: got "$bad[0]", expected ) .
                 '"value"';
@@ -446,7 +464,7 @@ sub dom_value
             my $newval = $self->dom_value($_);
             if (ref $newval)
             {
-                push(@$value, $newval);
+                push @{$value}, $newval;
             }
             else
             {
@@ -461,7 +479,7 @@ sub dom_value
     {
         @children = $children[0]->childNodes;
         # Make sure every child node is a <member> tag
-        if (my @bad = grep($_->nodeName() ne 'member', @children))
+        if (my @bad = grep { $_->nodeName() ne 'member'} @children)
         {
             return qq($me: Bad tag within struct: got "$bad[0]", expected ) .
                 '"member"';
@@ -474,18 +492,18 @@ sub dom_value
         {
             my @mchildren = $member->childNodes;
 
-            unless (2 == @mchildren)
+            if (2 != @mchildren)
             {
                 return "$me: Wrong number of nodes within struct/member, " .
-                    'expecting 2 (name, value), got ' . scalar(@mchildren);
+                    'expecting 2 (name, value), got ' . scalar @mchildren;
             }
-            unless (($mchildren[0]->nodeName eq 'name') &&
-                    ($mchildren[1]->nodeName eq 'value'))
+            if (! (($mchildren[0]->nodeName eq 'name') &&
+                   ($mchildren[1]->nodeName eq 'value')))
             {
                 return "$me: Bad content within struct/member: expected tags" .
                     ' "name" and "value", got tags "' .
-                    $mchildren[0]->nodeName . '" and "' .
-                    $mchildren[1]->nodeName . '"';
+                    $mchildren[0]->nodeName . q{" and "} .
+                    $mchildren[1]->nodeName . q{"};
             }
 
             # As with arrays, let a recursive call to this routine handle the
@@ -509,7 +527,7 @@ sub dom_value
         return qq($me: Unknown tag "$nodename" found within value tag);
     }
 
-    $value;
+    return $value;
 }
 
 # The RPC::XML::base64 data-type has some special considerations, so handle it
@@ -528,12 +546,15 @@ sub dom_base64
         require File::Temp;
         my ($fh, $tmpdir) = (Symbol::gensym(), File::Spec->tmpdir);
 
-        $tmpdir = $self->{base64_temp_dir} if $self->{base64_temp_dir};
-        unless ($fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir))
+        if ($self->{base64_temp_dir})
+        {
+            $tmpdir = $self->{base64_temp_dir};
+        }
+        if  (! ($fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
         {
             return "$me: Error opening temp file for base64: $!";
         }
-		print $fh $dom->textContent;
+        print {$fh} $dom->textContent;
 
         $value = RPC::XML::base64->new($fh, 'encoded');
     }
@@ -542,7 +563,7 @@ sub dom_base64
         $value = RPC::XML::base64->new($dom->textContent, 'encoded');
     }
 
-    $value;
+    return $value;
 }
 
 1;
@@ -568,7 +589,7 @@ This class implements the interface defined in the B<RPC::XML::Parser>
 factory-class (see L<RPC::XML::Parser>) using the B<XML::LibXML> module
 to handle the actual manipulation of XML.
 
-=head1 METHODS
+=head1 SUBROUTINES/METHODS
 
 This module implements the public-facing methods as described in
 L<RPC::XML::Parser>:
@@ -605,6 +626,12 @@ is not a push-parser, an exception is thrown.
 
 =back
 
+=head1 DIAGNOSTICS
+
+All methods return some type of reference on success, or an error string on
+failure. Non-reference return values should always be interpreted as errors,
+except in the case of C<simple_request>.
+
 =head1 BUGS
 
 Please report any bugs or feature requests to
@@ -639,9 +666,9 @@ L<http://github.com/rjray/rpc-xml>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2009 by Randy J. Ray.
+This file and the code within are copyright (c) 2010 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or
