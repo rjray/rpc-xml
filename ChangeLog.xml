@@ -15,7 +15,85 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
-  <release date="2009-12-13T21:45:00-07:00" version="0.72" sc:tag="0.72">
+  <release date="2010-03-16T22:45:00-07:00" version="0.73" sc:tag="0.73">
+    <change git:commit="b234042a3b3e74ee83a74163bc68253130f76c21">
+      <fileset>
+        <file path="MANIFEST" />
+        <file path="t/28_parser_bugs_50013.t" action="DELETE" />
+        <file path="t/90_rt50013_parser_bugs.t" action="ADD" />
+      </fileset>
+      <description>
+        Rename of t/28_parser_bugs_50013.t to fit more universal scheme for
+        test suites that directly address specific RT bugs.
+      </description>
+    </change>
+    <change git:commit="984e381b2ec9e56896c4d35d6eb9f3e68c11629c">
+      <fileset>
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/90_rt54183_sigpipe.t" action="ADD" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=54183">RT #54183</xhtml:a>:
+        Provide handling of SIGPIPE when sending the response to the client,
+        in case they've terminated the connection.
+      </description>
+    </change>
+    <change git:commit="d5a354d801ca5b7e6243cb4c6289468dcd7be244">
+      <file path="MANIFEST" />
+      <description>
+        Forgot to add the new test suite to MANIFEST.
+      </description>
+    </change>
+    <change git:commit="3195d6348f01e60b64282e0bd8fab902eecfb219">
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Forgot to update the module version number.
+      </description>
+    </change>
+    <change git:commit="87735249de1ec4311ecd9bbb04d890e1b7649c47">
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Fix typo in reftype() call.
+      </description>
+    </change>
+    <change git:commit="cd38fc54f524518e3fc1d8effdf76c5b8e99a669">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="t/90_rt54494_blessed_refs.t" action="ADD" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=54494">RT #54494</xhtml:a>:
+        Fix handling of blessed references in smart_encode().
+      </description>
+    </change>
+    <change git:commit="2664b6b614d62e9c110bed12d5a8f4d658d1c4a0">
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/Apache/RPC/Status.pm" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Function.pm" />
+        <file path="lib/RPC/XML/Method.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="lib/RPC/XML/ParserFactory.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Large-scale code clean-up driven by Perl::Critic. All critic flags
+        down to severity 1 now removed.
+      </description>
+    </change>
+    <change git:commit="e5a2f983fcc2df9b3f126cb8af26e917812c46d7">
+      <file path="MANIFEST" />
+      <description>
+        Forgot to add t/90_rt54494_blessed_refs.t when it was created.
+      </description>
+    </change>
+  </release>
+  <release date="2009-12-13T21:45:00-08:00" version="0.72" sc:tag="0.72">
     <change git:commit="afc23bd0c54cc59c79fdf4945cb17818d6caed91">
       <fileset>
         <file path="Makefile.PL" />
@@ -33,7 +111,7 @@
       </description>
     </change>
   </release>
-  <release date="2009-12-07T20:00:00-07:00" version="0.71" sc:tag="0.71">
+  <release date="2009-12-07T20:00:00-08:00" version="0.71" sc:tag="0.71">
     <change git:commit="8cc9534a7da336de8c646ff1bc473ce531f43cd6">
       <fileset>
         <file path="MANIFEST" />
@@ -55,7 +133,7 @@
     <change git:commit="eb38e38dafe8491185a8638f4842fa419022b5c4">
       <file path="MANIFEST" />
       <description>
-        Add test suite 28_parser_bugs_50013.t, which was omitted from last
+        Add test suite t/28_parser_bugs_50013.t, which was omitted from last
         release.
       </description>
     </change>
@@ -73,7 +151,7 @@
       </description>
     </change>
   </release>
-  <release date="2009-12-06T22:00:00-07:00" version="0.70" sc:tag="0.70">
+  <release date="2009-12-06T22:00:00-08:00" version="0.70" sc:tag="0.70">
     <change git:commit="8e62c642a888608cf60fc190abcb60a49c061d73">
       <fileset>
         <file path="lib/RPC/XML.pm" />

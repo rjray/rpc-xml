@@ -13,7 +13,6 @@ use Cwd 'cwd';
 
 my ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir                   = File::Spec->catpath($vol, $dir, '');
-my $test_config        = File::Spec->catfile($dir, 't', 'test.conf');
 
 eval "require LWP;";
 if ($LWP::VERSION and $LWP::VERSION < 5.801)
@@ -83,7 +82,7 @@ find(sub {
 
 WriteMakefile(
     NAME      => 'RPC::XML',
-    VERSION   => '0.72',
+    VERSION   => '0.73',
     AUTHOR    => 'Randy J. Ray',
     ABSTRACT  => 'Data, client and server classes for XML-RPC',
     EXE_FILES => \@scripts,
@@ -93,16 +92,17 @@ WriteMakefile(
         'constant'     => 1.03,
         'Scalar::Util' => 1.19,
         'Test::More'   => 0,
-        'LWP'          => 5.801,
+        'LWP'          => 5.834,
         'XML::Parser'  => 2.31,
-        'XML::LibXML'  => '1.70',
     },
     dist      => { COMPRESS => 'gzip -9f' },
     clean     => { FILES => $CLEAN },
     LICENSE   => 'perl',
-    SIGN      => 'here, please',
     MIN_PERL_VERSION => 5.006001,
     META_MERGE => {
+        recommends => {
+            'XML::LibXML' => '1.70',
+        },
         resources => {
             homepage   => 'http://search.cpan.org/dist/RPC-XML',
             bugtracker =>
