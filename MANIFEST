@@ -68,6 +68,7 @@ t/60_net_server.t
 t/70_compression_detect.t
 t/90_rt50013_parser_bugs.t
 t/90_rt54183_sigpipe.t
+t/90_rt54494_blessed_refs.t
 t/meth_bad_1.xpl
 t/meth_bad_2.xpl
 t/meth_good_1.xpl
