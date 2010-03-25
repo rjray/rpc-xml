@@ -15,6 +15,13 @@ require File::Spec;
 require RPC::XML::Server;
 require RPC::XML::Client;
 
+# This suite doesn't run on Windows, since it's based on *NIX signals
+if ($^O eq 'MSWin32' || $^O eq 'cygwin')
+{
+	plan skip_all => 'Skipping *NIX signals-based test on Windows platform';
+	exit;
+}
+
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, '');
 require File::Spec->catfile($dir, 'util.pl');
