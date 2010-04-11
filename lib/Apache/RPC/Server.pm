@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-our $VERSION = '1.35';
+our $VERSION = '1.36';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 sub version { return $Apache::RPC::Server::VERSION }
@@ -344,7 +344,7 @@ sub init_handler ($$)
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $class    in      scalar    String or ref to ID the class
-#                   @argz     in      list      Type and relevance of args is
+#                   %argz     in      list      Type and relevance of args is
 #                                                 variable. See text.
 #
 #   Globals:        $INSTALL_DIR
@@ -355,17 +355,14 @@ sub init_handler ($$)
 ###############################################################################
 sub new ## no critic (ProhibitExcessComplexity)
 {
-    my ($class, @argz)  = @_;
+    my ($class, %argz)  = @_;
 
-    my ($R, $servid, $prefix, $self, @dirs, @files, $ret, $no_def, $debug,
-        $do_auto, $do_mtime, %argz);
+    my ($R, $servid, $prefix, $self, @dirs, @files, $ret, $no_def,
+        $do_auto, $do_mtime);
 
-    # Convert @argz to a hash. As we consume arguments locally, we can delete
-    # them from the hash to avoid passing them along.
-    %argz = @argz;
-    $R      = $argz{apache} || Apache->server; delete $argz{apache};
-    $servid = $argz{server_id};                delete $argz{server_id};
-    $prefix = $argz{prefix};                   delete $argz{prefiz};
+    $R      = delete $argz{apache} || Apache->server;
+    $servid = delete $argz{server_id};
+    $prefix = delete $argz{prefix} || q{};
     if (! $argz{path})
     {
         $argz{path} = $R->location;
@@ -376,20 +373,19 @@ sub new ## no critic (ProhibitExcessComplexity)
     }
 
     # For these Apache-conf type of settings, something explicitly passed in
-    # via @argz is allowed to override the config file. So after pulling the
+    # via %argz is allowed to override the config file. So after pulling the
     # value, it is only applied if the corresponding key doesn't already exist
 
     if (! exists $argz{debug})
     {
         # Is debugging requested?
-        $debug = $R->dir_config("${prefix}RpcDebugLevel") || 0;
-        $argz{debug} = $debug;
+        $argz{debug} = $R->dir_config("${prefix}RpcDebugLevel") || 0;
     }
 
     # Check for disabling of auto-loading or mtime-checking
     $do_auto  = $R->dir_config("${prefix}RpcAutoMethods") || 0;
     $do_mtime = $R->dir_config("${prefix}RpcAutoUpdates") || 0;
-    foreach ($do_auto, $do_mtime) { $_ = (/yes/i) ? 1 : 0 }
+    foreach ($do_auto, $do_mtime) { $_ = /yes/i ? 1 : 0 }
     if (! exists $argz{auto_methods})
     {
         $argz{auto_methods} = $do_auto;
@@ -437,8 +433,8 @@ sub new ## no critic (ProhibitExcessComplexity)
     }
 
     # Determine what methods we are configuring for this server instance
-    @dirs  = split /:/, $R->dir_config("${prefix}RpcMethodDir");
-    @files = split /:/, $R->dir_config("${prefix}RpcMethod");
+    @dirs  = split /:/, ($R->dir_config("${prefix}RpcMethodDir") || q{});
+    @files = split /:/, ($R->dir_config("${prefix}RpcMethod")    || q{});
     # Load the directories first, then the individual files. This allows the
     # files to potentially override entries in the directories.
     for (@dirs)
