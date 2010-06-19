@@ -98,7 +98,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = '1.20';
+$VERSION = '1.21';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -175,7 +175,10 @@ sub parse
 
     # If there is no stream given, then create an incremental parser handle
     # and return it.
-    if (! $stream)
+    # RT58323: It's not enough to just test $stream, I have to check
+    # defined-ness. A 0 or null-string should yield an error, not a push-parser
+    # instance.
+    if (! defined $stream)
     {
         return $parser->parse_start();
     }

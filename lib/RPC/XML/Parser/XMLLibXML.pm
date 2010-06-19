@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '0.101';
+$VERSION = '0.11';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
@@ -92,7 +92,10 @@ sub parse
 
     my $parser = XML::LibXML->new(no_network => 1);
 
-    if (! $stream)
+    # RT58323: It's not enough to just test $stream, I have to check
+    # defined-ness. A 0 or null-string should yield an error, not a push-parser
+    # instance.
+    if (! defined $stream)
     {
         # If no stream is given, initialize the DOM push-parser interface and
         # return the object ref
@@ -104,16 +107,34 @@ sub parse
 
     # Determine if the stream is a string or a filehandle, and use the apropos
     # method to parse it.
-    my $doc;
+    my ($doc, $result);
     if (ref $stream)
     {
         if (reftype($stream) eq 'GLOB')
         {
-            $doc = $parser->parse_fh($stream);
+            $result = eval {
+                $doc = $parser->parse_fh($stream);
+                1;
+            };
+            if (! $result)
+            {
+                # Certain cases cause $@ to be a XML::LibXML::Error object
+                # instead of a string. So force it to stringify with "".
+                return "$@";
+            }
         }
         elsif (reftype($stream) eq 'SCALAR')
         {
-            $doc = $parser->parse_string(${$stream});
+            $result = eval {
+                $doc = $parser->parse_string(${$stream});
+                1;
+            };
+            if (! $result)
+            {
+                # Certain cases cause $@ to be a XML::LibXML::Error object
+                # instead of a string. So force it to stringify with "".
+                return "$@";
+            }
         }
         else
         {
@@ -122,7 +143,16 @@ sub parse
     }
     else
     {
-        $doc = $parser->parse_string($stream);
+        $result = eval {
+            $doc = $parser->parse_string($stream);
+            1;
+        };
+        if (! $result)
+        {
+            # Certain cases cause $@ to be a XML::LibXML::Error object
+            # instead of a string. So force it to stringify with "".
+            return "$@";
+        }
     }
 
     return $self->dom_to_obj($doc);
