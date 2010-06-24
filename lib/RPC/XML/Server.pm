@@ -1016,6 +1016,11 @@ can use this to do so or utilize the encoded structure above directly.
 Lastly, this is the port of the remote (client) end of the socket, taken
 from the B<SOCKADDR_IN> structure.
 
+=item request
+
+The L<HTTP::Request> object for this request. Can be used to read HTTP headers
+sent by the client (C<X-Forwarded-For> for your access checks, for example).
+
 =back
 
 Those keys should only be referenced within method code itself, as they are
@@ -1878,6 +1883,7 @@ sub process_request ## no critic (ProhibitExcessComplexity)
                 local $self->{peeraddr} = $peeraddr;
                 local $self->{peerhost} = $peerhost;
                 local $self->{peerport} = $peerport;
+                local $self->{request}  = $req;
                 $respxml = $self->dispatch($reqxml);
             }
             else

@@ -10,7 +10,7 @@ use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
 use Socket;
 use File::Spec;
 
-use Test::More tests => 61;
+use Test::More tests => 66;
 use LWP::UserAgent;
 use HTTP::Request;
 use Scalar::Util 'blessed';
@@ -184,6 +184,46 @@ SKIP: {
            'Third request: pack_sockaddr_in validates all');
     }
 }
+stop_server($child);
+
+# Start the server again
+# Add a method that echoes back info from the HTTP request object
+$res = $srv->add_method({ name      => 'perl.test.suite.http_request',
+                          signature => [ 'array' ],
+                          code      =>
+                          sub {
+                              my $srv = shift;
+
+                              [ $srv->{request}->content_type,
+                                $srv->{request}->header('X-Foobar') ]
+                          } });
+$child = start_server($srv);
+$bucket = 0;
+$req->content(RPC::XML::request->new('perl.test.suite.http_request')->as_string);
+$req->header('X-Foobar', 'Wibble');
+$SIG{ALRM} = sub { $bucket++ };
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
+ok(! $bucket, 'Fourth live-request returned without timeout');
+SKIP: {
+    skip "Server failed to respond within 120 seconds!", 4 if $bucket;
+
+    ok(! $res->is_error, 'Fourth live req: Check that $res is not an error');
+    $res = $parser->parse($res->content);
+    isa_ok($res, 'RPC::XML::response', 'Fourth live req: parsed $res');
+  SKIP: {
+        skip "Response content did not parse, cannot test", 3
+            unless (ref $res and $res->isa('RPC::XML::response'));
+        $res = $res->value->value;
+        is($res->[0], 'text/xml',
+           'Fourth request: Content type returned correctly');
+        is($res->[1], 'Wibble',
+           'Fourth live req: Correct value for request header X-Foobar');
+    }
+}
+# Clean up after ourselves.
+$req->remove_header('X-Foobar');
 stop_server($child);
 
 # Start the server again
