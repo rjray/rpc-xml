@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '0.11';
+$VERSION = '1.12';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
@@ -452,16 +452,14 @@ sub dom_value ## no critic(ProhibitExcessComplexity)
     }
     elsif ($nodename eq 'nil')
     {
-        if (! $RPC::XML::ALLOW_NIL)
-        {
-            return "$me: The nil tag is only allowed if explicitly enabled";
-        }
         if ($children[0]->hasChildNodes())
         {
             return "$me: The nil tag must be empty";
         }
 
-        $value = RPC::XML::nil->new();
+        # The string is a flag to force nil creation even if the global flag
+        # isn't set. The undef is just to put the flag in the right place.
+        $value = RPC::XML::nil->new(undef, 'nil is always allowed in parsing');
     }
     elsif (my $type = $VALIDTYPES{$nodename})
     {

@@ -61,7 +61,7 @@ BEGIN
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.50';
+$VERSION = '1.51';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
@@ -602,13 +602,15 @@ use base 'RPC::XML::simple_type';
 # no value need be passed to this method
 sub new
 {
-    my $class = shift;
-    my $value = undef;
+    my ($class, $value, $flag) = @_;
+    # We need $value so we can bless a reference to it. But regardless of
+    # what was passed, it needs to be undef to be a proper "nil".
+    undef $value;
 
-    if (! $RPC::XML::ALLOW_NIL)
+    if (! $RPC::XML::ALLOW_NIL && ! $flag)
     {
         $RPC::XML::ERROR = "${class}::new: \$RPC::XML::ALLOW_NIL must be set" .
-            'for RPC::XML::nil objects to be supported';
+            ' for RPC::XML::nil objects to be supported';
         return;
     }
 

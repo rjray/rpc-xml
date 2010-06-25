@@ -73,7 +73,7 @@ use constant FAULTSTART  => 22;
 # This is to identify valid types
 use constant VALIDTYPES  => { map { ($_, 1) } qw(int i4 i8 string double
                                                  boolean dateTime.iso8601
-                                                 base64) };
+                                                 base64 nil) };
 # This maps XML tags to stack-machine tokens
 use constant TAG2TOKEN   => { methodCall        => METHOD,
                               methodResponse    => RESPONSE,
@@ -98,7 +98,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = '1.21';
+$VERSION = '1.22';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -236,9 +236,7 @@ sub tag_start
     {
         push @{$robj->[M_STACK]}, TAG2TOKEN->{$elem};
     }
-    # Note that the <nil /> element is not in VALIDTYPES, as it is only valid
-    # when $RPC::XML::ALLOW_NIL is true.
-    elsif (VALIDTYPES->{$elem} || ($RPC::XML::ALLOW_NIL && $elem eq 'nil'))
+    elsif (VALIDTYPES->{$elem})
     {
         # All datatypes are represented on the stack by this generic token
         push @{$robj->[M_STACK]}, DATATYPE;
@@ -332,10 +330,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
     }
 
     # Decide what to do from here
-    # Note that the <nil /> element is not in VALIDTYPES, as it is only valid
-    # when $RPC::XML::ALLOW_NIL is true.
-    if (VALIDTYPES->{$elem} || ## no critic (ProhibitCascadingIfElse)
-        ($elem eq 'nil' && $RPC::XML::ALLOW_NIL))
+    if (VALIDTYPES->{$elem}) ## no critic (ProhibitCascadingIfElse)
     {
         # This is the closing tag of one of the data-types.
         $class = $elem;
@@ -363,7 +358,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         }
         elsif ($class eq 'nil')
         {
-            # We passed the earlier test, so we know that <nil /> is allowed.
+            # We now allow parsing of <nil/> at all times.
             # By definition though, it must be, well... nil.
             if ($cdata !~ /^\s*$/)
             {
@@ -373,7 +368,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
 
         $class = "RPC::XML::$class";
         # The string at the end is only seen by the RPC::XML::base64 class
-        $obj = $class->new($cdata, 'base64 already encoded');
+        $obj = $class->new($cdata, 'base64 is encoded, nil is allowed');
         if (! $obj)
         {
             return error($robj, $self, 'Error instantiating data object: ' .
