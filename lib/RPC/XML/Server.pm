@@ -166,7 +166,7 @@ sub new ## no critic (ProhibitExcessComplexity)
         );
         if (! $http)
         {
-            return "${class}::new: Unable to create HTTP::Daemon object";
+            return "${class}::new: Unable to create HTTP::Daemon object: $@";
         }
         $URI              = URI->new($http->url);
         $self->{__host}   = $URI->host;

@@ -40,14 +40,13 @@ require File::Spec->catfile($dir, 'util.pl');
 SKIP: {
     skip "This suite does not run on MSWin", 2 if ($^O eq "MSWin32");
 
-    die "No usable port found between 9000 and 10000, skipping"
-        if (($port = find_port) == -1);
-    $srv = MyServer->new(no_default => 1, port => $port);
+    $srv = MyServer->new(no_default => 1);
     isa_ok($srv, 'RPC::XML::Server', 'Server instance');
     $srv->add_method({ name      => 'echo',
                        signature => [ 'string string' ],
                        code      => sub { shift; return shift; } });
 
+    $port = $srv->port;
     $req = HTTP::Request->new(POST => "http://localhost:$port/");
     $body = RPC::XML::request->new('echo', 'foo')->as_string;
     $req->content($body);
