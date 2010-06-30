@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 ###############################################################################
 #
-# This file copyright (c) 2001-2008 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
 #
 # See "LICENSE" in the documentation for licensing and redistribution terms.
 #
@@ -11,7 +11,8 @@
 #                   into the simple XML representation that RPC::XML::Server
 #                   understands.
 #
-#   Functions:      write_file
+#   Functions:      read_external
+#                   write_file
 #
 #   Libraries:      Config
 #                   Getopt::Long
@@ -25,20 +26,22 @@
 #
 ###############################################################################
 
-use 5.005;
+use 5.006001;
 use strict;
-use vars qw($cmd $USAGE $VERSION $revision %opts $ifh $ofh $path
-            $helptxt $codetxt @siglist $name $namespace $type $version $hidden
-            $lang);
+use vars qw($USAGE $VERSION);
 use subs qw(read_external write_file);
 
 use Config;
+use Carp 'croak';
 use Getopt::Long;
 use IO::File;
 use File::Spec;
 
-$VERSION = '1.13';
-($cmd = $0) =~ s|.*/||;
+my ($cmd, %opts, $ifh, $ofh, $path, $helptxt, $codetxt, @siglist,
+    $name, $namespace, $type, $version, $hidden, $lang);
+
+$VERSION = '1.14';
+($cmd = $0) =~ s{.*/}{};
 $USAGE = "$cmd [ --options ]
 
 Where:
@@ -74,7 +77,7 @@ GetOptions(\%opts,
               name=s namespace=s type=s version=s hidden signature=s@ helptext=s
               helpfile=s code=s
               output=s))
-    or die "$USAGE\n\nStopped";
+    or croak "$USAGE\n\nStopped";
 
 if ($opts{help})
 {
@@ -91,13 +94,15 @@ if ($opts{base})
     # This simplifies a lot of it
 
     (undef, $path, $name) = File::Spec->splitpath($opts{base});
-    $path = '.' unless $path;
+    $path ||= q{.};
     $type = 'm'; # Default the type to 'm'ethod.
     $codetxt = {};
 
-    $ifh = IO::File->new("< $opts{base}.base");
-    die "Error opening $opts{base}.base for reading: $!\nStopped"
-        unless ($ifh);
+    if (! ($ifh = IO::File->new("< $opts{base}.base")))
+    {
+        croak "Error opening $opts{base}.base for reading: $!\nStopped";
+    }
+
     while (defined($_ = <$ifh>))
     {
         chomp;
@@ -112,7 +117,7 @@ if ($opts{base})
         }
         elsif (/^type:\s+(\S+)$/i)
         {
-            $type = substr(lc $1, 0, 1);
+            $type = substr lc $1, 0, 1;
         }
         elsif (/^version:\s+(\S+)$/i)
         {
@@ -120,7 +125,7 @@ if ($opts{base})
         }
         elsif (/^signature:\s+\b(.*)$/i)
         {
-            push(@siglist, $1);
+            push @siglist, $1;
         }
         elsif (/^hidden:\s+(no|yes)/i)
         {
@@ -136,14 +141,19 @@ if ($opts{base})
             $codetxt->{$lang} = read_external(File::Spec->catfile($path, $3));
         }
     }
-    die "Error: no code specified in $opts{base}.base, stopped"
-        unless (keys %$codetxt);
-    die "Error: no signatures found in $opts{base}.base, stopped"
-        unless (@siglist);
+    if (! keys %{$codetxt})
+    {
+        croak "Error: no code specified in $opts{base}.base, stopped";
+    }
+    if (! @siglist)
+    {
+        croak "Error: no signatures found in $opts{base}.base, stopped";
+    }
 
-    $ofh = IO::File->new("> $opts{base}.xpl");
-    die "Error opening $opts{base}.xpl for writing: $!\nStopped"
-        unless ($ofh);
+    if (! ($ofh = IO::File->new("> $opts{base}.xpl")))
+    {
+        croak "Error opening $opts{base}.xpl for writing: $!\nStopped";
+    }
 }
 else
 {
@@ -153,26 +163,30 @@ else
     }
     else
     {
-        die 'No name was specified for the published routine, stopped';
+        croak 'No name was specified for the published routine, stopped';
     }
 
-    $namespace = $opts{namespace} || '';
+    $namespace = $opts{namespace} || q{};
     $type      = $opts{type}      || 'm';
     $hidden    = $opts{hidden}    || 0;
-    $version   = $opts{version}   || '';
+    $version   = $opts{version}   || q{};
 
     if ($opts{signature})
     {
-        @siglist = map { (my $val = $_) =~ s/:/ /g; $val } @{$opts{signature}};
+        for my $val (@{$opts{signature}})
+        {
+            $val =~ s/:/ /g;
+            push @siglist, $val;
+        }
     }
     else
     {
-        die "At least one signature must be specified for $name, stopped";
+        croak "At least one signature must be specified for $name, stopped";
     }
 
     if ($opts{helptext})
     {
-        $$helptxt = "$opts{helptext}\n";
+        ${$helptxt} = "$opts{helptext}\n";
     }
     elsif ($opts{helpfile})
     {
@@ -180,7 +194,7 @@ else
     }
     else
     {
-        $$helptxt = '';
+        ${$helptxt} = q{};
     }
 
     if ($opts{code})
@@ -189,14 +203,15 @@ else
     }
     else
     {
-        $codetxt->{perl} = join('', <STDIN>);
+        $codetxt->{perl} = do { local $/ = undef; <> };
     }
 
     if ($opts{output})
     {
-        $ofh = IO::File->new("> $opts{output}");
-        die "Unable to open $opts{output} for writing: $!\nStopped"
-            unless ($ofh);
+        if (! ($ofh = IO::File->new("> $opts{output}")))
+        {
+            croak "Unable to open $opts{output} for writing: $!\nStopped";
+        }
     }
     else
     {
@@ -204,9 +219,19 @@ else
     }
 }
 
-write_file($ofh,
-           $name, $namespace, $type, $version, $hidden, $codetxt, $helptxt,
-           \@siglist);
+write_file(
+    $ofh,
+    {
+        name      => $name,
+        namespace => $namespace,
+        type      => $type,
+        version   => $version,
+        hidden    => $hidden,
+        code      => $codetxt,
+        help      => $helptxt,
+        sigs      => \@siglist,
+    }
+);
 
 exit;
 
@@ -220,10 +245,6 @@ exit;
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $file     in      scalar    File to open and read
 #
-#   Globals:        None.
-#
-#   Environment:    None.
-#
 #   Returns:        Success:    scalar ref
 #                   Failure:    dies
 #
@@ -233,10 +254,14 @@ sub read_external
     my $file = shift;
 
     my $fh = IO::File->new("< $file");
-    die "Cannot open file $file for reading: $!, stopped" unless ($fh);
+    if (! $fh)
+    {
+        croak "Cannot open file $file for reading: $!, stopped";
+    }
 
-    my $tmp = join('', <$fh>);
-    \$tmp;
+    my $tmp;
+    $tmp = do { local $/ = undef; <$fh> };
+    return \$tmp;
 }
 
 ###############################################################################
@@ -247,15 +272,7 @@ sub read_external
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $fh       in      IO        Filehandle to write to
-#                   $name     in      scalar    Name (external) of method
-#                   $namespace in     scalar    Namespace (if any) for method
-#                   $type     in      scalar    Identifies outer tag to use
-#                   $version  in      scalar    Version string (if any)
-#                   $hidden   in      scalar    Boolean whether to hide it
-#                   $code     in      sc ref    Actual Perl code
-#                   $help     in      sc ref    Help text for the method
-#                   $sigs     in      listref   List of one or more signatures
-#                                                 for the method
+#                   $args     in      hashref   Hashref of arguments
 #
 #   Globals:        $cmd
 #                   $VERSION
@@ -267,39 +284,41 @@ sub read_external
 ###############################################################################
 sub write_file
 {
-    my ($fh, $name, $namespace, $type, $version, $hidden, $code, $help,
-        $sigs) = @_;
+    my ($fh, $args) = @_;
 
     my $date = scalar localtime;
-    my %typemap = ( 'm' => 'method',
-                    p   => 'procedure',
-                    f   => 'function');
-    my $tag  = "$typemap{$type}def";
+    my %typemap = (
+        'm' => 'method',
+        p   => 'procedure',
+        f   => 'function',
+    );
+    my $tag  = "$typemap{$args->{type}}def";
 
     # Armor against XML confusion
-    foreach ($name, $namespace, $version, $$help)
+    foreach (qw(name namespace version help))
     {
-        s/&/&amp;/g;
-        s/</&lt;/g;
-        s/>/&gt;/g;
+        $args->{$_} =~ s/&/&amp;/g;
+        $args->{$_} =~ s/</&lt;/g;
+        $args->{$_} =~ s/>/&gt;/g;
     }
-    for (keys %$code)
+    for (keys %{$args->{code}})
     {
-        if (($_ eq 'perl') and (index(${$code->{$_}}, ']]>') == -1) and
-            (index(${$code->{$_}}, '__END__') == -1))
+        if (($_ eq 'perl') and (index(${$args->{code}->{$_}}, ']]>') == -1) and
+            (index(${$args->{code}->{$_}}, '__END__') == -1))
         {
-            ${$code->{$_}} =
-                "<![CDATA[\n$Config{startperl}\n${$code->{$_}}\n__END__\n]]>";
+            ${$args->{code}->{$_}} =
+                "<![CDATA[\n$Config{startperl}\n${$args->{code}->{$_}}\n" .
+                "__END__\n]]>";
         }
         else
         {
-            ${$code->{$_}} =~ s/&/&amp;/g;
-            ${$code->{$_}} =~ s/</&lt;/g;
-            ${$code->{$_}} =~ s/>/&gt;/g;
+            ${$args->{code}->{$_}} =~ s/&/&amp;/g;
+            ${$args->{code}->{$_}} =~ s/</&lt;/g;
+            ${$args->{code}->{$_}} =~ s/>/&gt;/g;
         }
     }
 
-    print $ofh <<"EO_HDR";
+    print {$fh} <<"EO_HDR";
 <?xml version="1.0" encoding="iso-8859-1"?>
 <!DOCTYPE $tag SYSTEM "rpc-method.dtd">
 <!--
@@ -310,18 +329,30 @@ sub write_file
 <$tag>
 EO_HDR
 
-    print $ofh "<name>$name</name>\n";
-    print $ofh "<namespace>$namespace</namespace>\n" if $namespace;
-    print $ofh "<version>$version</version>\n" if $version;
-    print $ofh "<hidden />\n" if $hidden;
-    print $ofh map { "<signature>$_</signature>\n" } @$sigs;
-    print $ofh "<help>\n$$help</help>\n" if ($$help);
-    for (sort keys %$code)
+    print {$fh} "<name>$args->{name}</name>\n";
+    if ($args->{namespace})
     {
-        print $ofh qq{<code language="perl">\n${$code->{$_}}</code>\n};
+        print {$fh} "<namespace>$args->{namespace}</namespace>\n";
+    }
+    if ($args->{version})
+    {
+        print {$fh} "<version>$args->{version}</version>\n";
+    }
+    if ($args->{hidden})
+    {
+        print {$fh} "<hidden />\n";
+    }
+    print {$fh} map { "<signature>$_</signature>\n" } @{$args->{sigs}};
+    if ($args->{help})
+    {
+        print {$fh} "<help>\n${$args->{help}}</help>\n";
+    }
+    for (sort keys %{$args->{code}})
+    {
+        print {$fh} qq{<code language="$_">\n${$args->{code}->{$_}}</code>\n};
     }
 
-    print $ofh "</$tag>\n";
+    print {$fh} "</$tag>\n";
 
     return;
 }
@@ -497,13 +528,14 @@ anything.
 
 The Document Type Declaration for the format can be summarized by:
 
-    <!ELEMENT  proceduredef (name, version?, hidden?, signature+,
-                             help?, code)>
-    <!ELEMENT  methoddef  (name, version?, hidden?, signature+,
-                           help?, code)>
-    <!ELEMENT  functiondef (name, version?, hidden?, signature+,
-                            help?, code)>
+    <!ELEMENT  proceduredef (name, namespace?, version?, hidden?,
+                             signature+, help?, code)>
+    <!ELEMENT  methoddef  (name, namespace?, version?, hidden?,
+                           signature+, help?, code)>
+    <!ELEMENT  functiondef (name, namespace?, version?, hidden?,
+                            signature+, help?, code)>
     <!ELEMENT  name       (#PCDATA)>
+    <!ELEMENT  namespace  (#PCDATA)>
     <!ELEMENT  version    (#PCDATA)>
     <!ELEMENT  hidden     EMPTY>
     <!ELEMENT  signature  (#PCDATA)>
@@ -582,7 +614,7 @@ The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
 See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
 specification.
 
-=head1 LICENSE
+=head1 LICENSE AND COPYRIGHT
 
 This module and the code within are released under the terms of the Artistic
 License 2.0
