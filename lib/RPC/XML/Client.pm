@@ -189,7 +189,7 @@ sub simple_request
 {
     my ($self, @args) = @_;
 
-    my ($return, $value);
+    my $return;
 
     $RPC::XML::ERROR = q{};
 

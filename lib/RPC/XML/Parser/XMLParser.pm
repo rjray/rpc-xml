@@ -206,10 +206,11 @@ sub message_init
     return $self;
 }
 
-# This is called when the parsing process is complete
+# This is called when the parsing process is complete. There is a second arg,
+# $self, that is passed but not used. So it isn't declared for now.
 sub final
 {
-    my ($robj, $self) = @_;
+    my ($robj) = @_;
 
     # Look at the top-most marker, it'll need to be one of the end cases
     my $marker = pop @{$robj->[M_STACK]};
@@ -224,10 +225,13 @@ sub final
     return $retval;
 }
 
-# This gets called each time an opening tag is parsed
+# This gets called each time an opening tag is parsed. In addition to the three
+# args here, any attributes are passed in hash form as well. But the XML-RPC
+# spec uses no attributes, so we aren't declaring them here as the list will
+# (or should, at least) always be empty.
 sub tag_start
 {
-    my ($robj, $self, $elem, %attr) = @_;
+    my ($robj, $self, $elem) = @_;
 
     $robj->[M_CDATA] = [];
     return if ($elem eq 'data');

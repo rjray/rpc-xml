@@ -246,14 +246,20 @@ sub time2iso8601
                 }
             }
             # You have to check ints first, because they match the
-            # next pattern too
+            # next pattern (for doubles) too
             elsif (! $FORCE_STRING_ENCODING &&
                    /^[-+]?\d+$/ &&
-                   $_ > $MIN_BIG_INT &&
-                   $_ < $MAX_BIG_INT)
+                   $_ >= $MIN_BIG_INT &&
+                   $_ <= $MAX_BIG_INT)
             {
-                $type = (abs($_) > $MAX_INT) ? 'RPC::XML::i8' : 'RPC::XML::int';
-                $type = $type->new($_);
+                if (($_ > $MAX_INT) || ($_ < $MIN_INT))
+                {
+                    $type = RPC::XML::i8->new($_);
+                }
+                else
+                {
+                    $type = RPC::XML::int->new($_);
+                }
             }
             # Pattern taken from perldata(1)
             elsif (! $FORCE_STRING_ENCODING &&
@@ -265,7 +271,8 @@ sub time2iso8601
             }
             # The XMLRPC spec only allows for the incorrect iso8601 format
             # without dashes, but dashes are part of the standard so we include
-            # them (DateTime->now->iso8601 includes them).
+            # them (DateTime->now->iso8601 includes them). Note that the actual
+            # RPC::XML::datetime_iso8601 class will strip them out if present.
             elsif (m{
                        ^           # start
                        \d{4}       # 4 digit year
@@ -1169,7 +1176,7 @@ sub new
 {
     my ($class, @args) = @_;
 
-    my ($self, %args);
+    my %args;
 
     $RPC::XML::ERROR = q{};
     if (blessed $args[0] and $args[0]->isa('RPC::XML::struct'))

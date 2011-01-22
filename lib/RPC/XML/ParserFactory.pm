@@ -64,7 +64,7 @@ for (keys %AVAILABLE)
 #   Description:    Method called when this module is use'd
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $class    in      scalar    Class name
+#                   $class    in      scalar    Class name (not used)
 #                   @args     in      list      Arguments to the import
 #
 #   Globals:        $PARSER_CLASS
@@ -74,14 +74,14 @@ for (keys %AVAILABLE)
 ###############################################################################
 sub import
 {
-    my ($class, @args) = @_;
+    my (undef, @args) = @_;
 
     # As a special-case, this one parameter might be specified without the
     # key, if it is the ONLY thing passed:
-	if (1 == @args)
-	{
-		@args = (class => @args);
-	}
+    if (1 == @args)
+    {
+        @args = (class => @args);
+    }
 
     # For now, the only arguments are key/value pairs so it's safe to coerce
     # this into a hash

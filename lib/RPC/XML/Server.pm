@@ -135,8 +135,8 @@ sub new ## no critic (ProhibitExcessComplexity)
 
     my (
         $self,     $http,        $resp, $host,
-        $port,     $queue,       $path, $URI,
-        $srv_name, $srv_version, $timeout
+        $port,     $queue,       $URI,  $srv_version,
+        $srv_name
     );
 
     $class = ref($class) || $class;
