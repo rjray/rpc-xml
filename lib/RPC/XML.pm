@@ -61,7 +61,7 @@ BEGIN
                               RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.51';
+$VERSION = '1.52';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
@@ -125,7 +125,7 @@ sub time2iso8601
     my $zone = shift || q{};
 
     my @time = gmtime $time;
-    $time = sprintf '%4d-%02d-%02dT%02d:%02d:%02dZ',
+    $time = sprintf '%4d%02d%02dT%02d:%02d:%02dZ',
                     $time[5] + 1900, $time[4] + 1, @time[3, 2, 1, 0];
     if ($zone)
     {
@@ -570,7 +570,7 @@ sub new
         # given in the spec, so assume that other implementations can only
         # accept this form. Also, this should match the form that time2iso8601
         # produces.
-        $value = $7 ? "$1-$2-$3T$4:$5:$6$7" : "$1-$2-$3T$4:$5:$6";
+        $value = $7 ? "$1$2$3T$4:$5:$6$7" : "$1$2$3T$4:$5:$6";
         if ($8)
         {
             $value .= $8;

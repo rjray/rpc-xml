@@ -81,7 +81,7 @@ SKIP: {
     ok($args->[5]->value, 'RPC::XML::boolean value parsed OK');
     isa_ok($args->[6], 'RPC::XML::datetime_iso8601',
            'Parse of <dateTime.iso8601> argument');
-    is($args->[6]->value, '2008-09-29T12:00:00-07:00',
+    is($args->[6]->value, '20080929T12:00:00-07:00',
        'RPC::XML::dateTime.iso8601 value parsed OK');
     isa_ok($args->[7], 'RPC::XML::array', 'Parse of <array> argument');
     is(scalar(@{$args->[7]->value}), 2, 'RPC::XML::array value parsed OK');

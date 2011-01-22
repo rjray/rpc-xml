@@ -5,7 +5,7 @@
 use strict;
 use vars qw($val $obj $class %val_tbl @values);
 
-use Test::More tests => 198;
+use Test::More tests => 200;
 use RPC::XML ':all';
 
 # First, the most basic data-types
@@ -121,6 +121,12 @@ $obj = RPC::XML::datetime_iso8601->new();
 ok(! ref $obj, "RPC::XML::datetime_iso8601, bad value did not yield referent");
 like($RPC::XML::ERROR, qr/::new: Malformed data.*passed/,
      'RPC::XML::datetime_iso8601, bad value correctly set \$RPC::XML::ERROR');
+# Test the slightly different date format
+$obj = RPC::XML::datetime_iso8601->new('2008-09-29T12:00:00-07:00');
+is($obj->type, 'dateTime.iso8601',
+   "RPC::XML::datetime_iso8601, type identification");
+is($obj->value, '20080929T12:00:00-07:00',
+   'RPC::XML::datetime_iso8601, value() method test');
 
 # Test the base64 type
 require MIME::Base64;
