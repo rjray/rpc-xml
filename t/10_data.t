@@ -5,7 +5,7 @@
 use strict;
 use vars qw($val $obj $class %val_tbl @values);
 
-use Test::More tests => 200;
+use Test::More tests => 205;
 use RPC::XML ':all';
 
 # First, the most basic data-types
@@ -149,10 +149,26 @@ is($obj->as_string, '<base64></base64>',
    "Zero-length base64 object stringifies OK");
 
 # Now we throw some junk at smart_encode()
-@values = smart_encode(__FILE__, 10, 3.14159, '2112',
-                       RPC::XML::string->new('2112'), [], {}, \ "foo", \2,
-                       \1.414, '2009-09-03T10:25:00', '20090903T10:25:00Z',
-                       '2009-09-03T10:25:00.125');
+@values = smart_encode(
+    __FILE__,                      # [0] string
+    10,                            # [1] int
+    3.14159,                       # [2] double
+    '2112',                        # [3] int
+    RPC::XML::string->new('2112'), # [4] string
+    [],                            # [5] array
+    {},                            # [6] struct
+    \ "foo",                       # [7] string
+    \2,                            # [8] int
+    \1.414,                        # [9] double
+    2_147_483_647,                 # [10] int
+    -2_147_483_648,                # [11] int
+    9_223_372_036_854_775_807,     # [12] i8
+    -9_223_372_036_854_775_808,    # [13] i8
+    4_294_967_295,                 # [14] i8
+    '2009-09-03T10:25:00',         # [15] dateTime.iso8601
+    '20090903T10:25:00Z',          # [16] dateTime.iso8601
+    '2009-09-03T10:25:00.125'      # [17] dateTime.iso8601
+);
 
 is($values[0]->type, 'string', "smart_encode, string<1>");
 is($values[1]->type, 'int', "smart_encode, int<1>");
@@ -166,9 +182,18 @@ is($values[6]->type, 'struct', "smart_encode, struct");
 is($values[7]->type, 'string', "smart_encode, string<3>");
 is($values[8]->type, 'int', "smart_encode, int<3>");
 is($values[9]->type, 'double', "smart_encode, double<2>");
-is($values[10]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601');
-is($values[11]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601<2>');
-is($values[11]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601<3>');
+is($values[10]->type, 'int', 'smart_encode, int<4>');
+is($values[11]->type, 'int', 'smart_encode, int<5>');
+TODO: {
+    local $TODO = 'Big integer issues in smart_encode';
+
+    is($values[12]->type, 'i8', 'smart_encode, i8<1>');
+    is($values[13]->type, 'i8', 'smart_encode, i8<2>');
+}
+is($values[14]->type, 'i8', 'smart_encode, i8<3>');
+is($values[15]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601');
+is($values[16]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601<2>');
+is($values[17]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601<3>');
 
 # Check that smart_encode gives up on un-convertable references
 {
