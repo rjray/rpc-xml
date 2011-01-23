@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.73
+Version: 0.74
 
 WHAT IS IT
 
@@ -66,45 +66,61 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* MANIFEST
-* t/28_parser_bugs_50013.t (deleted)
-* t/90_rt50013_parser_bugs.t (added)
-Rename of t/28_parser_bugs_50013.t to fit more universal scheme
-for test suites that directly address specific RT bugs.
-
-* lib/RPC/XML/Server.pm
-* t/90_rt54183_sigpipe.t (added)
-RT #54183: Provide handling of SIGPIPE when sending the
-response to the client, in case they've terminated the
-connection.
-
-* MANIFEST
-Forgot to add the new test suite to MANIFEST.
-
-* lib/RPC/XML/Server.pm
-Forgot to update the module version number.
-
-* lib/RPC/XML.pm
-Fix typo in reftype() call.
-
-* lib/RPC/XML.pm
-* t/90_rt54494_blessed_refs.t (added)
-RT #54494: Fix handling of blessed references in smart_encode().
+* t/90_rt54183_sigpipe.t
+RT #56800: Make this suite skip all tests on Windows platforms.
 
 * lib/Apache/RPC/Server.pm
-* lib/Apache/RPC/Status.pm
-* lib/RPC/XML.pm
-* lib/RPC/XML/Client.pm
-* lib/RPC/XML/Function.pm
-* lib/RPC/XML/Method.pm
-* lib/RPC/XML/Parser.pm
+Clean up some run-time "use of undefined value" messages.
+
 * lib/RPC/XML/Parser/XMLLibXML.pm
 * lib/RPC/XML/Parser/XMLParser.pm
-* lib/RPC/XML/ParserFactory.pm
-* lib/RPC/XML/Procedure.pm
-* lib/RPC/XML/Server.pm
-Large-scale code clean-up driven by Perl::Critic. All critic
-flags down to severity 1 now removed.
+* t/90_rt58323_push_parser.t (added)
+RT #58323: Started as making the parser interfaces correctly
+report errors when passed null-length strings or "0" values.
+Turned out that the error return interface from XMLLibXML.pm
+was not consistent with the rest of the system, so fixed that
+as well.
 
-* MANIFEST
-Forgot to add t/90_rt54494_blessed_refs.t when it was created.
+* lib/RPC/XML/Server.pm
+* t/40_server.t
+RT #58240: Applied a patch from Martijn van de Streek that adds
+access to the HTTP::Request object to called method code.
+
+* lib/RPC/XML.pm
+* lib/RPC/XML/Parser/XMLLibXML.pm
+* lib/RPC/XML/Parser/XMLParser.pm
+* t/90_rt58065_allow_nil.t (added)
+RT #58065: Allow the parsing of <nil /> tags when they are
+encountered, even if $RPC::XML::ALLOW_NIL is not set. Only
+limit the generation of these tags.
+
+* lib/RPC/XML/Server.pm
+* t/41_server_hang.t
+This test sporadically fails, so enhance the error message for
+more info. Also alter the test slightly, hoping it fixes the
+random failures.
+
+* etc/make_method
+Applied perlcritic to the make_method tool.
+
+* lib/XML/RPC.pm
+* t/10_data.t
+* t/20_xml_parser.t
+* t/21_xml_libxml.t
+RT #62916: Previous adjustments to the dateTime.iso8601
+stringification caused it to no longer fit the XML-RPC spec.
+Fixed.
+
+* lib/RPC/XML.pm
+* lib/RPC/XML/Client.pm
+* lib/RPC/XML/Parser/XMLParser.pm
+* lib/RPC/XML/ParserFactory.pm
+* lib/RPC/XML/Server.pm
+Used warnings::unused to find unused variables not found by
+Perl::Critic.
+
+* t/10_data.t
+Realized I had no boundary-tests for ints in smart_encode().
+This revealed some problems with i8 values on my 32-bit system.
+Don't want to introduce dependency on BigInt right now, so
+marked those tests "TODO".

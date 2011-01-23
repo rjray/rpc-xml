@@ -2,12 +2,73 @@
 
 		Revision history for the Perl extension module  
 		RPC::XML. This is an implementation of the      
-		XML-RPC standard as described at the URL        
-		"http://www.xmlrpc.com". This implementation    
-		also permits some minor extensions to the base  
+		XML-RPC standard as described at                
+		http://www.xmlrpc.com. This implementation also 
+		permits some minor extensions to the base       
 		protocol in terms of supporting HTTP/1.1 and    
 		allowing choice of character-set encodings for  
 		XML messages.                                   
+
+0.74	Sunday January 23, 2011, 12:50:00 PM -0800
+
+	* t/90_rt54183_sigpipe.t
+	RT #56800: Make this suite skip all tests on Windows platforms. 
+
+	* lib/Apache/RPC/Server.pm
+	Clean up some run-time "use of undefined value" messages.       
+
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* t/90_rt58323_push_parser.t (added)
+	RT #58323: Started as making the parser interfaces correctly    
+	report errors when passed null-length strings or "0" values.    
+	Turned out that the error return interface from XMLLibXML.pm    
+	was not consistent with the rest of the system, so fixed that   
+	as well.                                                        
+
+	* lib/RPC/XML/Server.pm
+	* t/40_server.t
+	RT #58240: Applied a patch from Martijn van de Streek that adds 
+	access to the HTTP::Request object to called method code.       
+
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* t/90_rt58065_allow_nil.t (added)
+	RT #58065: Allow the parsing of <nil /> tags when they are      
+	encountered, even if $RPC::XML::ALLOW_NIL is not set. Only      
+	limit the generation of these tags.                             
+
+	* lib/RPC/XML/Server.pm
+	* t/41_server_hang.t
+	This test sporadically fails, so enhance the error message for  
+	more info. Also alter the test slightly, hoping it fixes the    
+	random failures.                                                
+
+	* etc/make_method
+	Applied perlcritic to the make_method tool.                     
+
+	* lib/XML/RPC.pm
+	* t/10_data.t
+	* t/20_xml_parser.t
+	* t/21_xml_libxml.t
+	RT #62916: Previous adjustments to the dateTime.iso8601         
+	stringification caused it to no longer fit the XML-RPC spec.    
+	Fixed.                                                          
+
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* lib/RPC/XML/ParserFactory.pm
+	* lib/RPC/XML/Server.pm
+	Used warnings::unused to find unused variables not found by     
+	Perl::Critic.                                                   
+
+	* t/10_data.t
+	Realized I had no boundary-tests for ints in smart_encode().    
+	This revealed some problems with i8 values on my 32-bit system. 
+	Don't want to introduce dependency on BigInt right now, so      
+	marked those tests "TODO".                                      
 
 0.73	Tuesday March 16, 2010, 10:45:00 PM -0700
 
@@ -1378,9 +1439,9 @@
 	* *
 	All files are tracked from this point forward.                  
 
-# Generated on Tuesday March 16, 2010, 10:44:10 PM -0700
+# Generated on Sunday January 23, 2011, 12:47:00 PM -0800
 # Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/1.70,             
-# XML::LibXSLT/1.70, libxml/2.6.32, libxslt/1.1.24 (with exslt)                
+# XML::LibXSLT/1.70, libxml/2.7.7, libxslt/1.1.26 (with exslt)                 
 # XSLT sources:
 #     $Id: changelog2text.xslt 8 2009-01-19 06:46:50Z rjray $
 #     $Id: common-text.xslt 8 2009-01-19 06:46:50Z rjray $

@@ -10,11 +10,117 @@
   <title>Perl Module RPC::XML Change History</title>
   <description>
     Revision history for the Perl extension module RPC::XML. This is an
-    implementation of the XML-RPC standard as described at the URL
-    "http://www.xmlrpc.com". This implementation also permits some minor
+    implementation of the XML-RPC standard as described at
+    <xhtml:a href="http://www.xmlrpc.com">http://www.xmlrpc.com</xhtml:a>.
+    This implementation also permits some minor
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2011-01-23T12:50:00-08:00" version="0.74" sc:tag="0.74">
+    <change git:commit="a8537225834935868bda315946f0a0ce8088ac26">
+      <file path="t/90_rt54183_sigpipe.t" />
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=56800">RT #56800</xhtml:a>:
+        Make this suite skip all tests on Windows platforms.
+      </description>
+    </change>
+    <change git:commit="7f70bb335266db40899aef1263f500a2abfab142">
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Clean up some run-time "use of undefined value" messages.
+      </description>
+    </change>
+    <change git:commit="61de588a81d12a5000bb0f6d64cdd1dcc471999c">
+      <fileset>
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="t/90_rt58323_push_parser.t" action="ADD" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=58323">RT #58323</xhtml:a>:
+        Started as making the parser interfaces correctly report errors when
+        passed null-length strings or "0" values. Turned out that the error
+        return interface from XMLLibXML.pm was not consistent with the rest of
+        the system, so fixed that as well.
+      </description>
+    </change>
+    <change git:commit="12dc29c33da5e9a14dcb57d8e8eb9a47cbf0b649">
+      <fileset>
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/40_server.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=58240">RT #58240</xhtml:a>:
+        Applied a patch from Martijn van de Streek that adds access to the
+        HTTP::Request object to called method code.
+      </description>
+    </change>
+    <change git:commit="cd498bd7cabfb6dc453517bc653aa853425e671a">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="t/90_rt58065_allow_nil.t" action="ADD" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=58065">RT #58065</xhtml:a>:
+        Allow the parsing of <xhtml:tt>&lt;nil /&gt;</xhtml:tt> tags when they
+        are encountered, even if $RPC::XML::ALLOW_NIL is not set. Only limit
+        the generation of these tags.
+      </description>
+    </change>
+    <change git:commit="f8288640e3bf979d85865635c304643c2f63a6e5">
+      <fileset>
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/41_server_hang.t" />
+      </fileset>
+      <description>
+        This test sporadically fails, so enhance the error message for more info.
+        Also alter the test slightly, hoping it fixes the random failures.
+      </description>
+    </change>
+    <change git:commit="4ef6b98fd97e9fe42b3813dcac9c0bbbe4bf3647">
+      <file path="etc/make_method" />
+      <description>
+        Applied perlcritic to the make_method tool.
+      </description>
+    </change>
+    <change git:commit="e787398f714fa33ef12ad4b5da79624b7435c8db">
+      <fileset>
+        <file path="lib/XML/RPC.pm" />
+        <file path="t/10_data.t" />
+        <file path="t/20_xml_parser.t" />
+        <file path="t/21_xml_libxml.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=62916">RT #62916</xhtml:a>:
+        Previous adjustments to the <xhtml:tt>dateTime.iso8601</xhtml:tt>
+        stringification caused it to no longer fit the XML-RPC spec. Fixed.
+      </description>
+    </change>
+    <change git:commit="81e3fab5732b1e402616bd33b5f81f55dc870c29">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="lib/RPC/XML/ParserFactory.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Used <xhtml:tt>warnings::unused</xhtml:tt> to find unused variables
+        not found by Perl::Critic.
+      </description>
+    </change>
+    <change git:commit="2537bdb141d4b6be8ace5b3db48ba2fd2c70ac81">
+      <file path="t/10_data.t" />
+      <description>
+        Realized I had no boundary-tests for ints in smart_encode(). This
+        revealed some problems with i8 values on my 32-bit system. Don't
+        want to introduce dependency on BigInt right now, so marked those
+        tests "TODO".
+      </description>
+    </change>
+  </release>
   <release date="2010-03-16T22:45:00-07:00" version="0.73" sc:tag="0.73">
     <change git:commit="b234042a3b3e74ee83a74163bc68253130f76c21">
       <fileset>
