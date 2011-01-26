@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '1.12';
+$VERSION = '1.13';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
@@ -345,7 +345,7 @@ sub dom_response
         elsif ($children[0]->nodeName ne 'value')
         {
             return qq($me: Invalid content within params: Unknown tag ") .
-                $children[0]->nodeName . '", expected "param"';
+                $children[0]->nodeName . '", expected "value"';
         }
 
         $param = $self->dom_value($children[0]);
