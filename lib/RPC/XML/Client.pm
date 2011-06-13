@@ -240,7 +240,9 @@ sub send_request ## no critic (ProhibitExcessComplexity)
 
     # Start by setting up the request-clone for using in this instance
     $reqclone = $self->request->clone;
-    $reqclone->header(Host => URI->new($reqclone->uri)->host);
+    unless ($reqclone->header('Host')) {
+        $reqclone->header(Host => URI->new($reqclone->uri)->host);
+    }
     $can_compress = $self->compress; # Avoid making 4+ calls to the method
     if ($self->compress_requests and $can_compress and
         $req->length >= $self->compress_thresh)
