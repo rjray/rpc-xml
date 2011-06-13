@@ -90,7 +90,13 @@ sub parse
 {
     my ($self, $stream) = @_;
 
-    my $parser = XML::LibXML->new(no_network => 1);
+    my $parser = XML::LibXML->new(
+        no_network => 1,
+        expand_xinclude => 0,
+        expand_entities => 1,
+        load_ext_dtd => 0,
+        ext_ent_handler => sub { warn "External entities disabled."; '' },
+    );
 
     # RT58323: It's not enough to just test $stream, I have to check
     # defined-ness. A 0 or null-string should yield an error, not a push-parser

@@ -5,7 +5,7 @@
 use strict;
 use vars qw($p $req $res $ret $dir $vol $file);
 
-use Test::More tests => 36;
+use Test::More tests => 37;
 require File::Spec;
 require IO::File;
 
@@ -119,4 +119,22 @@ $res = RPC::XML::response->new($tmp);
 $ret = $p->parse($res->as_string);
 is($ret->value->value, $tmp, 'RPC::XML::Parser handles core entities');
 
+my $bad_entities = <<EOX;
+<?xml version="1.0" encoding="us-ascii"?>
+<!DOCTYPE foo [
+    <!ENTITY foo SYSTEM "file:///etc/passwd">
+]>
+<methodCall>
+    <methodName>metaWeblog.newPost</methodName>
+    <params>
+        <param>
+            <value><string>Entity test: &foo;</string></value>
+        </param>
+    </params>
+</methodCall>
+EOX
+$p = RPC::XML::Parser::XMLParser->new();
+$ret = $p->parse($bad_entities);
+my $args = $ret->args;
+is $args->[0]->value, 'Entity test: ', "bad entities ignored";
 exit 0;
