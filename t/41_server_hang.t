@@ -9,7 +9,7 @@ use subs qw(start_server find_port);
 use vars qw($dir $vol $srv $bucket $child $req $port $socket $body);
 
 use File::Spec;
-use Test::More tests => 2;
+use Test::More skip_all => 1;
 
 use LWP::UserAgent;
 use HTTP::Request;

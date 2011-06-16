@@ -16,7 +16,7 @@ BEGIN
     }
     else
     {
-        plan tests => 40;
+        plan tests => 41;
     }
 }
 
@@ -151,5 +151,17 @@ my $new_b64 = $res->args->[0];
 isa_ok($new_b64, 'RPC::XML::base64', 'First args value');
 is($new_b64->as_string, $base64->as_string(),
    'Push-parse value comparison');
+
+my $bad_entities = <<EOX;
+<?xml version="1.0" encoding="us-ascii"?>
+<!DOCTYPE foo [
+    <!ENTITY foo SYSTEM "file:///etc/passwd">
+]>
+<methodCall><methodName>metaWeblog.newPost</methodName><params><param><value><string>Entity test: &foo;</string></value></param></params></methodCall>
+EOX
+$pp = RPC::XML::Parser::XMLLibXML->new->parse();
+$ret = $pp->parse($bad_entities);
+my $args = $ret->args;
+is $args->[0]->value, 'Entity test: ', "bad entities ignored";
 
 exit 0;
