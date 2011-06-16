@@ -65,6 +65,7 @@ t/40_server.t
 t/40_server_xmllibxml.t
 t/41_server_hang.t
 t/50_client.t
+t/51_client_with_host_header.t
 t/60_net_server.t
 t/70_compression_detect.t
 t/90_rt50013_parser_bugs.t

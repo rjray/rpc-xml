@@ -4,6 +4,8 @@ use warnings;
 use HTTP::Request;
 use Test::More;
 
+plan tests => 2;
+
 sub clone_with_host_header {
     my $req      = shift;
     my $reqclone = $req->clone;
@@ -21,7 +23,7 @@ subtest "without_host_header" => sub {
     ok( $reqclone->header('Host'), 'example.com' );
 };
 
-subtest "with_host_hedar" => sub {
+subtest "with_host_header" => sub {
     my $req = HTTP::Request->new( POST => 'http://example.com' );
     ok( !$req->header('Host') );
     $req->header( 'Host', 'google.com' );
