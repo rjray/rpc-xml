@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -29,7 +29,7 @@ use warnings;
 use vars qw($VERSION);
 use subs qw(new parse);
 
-$VERSION = '1.22';
+$VERSION = '1.23';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -135,7 +135,8 @@ RPC::XML::Parser - Interface for parsers created by RPC::XML::ParserFactory
 
 =head1 SYNOPSIS
 
-This class is not instantiated directly; see L<RPC::XML::ParserFactory>.
+This class is not instantiated directly; see
+L<RPC::XML::ParserFactory|RPC::XML::ParserFactory>.
 
 =head1 DESCRIPTION
 
@@ -317,7 +318,8 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML>, L<RPC::XML::ParserFactory>, L<RPC::XML::Parser::XMLParser>
+L<RPC::XML|RPC::XML>, L<RPC::XML::ParserFactory|RPC::XML::ParserFactory>,
+L<RPC::XML::Parser::XMLParser|RPC::XML::Parser::XMLParser>
 
 =head1 AUTHOR
 

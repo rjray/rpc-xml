@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -30,10 +30,13 @@ use warnings;
 use vars qw($VERSION);
 use base qw(RPC::XML::Procedure);
 
-$VERSION = '1.13';
+$VERSION = '1.14';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 1;
+
+# This is now a skeleton, so it doesn't have a full POD section
+## no critic (Documentation::RequirePodSections)
 
 __END__
 
@@ -54,8 +57,9 @@ RPC::XML::Method - Object encapsulation of server-side RPC methods
 =head1 DESCRIPTION
 
 This package is no longer a distinct, separate entity. It has become an empty
-sub-class of B<RPC::XML::Procedure>. Please see L<RPC::XML::Procedure> for
-details on the methods and usage.
+sub-class of B<RPC::XML::Procedure>. Please see
+L<RPC::XML::Procedure|RPC::XML::Procedure> for details on the methods and
+usage.
 
 By the time of 1.0 release of this software package, this file will be removed
 completely.
@@ -110,7 +114,7 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML::Procedure>
+L<RPC::XML::Procedure|RPC::XML::Procedure>
 
 =head1 AUTHOR
 

@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -56,7 +56,7 @@ use RPC::XML 'smart_encode';
 # This module also provides RPC::XML::Method
 ## no critic (ProhibitMultiplePackages)
 
-$VERSION = '1.21';
+$VERSION = '1.22';
 $VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -318,7 +318,7 @@ The B<RPC::XML::Procedure> package is designed primarily for behind-the-scenes
 use by the B<RPC::XML::Server> class and any subclasses of it. It is
 documented here in case a project chooses to sub-class it for their purposes
 (which would require setting the C<method_class> attribute when creating
-server objects, see L<RPC::XML::Server>).
+server objects, see L<RPC::XML::Server|RPC::XML::Server>).
 
 This package grew out of the increasing need to abstract the operations that
 related to the methods a given server instance was providing. Previously,
@@ -594,9 +594,9 @@ document the method, is also marked as optional.  Having some degree of
 documentation for all the methods a server provides is a good rule of thumb,
 however.
 
-The default methods that this package provides are turned into XPL files by
-the B<make_method> tool (see L<make_method>). The final forms of these may
-serve as examples of what the file should look like.
+The default methods that this package provides are turned into XPL files by the
+B<make_method> tool (see L<make_method|make_method>). The final forms of these
+may serve as examples of what the file should look like.
 
 =item Information used only for book-keeping
 
@@ -648,7 +648,7 @@ features and options, and is out of the scope of this particular manual
 page. The package F<Makefile.PL> features an example of engineering the
 automatic generation of XPL files and their delivery as a part of the normal
 Perl module build process. Using this tool is highly recommended over managing
-XPL files directly. For the full details, see L<make_method>.
+XPL files directly. For the full details, see L<make_method|make_method>.
 
 =head1 NAMESPACES
 
@@ -733,7 +733,7 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML::Server>, L<make_method>
+L<RPC::XML::Server|RPC::XML::Server>, L<make_method|make_method>
 
 =head1 AUTHOR
 

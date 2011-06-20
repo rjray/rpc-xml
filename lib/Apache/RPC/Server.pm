@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-our $VERSION = '1.36';
+our $VERSION = '1.37';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 sub version { return $Apache::RPC::Server::VERSION }
@@ -579,15 +579,15 @@ C<E<lt>LocationE<gt>> directives and familiar options. Additional configuration
 settings specific to this module are detailed below.
 
 Generally, externally-available methods are provided as files in the XML
-dialect explained in L<RPC::XML::Server>. A subclass derived from this class
-may of course use the methods provided by this class and its parent class for
-adding and manipulating the method table.
+dialect explained in L<RPC::XML::Server|RPC::XML::Server>. A subclass derived
+from this class may of course use the methods provided by this class and its
+parent class for adding and manipulating the method table.
 
 =head1 SUBROUTINES/METHODS
 
 The methods that the server publishes are provided by a combination of the
 installation files and Apache configuration values. Details on remote method
-syntax and semantics is covered in L<RPC::XML::Server>.
+syntax and semantics is covered in L<RPC::XML::Server|RPC::XML::Server>.
 
 =head2 Methods
 
@@ -643,7 +643,7 @@ B<RPC::XML::Server>. Three parameters are of concern to this class:
 The value associated with this key is a reference to an B<Apache> request
 object. If this is not passed, then it is assumed that this is being called in
 the start-up phase of the server and the value returned from
-C<< Apache->server >> (see L<Apache>) is used.
+C<< Apache->server >> (see L<Apache|Apache>) is used.
 
 =item server_id
 
@@ -658,9 +658,9 @@ configuration file.
 =back
 
 The server identification string and prefix concepts are explained in more
-detail in the next section. See L<RPC::XML::Server> for a full list of what
-additional arguments may be passed to B<new> for eventual proxy to the parent
-class constructor.
+detail in the next section. See L<RPC::XML::Server|RPC::XML::Server> for a full
+list of what additional arguments may be passed to B<new> for eventual proxy to
+the parent class constructor.
 
 =item child_started([BOOLEAN])
 
@@ -955,7 +955,7 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML::Server>, L<RPC::XML>
+L<RPC::XML::Server|RPC::XML::Server>, L<RPC::XML|RPC::XML>
 
 =head1 AUTHOR
 

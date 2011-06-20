@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -110,7 +110,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.56';
+$VERSION = '1.57';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -740,13 +740,13 @@ has such an externally-visible method).
 =back
 
 If a file is passed, then it is expected to be in the XML-based format,
-described in the B<RPC::XML::Procedure> manual (see L<RPC::XML::Procedure>).
-If the name passed is not an absolute pathname, then the file will be searched
-for in any directories specified when the object was instantiated, then in the
-directory into which this module was installed, and finally in the current
-working directory. If the operation fails, the return value will be a
-non-reference, an error message. Otherwise, the return value is the object
-reference.
+described in the B<RPC::XML::Procedure> manual (see
+L<RPC::XML::Procedure|RPC::XML::Procedure>).  If the name passed is not an
+absolute pathname, then the file will be searched for in any directories
+specified when the object was instantiated, then in the directory into which
+this module was installed, and finally in the current working directory. If the
+operation fails, the return value will be a non-reference, an error
+message. Otherwise, the return value is the object reference.
 
 The B<add_method> and B<add_proc> calls are essentialy identical unless called
 with hash references. Both files and objects contain the information that
@@ -756,7 +756,7 @@ resulting addition to the server object will be a B<RPC::XML::Procedure>
 object, not a method object.
 
 For more on the creation and manipulation of procedures and methods as
-objects, see L<RPC::XML::Procedure>.
+objects, see L<RPC::XML::Procedure|RPC::XML::Procedure>.
 
 =item delete_method(NAME)
 
@@ -964,10 +964,10 @@ several ways provided. Methods may be added directly within code by using
 C<add_method> as described above, with full data provided for the code
 reference, signature list, etc. The C<add_method> technique can also be used
 with a file that conforms to a specific XML-based format (detailed in the
-manual page for the B<RPC::XML::Procedure> class, see L<RPC::XML::Procedure>).
-Entire directories of files may be added using C<add_methods_in_dir>, which
-merely reads the given directory for files that appear to be method
-definitions.
+manual page for the B<RPC::XML::Procedure> class, see
+L<RPC::XML::Procedure|RPC::XML::Procedure>).  Entire directories of files may
+be added using C<add_methods_in_dir>, which merely reads the given directory
+for files that appear to be method definitions.
 
 =head2 How Methods Are Called
 
@@ -1018,8 +1018,9 @@ from the B<SOCKADDR_IN> structure.
 
 =item request
 
-The L<HTTP::Request> object for this request. Can be used to read HTTP headers
-sent by the client (C<X-Forwarded-For> for your access checks, for example).
+The L<HTTP::Request|HTTP::Request> object for this request. Can be used to read
+HTTP headers sent by the client (C<X-Forwarded-For> for your access checks, for
+example).
 
 =back
 
@@ -1112,8 +1113,8 @@ sub-directory of the distribution.
 
 These methods are installed as C<*.xpl> files, which are generated from files
 in the C<methods> directory of the distribution using the B<make_method> tool
-(see L<make_method>). The files there provide the Perl code that implements
-these, their help files and other information.
+(see L<make_method|make_method>). The files there provide the Perl code that
+implements these, their help files and other information.
 
 =head2 Content Compression
 
@@ -1379,7 +1380,8 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML>, L<RPC::XML::Client>, L<RPC::XML::ParserFactory>
+L<RPC::XML|RPC::XML>, L<RPC::XML::Client|RPC::XML::Client>,
+L<RPC::XML::ParserFactory|RPC::XML::ParserFactory>
 
 =head1 AUTHOR
 

@@ -1,9 +1,10 @@
 #!/usr/bin/perl
 ###############################################################################
 #
-# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
-# See "LICENSE" in the documentation for licensing and redistribution terms.
+# See "LICENSE AND COPYRIGHT" in the documentation for licensing and
+# redistribution terms.
 #
 ###############################################################################
 #
@@ -28,19 +29,18 @@
 
 use 5.006001;
 use strict;
+use warnings;
 use vars qw($USAGE $VERSION);
-use subs qw(read_external write_file);
+use subs qw(read_from_file read_from_opts read_external write_file);
 
 use Config;
 use Carp 'croak';
 use Getopt::Long;
-use IO::File;
 use File::Spec;
 
-my ($cmd, %opts, $ifh, $ofh, $path, $helptxt, $codetxt, @siglist,
-    $name, $namespace, $type, $version, $hidden, $lang);
+my ($cmd, %opts, $ofh, %attrs);
 
-$VERSION = '1.14';
+$VERSION = '1.15';
 ($cmd = $0) =~ s{.*/}{};
 $USAGE = "$cmd [ --options ]
 
@@ -82,136 +82,24 @@ GetOptions(\%opts,
 if ($opts{help})
 {
     print $USAGE;
-    exit;
+    exit 0;
 }
 
-#
 # First we start by getting all our data. Once that's all in place, then the
 # generation of the file is simple.
-#
 if ($opts{base})
 {
-    # This simplifies a lot of it
+    read_from_file($opts{base});
 
-    (undef, $path, $name) = File::Spec->splitpath($opts{base});
-    $path ||= q{.};
-    $type = 'm'; # Default the type to 'm'ethod.
-    $codetxt = {};
-
-    if (! ($ifh = IO::File->new("< $opts{base}.base")))
-    {
-        croak "Error opening $opts{base}.base for reading: $!\nStopped";
-    }
-
-    while (defined($_ = <$ifh>))
-    {
-        chomp;
-
-        if (/^name:\s+([\w\.]+)$/i)
-        {
-            $name = $1;
-        }
-        elsif (/^namespace:\s+([\w\.]+)$/i)
-        {
-            $namespace = $1;
-        }
-        elsif (/^type:\s+(\S+)$/i)
-        {
-            $type = substr lc $1, 0, 1;
-        }
-        elsif (/^version:\s+(\S+)$/i)
-        {
-            $version = $1;
-        }
-        elsif (/^signature:\s+\b(.*)$/i)
-        {
-            push @siglist, $1;
-        }
-        elsif (/^hidden:\s+(no|yes)/i)
-        {
-            $hidden = ($1 eq 'yes') ? 1 : 0;
-        }
-        elsif (/^helpfile:\s+(.*)/i)
-        {
-            $helptxt = read_external(File::Spec->catfile($path, $1));
-        }
-        elsif (/^codefile(\[(.*)\])?:\s+(.*)/i)
-        {
-            $lang = $2 || 'perl';
-            $codetxt->{$lang} = read_external(File::Spec->catfile($path, $3));
-        }
-    }
-    if (! keys %{$codetxt})
-    {
-        croak "Error: no code specified in $opts{base}.base, stopped";
-    }
-    if (! @siglist)
-    {
-        croak "Error: no signatures found in $opts{base}.base, stopped";
-    }
-
-    if (! ($ofh = IO::File->new("> $opts{base}.xpl")))
-    {
-        croak "Error opening $opts{base}.xpl for writing: $!\nStopped";
-    }
+    $ofh = "$opts{base}.xpl";
 }
 else
 {
-    if ($opts{name})
-    {
-        $name = $opts{name};
-    }
-    else
-    {
-        croak 'No name was specified for the published routine, stopped';
-    }
-
-    $namespace = $opts{namespace} || q{};
-    $type      = $opts{type}      || 'm';
-    $hidden    = $opts{hidden}    || 0;
-    $version   = $opts{version}   || q{};
-
-    if ($opts{signature})
-    {
-        for my $val (@{$opts{signature}})
-        {
-            $val =~ s/:/ /g;
-            push @siglist, $val;
-        }
-    }
-    else
-    {
-        croak "At least one signature must be specified for $name, stopped";
-    }
-
-    if ($opts{helptext})
-    {
-        ${$helptxt} = "$opts{helptext}\n";
-    }
-    elsif ($opts{helpfile})
-    {
-        $helptxt = read_external($opts{helpfile});
-    }
-    else
-    {
-        ${$helptxt} = q{};
-    }
-
-    if ($opts{code})
-    {
-        $codetxt->{perl} = read_external($opts{code});
-    }
-    else
-    {
-        $codetxt->{perl} = do { local $/ = undef; <> };
-    }
+    read_from_opts();
 
     if ($opts{output})
     {
-        if (! ($ofh = IO::File->new("> $opts{output}")))
-        {
-            croak "Unable to open $opts{output} for writing: $!\nStopped";
-        }
+        $ofh = $opts{output};
     }
     else
     {
@@ -222,18 +110,188 @@ else
 write_file(
     $ofh,
     {
-        name      => $name,
-        namespace => $namespace,
-        type      => $type,
-        version   => $version,
-        hidden    => $hidden,
-        code      => $codetxt,
-        help      => $helptxt,
-        sigs      => \@siglist,
+        name      => $attrs{name},
+        namespace => $attrs{namespace},
+        type      => $attrs{type},
+        version   => $attrs{version},
+        hidden    => $attrs{hidden},
+        code      => $attrs{codetxt},
+        help      => $attrs{helptxt},
+        sigs      => $attrs{siglist},
     }
 );
 
-exit;
+exit 0;
+
+###############################################################################
+#
+#   Sub Name:       read_from_file
+#
+#   Description:    Read method data from the given *.base file
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $file     in      scalar    File to read, minus the ".base"
+#
+#   Globals:        %attrs
+#
+#   Returns:        Success:    void
+#                   Failure:    croaks
+#
+###############################################################################
+sub read_from_file
+{
+    my $file = shift;
+
+    my ($volume, $path) = File::Spec->splitpath($file);
+    $path ||= q{.};
+
+    $attrs{type}      = 'm'; # Default the type to 'm'ethod.
+    $attrs{codetxt}   = {};
+    $attrs{siglist}   = [];
+    $attrs{namespace} = q{};
+    $attrs{hidden}    = 0;
+    $attrs{version}   = q{};
+
+
+    my @lines;
+    if (open my $fh, '<', "$file.base")
+    {
+        @lines = <$fh>;
+        close $fh or croak "Error closing $file.base: $!\nStopped";
+    }
+    else
+    {
+        croak "Error opening $file.base for reading: $!\nStopped";
+    }
+
+    for my $line (@lines)
+    {
+        chomp $line;
+
+        # Skip blanks and comments
+        next if ($line =~ /^\s*(?:#.*)?$/);
+
+        # I'm using a horrendous if-else cascade to avoid moving the required
+        # version of Perl to 5.012 just for the "when" construct.
+        ## no critic (ProhibitCascadingIfElse)
+        if ($line =~ /^name:\s+([\w.]+)$/i)
+        {
+            $attrs{name} = $1;
+        }
+        elsif ($line =~ /^namespace:\s+([\w.]+)$/i)
+        {
+            $attrs{namespace} = $1;
+        }
+        elsif ($line =~ /^type:\s+(\S+)$/i)
+        {
+            $attrs{type} = substr lc $1, 0, 1;
+        }
+        elsif ($line =~ /^version:\s+(\S+)$/i)
+        {
+            $attrs{version} = $1;
+        }
+        elsif ($line =~ /^signature:\s+\b(.*)$/i)
+        {
+            push @{$attrs{siglist}}, $1;
+        }
+        elsif ($line =~ /^hidden:\s+(no|yes)/i)
+        {
+            $attrs{hidden} = (lc $1 eq 'yes') ? 1 : 0;
+        }
+        elsif ($line =~ /^helpfile:\s+(.*)/i)
+        {
+            $attrs{helptxt} =
+                read_external(File::Spec->catpath($volume, $path, $1));
+        }
+        elsif ($line =~ /^codefile(?:\[(.*)\])?:\s+(.*)/i)
+        {
+            $attrs{codetxt}->{$1 || 'perl'} =
+                read_external(File::Spec->catpath($volume, $path, $2));
+        }
+    }
+    if (! keys %{$attrs{codetxt}})
+    {
+        croak "Error: no code specified in $opts{base}.base, stopped";
+    }
+    if (! @{$attrs{siglist}})
+    {
+        croak "Error: no signatures found in $opts{base}.base, stopped";
+    }
+
+    return;
+}
+
+###############################################################################
+#
+#   Sub Name:       read_from_opts
+#
+#   Description:    Read method data from the command-line options
+#
+#   Arguments:      None.
+#
+#   Globals:        %opts
+#                   %attrs
+#
+#   Returns:        Success:    void
+#                   Failure:    croaks
+#
+###############################################################################
+sub read_from_opts
+{
+    $attrs{siglist} = [];
+
+    if ($opts{name})
+    {
+        $attrs{name} = $opts{name};
+    }
+    else
+    {
+        croak 'No name was specified for the published routine, stopped';
+    }
+
+    $attrs{namespace} = $opts{namespace} || q{};
+    $attrs{type}      = $opts{type}      || 'm';
+    $attrs{hidden}    = $opts{hidden}    || 0;
+    $attrs{version}   = $opts{version}   || q{};
+
+    if ($opts{signature})
+    {
+        for my $val (@{$opts{signature}})
+        {
+            $val =~ s/:/ /g;
+            push @{$attrs{siglist}}, $val;
+        }
+    }
+    else
+    {
+        croak "At least one signature must be specified for $attrs{name}, " .
+            'stopped';
+    }
+
+    if ($opts{helptext})
+    {
+        $attrs{helptxt} = \"$opts{helptext}\n";
+    }
+    elsif ($opts{helpfile})
+    {
+        $attrs{helptxt} = read_external($opts{helpfile});
+    }
+    else
+    {
+        $attrs{helptxt} = \q{};
+    }
+
+    if ($opts{code})
+    {
+        $attrs{codetxt}->{perl} = read_external($opts{code});
+    }
+    else
+    {
+        $attrs{codetxt}->{perl} = do { local $/ = undef; <> };
+    }
+
+    return;
+}
 
 ###############################################################################
 #
@@ -252,15 +310,19 @@ exit;
 sub read_external
 {
     my $file = shift;
+    my ($fh, $tmp);
 
-    my $fh = IO::File->new("< $file");
-    if (! $fh)
+    if (! open $fh, '<', $file)
     {
         croak "Cannot open file $file for reading: $!, stopped";
     }
+    else
+    {
+        $tmp = do { local $/ = undef; <$fh> };
+        close $fh or
+            croak "Error closing $file: $!, stopped";
+    }
 
-    my $tmp;
-    $tmp = do { local $/ = undef; <$fh> };
     return \$tmp;
 }
 
@@ -285,6 +347,21 @@ sub read_external
 sub write_file
 {
     my ($fh, $args) = @_;
+
+    # Might need to open a FH here, and keep it open for a while.
+    ## no critic (RequireBriefOpen)
+
+    if (! ref $fh)
+    {
+        if (! open my $newfh, '>', $fh)
+        {
+            croak "Error opening $fh for writing: $!, stopped";
+        }
+        else
+        {
+            $fh = $newfh;
+        }
+    }
 
     my $date = scalar localtime;
     my %typemap = (
@@ -387,6 +464,11 @@ that clearly delinates the externally-visible name, the method signatures, the
 help text and the code itself. These files may be created manually, or this
 tool may be used as an aide.
 
+=head1 REQUIRED ARGUMENTS
+
+There are no required arguments, but if there are not sufficient options passed
+you will be told by an error message.
+
 =head1 OPTIONS
 
 The tool recognizes the following options:
@@ -426,10 +508,10 @@ daemon to not make the routine visible through any introspection interfaces.
 =item --signature=STRING [ --signature=STRING ... ]
 
 Specify one or more signatures for the method. Signatures should be the type
-names as laid out in the documentation in L<RPC::XML>, with the elements
-separated by a colon. You may also separate them with spaces, if you quote the
-argument. This option may be specified more than once, as some methods may
-have several signatures.
+names as laid out in the documentation in L<RPC::XML|RPC::XML>, with the
+elements separated by a colon. You may also separate them with spaces, if you
+quote the argument. This option may be specified more than once, as some
+methods may have several signatures.
 
 =item --helptext=STRING
 
@@ -603,16 +685,48 @@ C<*.xpl> files using this tool, and then install them.
 Most problems come out in the form of error messages followed by an abrupt
 exit.
 
+=head1 EXIT STATUS
+
+The tool exits with a status of 0 upon success, and 255 otherwise.
+
 =head1 CAVEATS
 
 I don't much like this approach to specifying the methods, but I liked my
 other ideas even less.
 
-=head1 CREDITS
+=head1 BUGS
 
-The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
-See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
-specification.
+Please report any bugs or feature requests to
+C<bug-rpc-xml at rt.cpan.org>, or through the web interface at
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=RPC-XML>. I will be
+notified, and then you'll automatically be notified of progress on
+your bug as I make changes.
+
+=head1 SUPPORT
+
+=over 4
+
+=item * RT: CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=RPC-XML>
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/RPC-XML>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/RPC-XML>
+
+=item * Search CPAN
+
+L<http://search.cpan.org/dist/RPC-XML>
+
+=item * Source code on GitHub
+
+L<http://github.com/rjray/rpc-xml>
+
+=back
 
 =head1 LICENSE AND COPYRIGHT
 
@@ -625,7 +739,13 @@ Public License (LGPL) version 2.1
 
 =head1 SEE ALSO
 
-L<RPC::XML>, L<RPC::XML::Server>
+L<RPC::XML|RPC::XML>, L<RPC::XML::Server|RPC::XML::Server>
+
+=head1 CREDITS
+
+The B<XML-RPC> standard is Copyright (c) 1998-2001, UserLand Software, Inc.
+See <http://www.xmlrpc.com> for more information about the B<XML-RPC>
+specification.
 
 =head1 AUTHOR
 

@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2009 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -63,7 +63,7 @@ $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf 'v%vd', $^V : $];
 
-our $VERSION = '1.10';
+our $VERSION = '1.11';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 #
@@ -873,7 +873,7 @@ better integration with the B<Apache::Status> package. If the C<FLAG>
 parameter is passed and is any true value, then the resulting URL will be
 tailored for use with B<Apache::Status>. The first argument must be either the
 original request object as passed by mod_perl, or a reference to a CGI object
-created from the request (see L<CGI> for more on the CGI class).
+created from the request (see L<CGI|CGI> for more on the CGI class).
 
 =item main_screen(REQUEST, QUERY, INTERNAL)
 
@@ -1043,7 +1043,8 @@ specification.
 
 =head1 SEE ALSO
 
-L<Apache::Status>, L<Apache::RPC::Server>, L<RPC::XML::Method>
+L<Apache::Status|Apache::Status>, L<Apache::RPC::Server|Apache::RPC::Server>,
+L<RPC::XML::Method|RPC::XML::Method>
 
 =head1 AUTHOR
 

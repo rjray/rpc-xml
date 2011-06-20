@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2002-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2002-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -37,7 +37,7 @@ use base qw(RPC::XML::Procedure);
 
 use AutoLoader 'AUTOLOAD';
 
-$VERSION = '1.09';
+$VERSION = '1.10';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -173,16 +173,17 @@ RPC::XML::Function - Object class for RPC routines that do not check signatures
 =head1 DESCRIPTION
 
 The B<RPC::XML::Function> is a class that derives from B<RPC::XML::Procedure>
-(see L<RPC::XML::Procedure>), while bypassing all the signature-specific logic
-associated with server-side methods in the B<RPC::XML> suite.
+(see L<RPC::XML::Procedure|RPC::XML::Procedure>), while bypassing all the
+signature-specific logic associated with server-side methods in the B<RPC::XML>
+suite.
 
 By doing this, the encapsulated code becomes responsible for how the server
 (and ultimately, the client) interprets returned values. For the classes that
 adhere to signatures, the signature includes the expected type of the returned
 value. If an object of this class anticipates that the data may be ambiguous
-(an intended string being interpreted as an integer, for example), the code
-it encapsulates should consider encoding the response with the data-classes
-documented in L<RPC::XML> prior to return.
+(an intended string being interpreted as an integer, for example), the code it
+encapsulates should consider encoding the response with the data-classes
+documented in L<RPC::XML|RPC::XML> prior to return.
 
 =head1 SUBROUTINES/METHODS
 
@@ -273,7 +274,8 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML>, L<RPC::XML::Procedure>, L<make_method>
+L<RPC::XML|RPC::XML>, L<RPC::XML::Procedure|RPC::XML::Procedure>,
+L<make_method|make_method>
 
 =head1 AUTHOR
 

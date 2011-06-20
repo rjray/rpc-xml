@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -60,7 +60,7 @@ BEGIN
     }
 }
 
-$VERSION = '1.32';
+$VERSION = '1.33';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -240,7 +240,7 @@ sub send_request ## no critic (ProhibitExcessComplexity)
 
     # Start by setting up the request-clone for using in this instance
     $reqclone = $self->request->clone;
-    unless ($reqclone->header('Host')) {
+    if (! $reqclone->header('Host')) {
         $reqclone->header(Host => URI->new($reqclone->uri)->host);
     }
     $can_compress = $self->compress; # Avoid making 4+ calls to the method
@@ -915,7 +915,7 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML>, L<RPC::XML::Server>
+L<RPC::XML|RPC::XML>, L<RPC::XML::Server|RPC::XML::Server>
 
 =head1 AUTHOR
 

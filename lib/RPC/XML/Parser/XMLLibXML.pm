@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2010 by Randy J. Ray, all rights reserved
+# This file copyright (c) 2010-2011 by Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '1.13';
+$VERSION = '1.14';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
@@ -91,11 +91,14 @@ sub parse
     my ($self, $stream) = @_;
 
     my $parser = XML::LibXML->new(
-        no_network => 1,
+        no_network      => 1,
         expand_xinclude => 0,
         expand_entities => 1,
-        load_ext_dtd => 0,
-        ext_ent_handler => sub { warn "External entities disabled."; '' },
+        load_ext_dtd    => 0,
+        ext_ent_handler => sub {
+            warn "External entities disabled.\n";
+            return q{}
+        },
     );
 
     # RT58323: It's not enough to just test $stream, I have to check
@@ -125,8 +128,8 @@ sub parse
             if (! $result)
             {
                 # Certain cases cause $@ to be a XML::LibXML::Error object
-                # instead of a string. So force it to stringify with "".
-                return "$@";
+                # instead of a string. So force it to stringify with qq().
+                return qq($@);
             }
         }
         elsif (reftype($stream) eq 'SCALAR')
@@ -138,8 +141,8 @@ sub parse
             if (! $result)
             {
                 # Certain cases cause $@ to be a XML::LibXML::Error object
-                # instead of a string. So force it to stringify with "".
-                return "$@";
+                # instead of a string. So force it to stringify with qq().
+                return qq($@);
             }
         }
         else
@@ -156,8 +159,8 @@ sub parse
         if (! $result)
         {
             # Certain cases cause $@ to be a XML::LibXML::Error object
-            # instead of a string. So force it to stringify with "".
-            return "$@";
+            # instead of a string. So force it to stringify with qq().
+            return qq($@);
         }
     }
 
@@ -274,7 +277,7 @@ sub dom_request
         $method_name = $nodes[0]->textContent;
         $method_name =~ s/^\s+//;
         $method_name =~ s/\s+$//;
-        if ($method_name !~ m{[\w\.:/]+})
+        if ($method_name !~ m{[\w.:/]+})
         {
             return qq{methodName value "$method_name" not a valid name};
         }
@@ -620,13 +623,13 @@ RPC::XML::Parser::XMLLibXML - A container class for XML::LibXML
 =head1 DESCRIPTION
 
 This class implements the interface defined in the B<RPC::XML::Parser>
-factory-class (see L<RPC::XML::Parser>) using the B<XML::LibXML> module
-to handle the actual manipulation of XML.
+factory-class (see L<RPC::XML::Parser|RPC::XML::Parser>) using the
+B<XML::LibXML> module to handle the actual manipulation of XML.
 
 =head1 SUBROUTINES/METHODS
 
 This module implements the public-facing methods as described in
-L<RPC::XML::Parser>:
+L<RPC::XML::Parser|RPC::XML::Parser>:
 
 =over 4
 
@@ -655,7 +658,7 @@ push-parser, an exception is thrown.
 (Only callable on a push-parser instance) Finishes the parsing process and
 returns either a message object (one of B<RPC::XML::request> or
 B<RPC::XML::response>) or an error (if the document was incomplete, not
-wel-formed, or not valid). If this method is called on a parser instance that
+well-formed, or not valid). If this method is called on a parser instance that
 is not a push-parser, an exception is thrown.
 
 =back
@@ -716,7 +719,8 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML>, L<RPC::XML::Parser>, L<XML::LibXML>
+L<RPC::XML|RPC::XML>, L<RPC::XML::Parser|RPC::XML::Parser>,
+L<XML::LibXML|XML::LibXML>
 
 =head1 AUTHOR
 

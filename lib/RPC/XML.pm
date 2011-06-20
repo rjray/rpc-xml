@@ -26,7 +26,8 @@ use 5.006001;
 use strict;
 use warnings;
 use vars qw(@EXPORT_OK %EXPORT_TAGS $VERSION $ERROR
-            %XMLMAP $XMLRE $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);
+            %XMLMAP $XMLRE $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL
+            $DATETIME_REGEXP);
 use subs qw(time2iso8601 smart_encode utf8_downgrade);
 use base 'Exporter';
 
@@ -77,6 +78,25 @@ $ERROR = q{};
     q{'} => '&apos;',
 );
 $XMLRE = join q{} => keys %XMLMAP; $XMLRE = qr/([$XMLRE])/;
+
+# The XMLRPC spec only allows for the incorrect iso8601 format
+# without dashes, but dashes are part of the standard so we include
+# them. Note that the actual RPC::XML::datetime_iso8601 class will strip
+# them out if present.
+my $date_re =
+    qr{
+          (\d{4})-?
+          ([01]\d)-?
+          ([0123]\d)
+    }x;
+my $time_re =
+    qr{
+          ([012]\d):
+          ([0-5]\d):
+          ([0-5]\d)([.]\d+)?
+          (Z|[-+]\d\d:\d\d)?
+    }x;
+$DATETIME_REGEXP = qr{^${date_re}T${time_re}$};
 
 # All of the RPC_* functions are convenience-encoders
 sub RPC_STRING ($)
@@ -169,7 +189,7 @@ sub time2iso8601
 
         foreach (@values)
         {
-            if (! defined $_) ## no critic (ProhibitCascadingIfElse)
+            if (! defined $_)
             {
                 $type = $ALLOW_NIL ?
                     RPC::XML::nil->new() : RPC::XML::string->new(q{});
@@ -179,7 +199,7 @@ sub time2iso8601
                 # Skip any that we've already seen
                 next if $seenrefs->{$_}++;
 
-                if (blessed($_) && ## no critic (ProhibitCascadingIfElse)
+                if (blessed($_) &&
                     ($_->isa('RPC::XML::datatype') || $_->isa('DateTime')))
                 {
                     # Only if the reference is a datatype or a DateTime
@@ -263,31 +283,13 @@ sub time2iso8601
             }
             # Pattern taken from perldata(1)
             elsif (! $FORCE_STRING_ENCODING &&
-                   /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/x &&
+                   /^[+-]?(?=\d|[.]\d)\d*(?:[.]\d*)?(?:[Ee](?:[+-]?\d+))?$/x &&
                    $_ > $MIN_DOUBLE &&
                    $_ < $MAX_DOUBLE)
             {
                 $type = RPC::XML::double->new($_);
             }
-            # The XMLRPC spec only allows for the incorrect iso8601 format
-            # without dashes, but dashes are part of the standard so we include
-            # them (DateTime->now->iso8601 includes them). Note that the actual
-            # RPC::XML::datetime_iso8601 class will strip them out if present.
-            elsif (m{
-                       ^           # start
-                       \d{4}       # 4 digit year
-                       -?          # "optional" dash
-                       [01]\d      # month
-                       -?          # optional dash
-                       [0123]\d    # day of month
-                       T           # Yes, "T"
-                       [012]\d:    # hours
-                       [012345]\d: # min
-                       [012345]\d  # seconds
-                       (?:\.\d+)?  # optional fractional seconds
-                       Z?          # optional "Z" to indicate UTC
-                       $           # end
-                }x)
+            elsif (/$DATETIME_REGEXP/)
             {
                 $type = RPC::XML::datetime_iso8601->new($_);
             }
@@ -469,7 +471,7 @@ sub as_string
         return;
     }
 
-    (my $value = sprintf '%.20f', ${$self}) =~ s/(\.\d+?)0+$/$1/;
+    (my $value = sprintf '%.20f', ${$self}) =~ s/([.]\d+?)0+$/$1/;
 
     return "<$class>$value</$class>";
 }
@@ -569,9 +571,7 @@ sub new
         $value = ${$value};
     }
 
-    if ($value && $value =~ m{^(\d{4})-?([01]\d)-?([0123]\d)T
-                              ([012]\d):([012345]\d):([012345]\d)(\.\d+)?
-                              (Z|[-+]\d\d:\d\d)?$}x)
+    if ($value && $value =~ /$RPC::XML::DATETIME_REGEXP/)
     {
         # This is the WRONG way to represent this, but it's the way it is
         # given in the spec, so assume that other implementations can only
@@ -1567,14 +1567,15 @@ RPC::XML - A set of classes for core data, message and XML handling
 The B<RPC::XML> package is an implementation of the B<XML-RPC> standard.
 
 The package provides a set of classes for creating values to pass to the
-constructors for requests and responses. These are lightweight objects, most
-of which are implemented as tied scalars so as to associate specific type
+constructors for requests and responses. These are lightweight objects, most of
+which are implemented as tied scalars so as to associate specific type
 information with the value. Classes are also provided for requests, responses,
-faults (errors) and a parser based on the L<XML::Parser> package from CPAN.
+faults (errors) and a parsers based on the L<XML::Parser|XML::Parser> and
+L<XML::LibXML|XML::LibXML> packages from CPAN.
 
-This module does not actually provide any transport implementation or
-server basis. For these, see L<RPC::XML::Client> and L<RPC::XML::Server>,
-respectively.
+This module does not actually provide any transport implementation or server
+basis. For these, see L<RPC::XML::Client|RPC::XML::Client> and
+L<RPC::XML::Server|RPC::XML::Server>, respectively.
 
 =head1 SUBROUTINES/METHODS
 
@@ -2006,7 +2007,7 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML::Client>, L<RPC::XML::Server>, L<RPC::XML::Parser>, L<XML::Parser>
+L<RPC::XML::Client|RPC::XML::Client>, L<RPC::XML::Server|RPC::XML::Server>
 
 =head1 AUTHOR
 

@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -98,7 +98,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = '1.22';
+$VERSION = '1.23';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -355,7 +355,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         {
             if ($cdata !~
                 # Taken from perldata(1)
-                /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/x)
+                /^[+-]?(?=\d|[.]\d)\d*(?:[.]\d*)?(?:[Ee](?:[+-]?\d+))?$/x)
             {
                 return error($robj, $self, 'Bad floating-point data read');
             }
@@ -718,13 +718,13 @@ RPC::XML::Parser::XMLParser - A container class for XML::Parser
 =head1 DESCRIPTION
 
 This class implements the interface defined in the B<RPC::XML::Parser>
-factory-class (see L<RPC::XML::Parser>) using the B<XML::Parser> module
-to handle the actual manipulation of XML.
+factory-class (see L<RPC::XML::Parser|RPC::XML::Parser>) using the
+B<XML::Parser> module to handle the actual manipulation of XML.
 
 =head1 SUBROUTINES/METHODS
 
 This module implements the public-facing methods as described in
-L<RPC::XML::Parser>:
+L<RPC::XML::Parser|RPC::XML::Parser>:
 
 =over 4
 
@@ -753,7 +753,7 @@ push-parser, an exception is thrown.
 (Only callable on a push-parser instance) Finishes the parsing process and
 returns either a message object (one of B<RPC::XML::request> or
 B<RPC::XML::response>) or an error (if the document was incomplete, not
-wel-formed, or not valid). If this method is called on a parser instance that
+well-formed, or not valid). If this method is called on a parser instance that
 is not a push-parser, an exception is thrown.
 
 =back
@@ -814,7 +814,8 @@ specification.
 
 =head1 SEE ALSO
 
-L<RPC::XML>, L<RPC::XML::Parser>, L<XML::Parser>
+L<RPC::XML|RPC::XML>, L<RPC::XML::Parser|RPC::XML::Parser>,
+L<XML::Parser|XML::Parser>
 
 =head1 AUTHOR
 
