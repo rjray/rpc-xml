@@ -9,3 +9,4 @@ t/test.conf
 RPC-XML-*
 META.yml
 MYMETA.yml
+.DS_Store
