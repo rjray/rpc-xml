@@ -162,6 +162,6 @@ EOX
 $pp = RPC::XML::Parser::XMLLibXML->new->parse();
 $ret = $pp->parse($bad_entities);
 my $args = $ret->args;
-is $args->[0]->value, 'Entity test: ', "bad entities ignored";
+is($args->[0]->value, 'Entity test: ', 'Bad entities ignored');
 
 exit 0;

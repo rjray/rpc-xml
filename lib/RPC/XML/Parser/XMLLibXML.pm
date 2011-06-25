@@ -94,12 +94,30 @@ sub parse
         no_network      => 1,
         expand_xinclude => 0,
         expand_entities => 1,
-        load_ext_dtd    => 0,
-        ext_ent_handler => sub {
-            warn "External entities disabled.\n";
-            return q{}
-        },
+        load_ext_dtd    => 0
     );
+    # I really don't need the full granularity of XML::LibXML::InputCallback
+    # here, but the ext_ent_handler was not working with the version of
+    # libxml2 on Apple's Snow Leopard.
+    my $callbacks = XML::LibXML::InputCallback->new();
+    $callbacks->register_callbacks([
+        sub {
+            my ($uri) = @_;
+            if ($uri =~ m{^file:/})
+            {
+                warn "External entities disabled.\n";
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        },
+        sub {},
+        sub {},
+        sub {},
+    ]);
+    $parser->input_callbacks($callbacks);
 
     # RT58323: It's not enough to just test $stream, I have to check
     # defined-ness. A 0 or null-string should yield an error, not a push-parser
