@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '1.14';
+$VERSION = '1.15';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
@@ -103,15 +103,8 @@ sub parse
     $callbacks->register_callbacks([
         sub {
             my ($uri) = @_;
-            if ($uri =~ m{^file:/})
-            {
-                warn "External entities disabled.\n";
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
+
+            return ($uri =~ m{^file:/}) ? 1 : 0;
         },
         sub {},
         sub {},
@@ -683,9 +676,16 @@ is not a push-parser, an exception is thrown.
 
 =head1 DIAGNOSTICS
 
-All methods return some type of reference on success, or an error string on
-failure. Non-reference return values should always be interpreted as errors,
-except in the case of C<simple_request>.
+All methods return some type of reference on success. The B<new> and B<parse>
+methods return an error string on failure. The B<parse_more> and B<parse_done>
+methods may throw exceptions, if the underlying B<XML::LibXML> parser
+encounters a fatal error.
+
+=head1 EXTERNAL ENTITIES
+
+As of version 1.15 of this module (version 0.75 of the B<RPC::XML> suite),
+external entities whose URI is a C<file:/> scheme (local file) are explicitly
+ignored. This is for security purposes.
 
 =head1 BUGS
 

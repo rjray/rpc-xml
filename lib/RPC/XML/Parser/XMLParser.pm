@@ -98,7 +98,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = '1.23';
+$VERSION = '1.24';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -670,15 +670,9 @@ sub char_data
 }
 
 # At some future point, this may be expanded to provide more entities than
-# just the four basic XML ones.
+# just the basic XML ones.
 sub extern_ent
 {
-    my $robj = shift;
-
-    local $" = ', ';
-    warn ref($robj) . '::extern_ent: Attempt to reference external entity ' .
-        "(@_)\n";
-
     return q{};
 }
 
@@ -760,9 +754,16 @@ is not a push-parser, an exception is thrown.
 
 =head1 DIAGNOSTICS
 
-All methods return some type of reference on success, or an error string on
-failure. Non-reference return values should always be interpreted as errors,
-except in the case of C<simple_request>.
+All methods return some type of reference on success. The B<new> and B<parse>
+methods return message strings on errors. The B<parse_more> and B<parse_done>
+methods may throw exceptions on errors, if the error occurs at the
+B<XML::Parser> level.
+
+=head1 EXTERNAL ENTITIES
+
+As of version 1.24 of this module (version 0.75 of the B<RPC::XML> suite),
+external entities whose URI is a C<file:/> scheme (local file) are explicitly
+ignored. This is for security purposes.
 
 =head1 BUGS
 
