@@ -3,13 +3,17 @@
 # Test the serialization of XML structures to filehandles
 
 use strict;
-use vars qw($dir $vol $fh $file $tmpfile $md5_able $faux_req $faux_res $ofh $data);
+use vars qw($dir $vol $fh $file $tmpfile $md5_able $faux_req $faux_res $ofh
+            $data);
 
 use RPC::XML ':all';
 
 use Test;
 use File::Spec;
 use IO::File;
+
+# We'll be using the <nil /> extension here:
+$RPC::XML::ALLOW_NIL = 1;
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, '');
@@ -32,14 +36,20 @@ END
 die "Could not open $file for reading: $!"
     unless $fh = IO::File->new("< $file");
 
-$faux_req = RPC::XML::request->new('test',
-				   RPC_STRING  'string',
-				   RPC_INT     10,
-				   RPC_I4      20,
-				   RPC_BOOLEAN 1,
-				   [ qw(a b c) ],
-				   { one => 2 },
-				   RPC_BASE64 $fh);
+$faux_req = RPC::XML::request->new(
+    'test',
+    RPC_STRING 'string',
+    RPC_INT 10,
+    RPC_I4 20,
+    RPC_I8 4294967296,
+    RPC_DOUBLE 0.5,
+    RPC_BOOLEAN 1,
+    RPC_DATETIME_ISO8601 time2iso8601(),
+    [ qw(a b c) ],
+    { one => 2 },
+    RPC_NIL,
+    RPC_BASE64 $fh
+);
 
 # This is a good place to test the length() method, while we're at it
 ok(length($faux_req->as_string), $faux_req->length);
