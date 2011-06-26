@@ -55,11 +55,12 @@ BEGIN
 }
 
 @EXPORT_OK = qw(time2iso8601 smart_encode
-                RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_DATETIME_ISO8601
-                RPC_BASE64 RPC_STRING RPC_NIL
+                RPC_BOOLEAN RPC_INT RPC_I4 RPC_I8 RPC_DOUBLE
+                RPC_DATETIME_ISO8601 RPC_BASE64 RPC_STRING RPC_NIL
                 $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL);
-%EXPORT_TAGS = (types => [ qw(RPC_BOOLEAN RPC_INT RPC_I4 RPC_DOUBLE RPC_STRING
-                              RPC_DATETIME_ISO8601 RPC_BASE64 RPC_NIL) ],
+%EXPORT_TAGS = (types => [ qw(RPC_BOOLEAN RPC_INT RPC_I4 RPC_I8 RPC_DOUBLE
+                              RPC_STRING RPC_DATETIME_ISO8601 RPC_BASE64
+                              RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
 $VERSION = '1.52';
