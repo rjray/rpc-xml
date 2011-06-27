@@ -24,19 +24,19 @@
 
 package RPC::XML::Method;
 
-use 5.006001;
+use 5.008008;
 use strict;
 use warnings;
 use vars qw($VERSION);
 use base qw(RPC::XML::Procedure);
 
-$VERSION = '1.14';
+$VERSION = '1.15';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 1;
 
 # This is now a skeleton, so it doesn't have a full POD section
-## no critic (Documentation::RequirePodSections)
+## no critic (RequirePodSections)
 
 __END__
 

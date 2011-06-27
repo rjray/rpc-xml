@@ -28,7 +28,7 @@
 
 package Apache::RPC::Server;
 
-use 5.006001;
+use 5.008008;
 use strict;
 use warnings;
 use base qw(RPC::XML::Server);
@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-our $VERSION = '1.37';
+our $VERSION = '1.38';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 sub version { return $Apache::RPC::Server::VERSION }

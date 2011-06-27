@@ -64,7 +64,7 @@
 
 package RPC::XML::Server;
 
-use 5.006001;
+use 5.008008;
 use strict;
 use warnings;
 use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR %FAULT_TABLE  @XPL_PATH
@@ -110,7 +110,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.57';
+$VERSION = '1.58';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -2003,8 +2003,7 @@ sub process_request ## no critic (ProhibitExcessComplexity)
             else
             {
                 # Treat the content strictly in-memory
-                $buf = $respxml->as_string;
-                RPC::XML::utf8_downgrade($buf);
+                utf8::downgrade($buf = $respxml->as_string);
                 if ($do_compress)
                 {
                     $buf = Compress::Zlib::compress($buf);

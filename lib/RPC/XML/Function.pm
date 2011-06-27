@@ -28,7 +28,7 @@
 
 package RPC::XML::Function;
 
-use 5.006001;
+use 5.008008;
 use strict;
 use warnings;
 use vars qw($VERSION);
@@ -37,7 +37,7 @@ use base qw(RPC::XML::Procedure);
 
 use AutoLoader 'AUTOLOAD';
 
-$VERSION = '1.10';
+$VERSION = '1.11';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################

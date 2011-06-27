@@ -40,7 +40,7 @@
 
 package Apache::RPC::Status;
 
-use 5.006001;
+use 5.008008;
 use strict;
 use warnings;
 use vars qw(%IS_INSTALLED $SERVER_VER $STARTED $PERL_VER $DEFAULT
@@ -63,7 +63,7 @@ $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf 'v%vd', $^V : $];
 
-our $VERSION = '1.11';
+our $VERSION = '1.12';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 #

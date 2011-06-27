@@ -12,7 +12,7 @@ pod_coverage_ok('Apache::RPC::Server' => { also_private => [ 'debug' ] } =>
                 'Apache::RPC::Server');
 pod_coverage_ok('Apache::RPC::Status' => 'Apache::RPC::Status');
 pod_coverage_ok('RPC::XML' =>
-                { also_private => [ qr/^RPC_/, 'utf8_downgrade' ] },
+                { also_private => [ qr/^RPC_/ ] },
                 'RPC::XML');
 pod_coverage_ok('RPC::XML::Client' => { also_private => [ qr/^compress/ ] } =>
                 'RPC::XML::Client');

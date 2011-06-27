@@ -27,7 +27,7 @@
 
 package RPC::XML::ParserFactory;
 
-use 5.006001;
+use 5.008008;
 use strict;
 use warnings;
 use vars qw($VERSION %AVAILABLE $PARSER_CLASS);
@@ -37,7 +37,7 @@ use subs qw(import new register);
 # critic policy, but can't be worked around:
 ## no critic (RequireCheckingReturnValueOfEval)
 
-$VERSION = '1.02';
+$VERSION = '1.03';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # These are the known parsers supported, not including any that are specified

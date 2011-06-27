@@ -22,13 +22,13 @@
 
 package RPC::XML;
 
-use 5.006001;
+use 5.008008;
 use strict;
 use warnings;
 use vars qw(@EXPORT_OK %EXPORT_TAGS $VERSION $ERROR
             %XMLMAP $XMLRE $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL
             $DATETIME_REGEXP);
-use subs qw(time2iso8601 smart_encode utf8_downgrade);
+use subs qw(time2iso8601 smart_encode);
 use base 'Exporter';
 
 use Scalar::Util qw(blessed reftype);
@@ -47,11 +47,6 @@ BEGIN
 
     # Allow the <nil /> extension?
     $ALLOW_NIL = 0;
-
-    # Cribbed from the UTF-8 fixes in HTTP::Message, this may be discardable
-    # once full encoding support is in place:
-    *utf8_downgrade = defined(&utf8::downgrade) ?
-        \&utf8::downgrade : sub { };
 }
 
 @EXPORT_OK = qw(time2iso8601 smart_encode
@@ -63,7 +58,7 @@ BEGIN
                               RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.52';
+$VERSION = '1.53';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
@@ -396,10 +391,9 @@ sub serialize
 {
     my ($self, $fh) = @_;
 
-    my $str = $self->as_string;
-    RPC::XML::utf8_downgrade($str);
-
+    utf8::downgrade(my $str = $self->as_string);
     print {$fh} $str;
+
     return;
 }
 
@@ -409,7 +403,7 @@ sub length ## no critic (ProhibitBuiltinHomonyms)
 {
     my $self = shift;
 
-    RPC::XML::utf8_downgrade(my $str = $self->as_string);
+    utf8::downgrade(my $str = $self->as_string);
 
     return length $str;
 }
@@ -824,7 +818,7 @@ sub serialize
     for (keys %{$self})
     {
         ($key = $_) =~ s/$RPC::XML::XMLRE/$RPC::XML::XMLMAP{$1}/ge;
-        RPC::XML::utf8_downgrade($key);
+        utf8::downgrade($key);
         print {$fh} "<member><name>$key</name><value>";
         $self->{$_}->serialize($fh);
         print {$fh} '</value></member>';
@@ -844,7 +838,7 @@ sub length ## no critic (ProhibitBuiltinHomonyms)
     {
         $len += 45; # For all the constant XML presence
         $len += $self->{$key}->length;
-        RPC::XML::utf8_downgrade($key);
+        utf8::downgrade($key);
         $len += length $key;
     }
 
@@ -1357,8 +1351,7 @@ sub as_string
 sub serialize
 {
     my ($self, $fh) = @_;
-    my $name = $self->{name};
-    RPC::XML::utf8_downgrade($name);
+    utf8::downgrade(my $name = $self->{name});
 
     print {$fh} qq(<?xml version="1.0" encoding="$RPC::XML::ENCODING"?>);
 
@@ -1380,7 +1373,8 @@ sub length ## no critic (ProhibitBuiltinHomonyms)
     my $self = shift;
 
     my $len = 100 + length $RPC::XML::ENCODING; # All the constant XML present
-    $len += length $self->{name};
+    utf8::downgrade(my $name = $self->{name});
+    $len += length $name;
 
     for (@{$self->{args}})
     {

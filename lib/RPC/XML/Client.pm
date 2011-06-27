@@ -30,7 +30,7 @@
 
 package RPC::XML::Client;
 
-use 5.006001;
+use 5.008008;
 use strict;
 use warnings;
 use vars qw($VERSION $COMPRESSION_AVAILABLE);
@@ -60,7 +60,7 @@ BEGIN
     }
 }
 
-$VERSION = '1.33';
+$VERSION = '1.34';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -345,8 +345,7 @@ sub send_request ## no critic (ProhibitExcessComplexity)
     else
     {
         # Treat the content strictly in-memory
-        $content = $req->as_string;
-        RPC::XML::utf8_downgrade($content);
+        utf8::downgrade($content = $req->as_string);
         if ($do_compress)
         {
             $content = Compress::Zlib::compress($content);
