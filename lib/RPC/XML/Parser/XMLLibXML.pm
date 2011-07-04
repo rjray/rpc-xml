@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '1.17';
+$VERSION = '1.18';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
@@ -107,8 +107,8 @@ sub parse
             return ($uri =~ m{^file:/}) ? 1 : 0;
         },
         sub {},
-        sub {},
-        sub {},
+        undef,
+        undef,
     ]);
     $parser->input_callbacks($callbacks);
 
@@ -275,7 +275,9 @@ sub dom_request
     my ($self, $dom) = @_;
 
     my ($method_name, @args);
-    my @nodes = $dom->childNodes;
+    my @nodes = grep { ! ($_->isa('XML::LibXML::Text') &&
+                              ($_->textContent =~ /^\s*$/)) }
+        ($dom->childNodes);
 
     if (@nodes > 2)
     {
@@ -288,7 +290,7 @@ sub dom_request
         $method_name = $nodes[0]->textContent;
         $method_name =~ s/^\s+//;
         $method_name =~ s/\s+$//;
-        if ($method_name !~ m{[\w.:/]+})
+        if ($method_name !~ m{^[a-zA-Z0-9.:/]+$})
         {
             return qq{methodName value "$method_name" not a valid name};
         }
@@ -329,7 +331,9 @@ sub dom_response
 
     my $param;
     my $me = __PACKAGE__ . '::dom_response';
-    my @children = $dom->childNodes;
+    my @children = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                 ($_->textContent =~ /^\s*$/)) }
+        ($dom->childNodes);
     if (1 != @children)
     {
         return "$me: Illegal content within methodResponse: " .
@@ -342,7 +346,9 @@ sub dom_response
         # This is like delegating to dom_params() in the parsing of a request,
         # but it is limited to a single value (which is why it has to be
         # tested here).
-        @children = $node->childNodes;
+        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                  ($_->textContent =~ /^\s*$/)) }
+            ($node->childNodes);
         if (1 != @children)
         {
             return
@@ -356,7 +362,9 @@ sub dom_response
 
         # We know that $children[0] is the sole <param> tag. Look at its
         # content to see that we have exactly one <value> tag.
-        @children = $children[0]->childNodes;
+        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                  ($_->textContent =~ /^\s*$/)) }
+            ($children[0]->childNodes);
         if (1 != @children)
         {
             return
@@ -378,7 +386,9 @@ sub dom_response
     elsif ($node->nodeName eq 'fault')
     {
         # Make sure that we have a single <value></value> container
-        my @sub_children = $node->childNodes;
+        my @sub_children = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                         ($_->textContent =~ /^\s*$/)) }
+            ($node->childNodes);
         if (1 != @sub_children)
         {
             return
@@ -399,7 +409,12 @@ sub dom_response
             # Return if it was an error message
             return $value;
         }
-        $param = RPC::XML::fault->new($value->value);
+        if (! ref($param = RPC::XML::fault->new($value)))
+        {
+            # If it isn't a ref, then there was an error in creating the
+            # fault object from $value
+            return $RPC::XML::ERROR;
+        }
     }
     else
     {
@@ -421,12 +436,19 @@ sub dom_params
     # which contains a single <value> block.
     for my $child ($node->childNodes)
     {
+        if ($child->isa('XML::LibXML::Text') && $child->textContent =~ /^\s*$/)
+        {
+            next;
+        }
+
         if ((my $tag = $child->nodeName) ne 'param')
         {
             return "$me: Unknown tag in params: $tag (expected 'param')";
         }
         # There should be exactly one child, named 'value'
-        my @children = $child->childNodes;
+        my @children = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                     ($_->textContent =~ /^\s*$/)) }
+            ($child->childNodes);
         if (1 != @children)
         {
             return "$me: Too many child-nodes for param tag";
@@ -451,7 +473,9 @@ sub dom_value ## no critic(ProhibitExcessComplexity)
     my $me = __PACKAGE__ . '::dom_value';
 
     # Make sure we have only one child-node
-    my @children = $node->childNodes;
+    my @children = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                 ($_->textContent =~ /^\s*$/)) }
+        ($node->childNodes);
     if (1 != @children)
     {
         return "$me: Too many child-nodes for value tag";
@@ -483,25 +507,49 @@ sub dom_value ## no critic(ProhibitExcessComplexity)
     }
     elsif (my $type = $VALIDTYPES{$nodename})
     {
+        $value = $children[0]->textContent();
+        $value =~ s/^\s+//;
+        $value =~ s/\s+$//;
+        # Some minimal data-integrity checking
+        if ($type eq 'int' or $type eq 'i4' or $type eq 'i8')
+        {
+            if ($value !~ /^[-+]?\d+$/)
+            {
+                return "$me: Bad integer data read";
+            }
+        }
+        elsif ($type eq 'double')
+        {
+            if ($value !~
+                # Taken from perldata(1)
+                /^[+-]?(?=\d|[.]\d)\d*(?:[.]\d*)?(?:[Ee](?:[+-]?\d+))?$/x)
+            {
+                return "$me: Bad floating-point data read";
+            }
+        }
         $type = 'RPC::XML::' . $type;
         # The 'encoded' argument is only relevant for base64, ignored by all
         # the others.
-        $value = $type->new($children[0]->textContent(), 'encoded');
+        $value = $type->new($value, 'encoded');
     }
     elsif ($nodename eq 'array')
     {
-        @children = $children[0]->childNodes;
+        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                  ($_->textContent =~ /^\s*$/)) }
+            ($children[0]->childNodes);
         if ((1 != @children) || ($children[0]->nodeName ne 'data'))
         {
             return "$me: array tag must have just one child element, 'data'";
         }
-        @children = $children[0]->childNodes;
+        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                  ($_->textContent =~ /^\s*$/)) }
+            ($children[0]->childNodes);
 
         # Make sure every child node is a <value> tag
         if (my @bad = grep { $_->nodeName() ne 'value' } @children)
         {
-            return qq($me: Bad tag within array: got "$bad[0]", expected ) .
-                '"value"';
+            return qq($me: Bad tag within array: got ") . $bad[0]->nodeName .
+                '", expected "value"';
         }
 
         # Take the easy way out and use recursion to fill out an array ref
@@ -525,12 +573,14 @@ sub dom_value ## no critic(ProhibitExcessComplexity)
     }
     elsif ($nodename eq 'struct')
     {
-        @children = $children[0]->childNodes;
+        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                  ($_->textContent =~ /^\s*$/)) }
+            ($children[0]->childNodes);
         # Make sure every child node is a <member> tag
         if (my @bad = grep { $_->nodeName() ne 'member'} @children)
         {
-            return qq($me: Bad tag within struct: got "$bad[0]", expected ) .
-                '"member"';
+            return qq($me: Bad tag within struct: got ") .
+                $bad[0]->nodeName . '", expected "member"';
         }
 
         # This is a little more work than <array>, as each <member> must have
@@ -538,7 +588,9 @@ sub dom_value ## no critic(ProhibitExcessComplexity)
         $value = {};
         for my $member (@children)
         {
-            my @mchildren = $member->childNodes;
+            my @mchildren = grep { ! ($_->isa('XML::LibXML::Text') &&
+                                          ($_->textContent =~ /^\s*$/)) }
+                ($member->childNodes);
 
             if (2 != @mchildren)
             {
