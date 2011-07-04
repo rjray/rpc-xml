@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '1.16';
+$VERSION = '1.17';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
@@ -589,18 +589,22 @@ sub dom_base64
 
     if ($self->{base64_to_fh})
     {
-        require Symbol;
         require File::Spec;
         require File::Temp;
-        my ($fh, $tmpdir) = (Symbol::gensym(), File::Spec->tmpdir);
+        my $fh;
+        my $tmpdir = File::Spec->tmpdir;
 
         if ($self->{base64_temp_dir})
         {
             $tmpdir = $self->{base64_temp_dir};
         }
-        if  (! ($fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
+        # Whee! Turns out File::Temp->new() croaks on error, rather than just
+        # returning undef and setting $! the way you'd expect a failed attempt
+        # at opening a file to do...
+        $fh = eval { File::Temp->new(UNLINK => 1, DIR => $tmpdir) };
+        if  (! $fh)
         {
-            return "$me: Error opening temp file for base64: $!";
+            return "$me: Error opening temp file for base64: $@";
         }
         print {$fh} $dom->textContent;
 

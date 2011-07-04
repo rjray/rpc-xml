@@ -60,7 +60,7 @@ BEGIN
     }
 }
 
-$VERSION = '1.35';
+$VERSION = '1.36';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -268,13 +268,13 @@ sub send_request ## no critic (ProhibitExcessComplexity)
         $self->message_file_thresh <= $req->length)
     {
         require File::Spec;
-        require Symbol;
         # Start by creating a temp-file
         $tmpdir = $self->message_temp_dir || File::Spec->tmpdir;
-        $req_fh = Symbol::gensym();
-        if (! ($req_fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
+        # File::Temp->new() croaks on error, rather than just returning undef
+        $req_fh = eval { File::Temp->new(UNLINK => 1, DIR => $tmpdir) };
+        if (! $req_fh)
         {
-            return "$me: Error opening tmpfile: $!";
+            return "$me: Error opening tmpfile: $@";
         }
         binmode $req_fh;
         # Make it auto-flush
@@ -287,10 +287,10 @@ sub send_request ## no critic (ProhibitExcessComplexity)
         # into the primary handle.
         if ($do_compress && ($req->length >= $self->compress_thresh))
         {
-            my $fh2 = Symbol::gensym();
-            if (! ($fh2 = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
+            my $fh2 = eval { File::Temp->new(UNLINK => 1, DIR => $tmpdir) };
+            if (! $fh2)
             {
-                return "$me: Error opening tmpfile: $!";
+                return "$me: Error opening compression tmpfile: $@";
             }
             # Make it auto-flush
             $fh2->autoflush();

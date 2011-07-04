@@ -94,11 +94,12 @@ use constant M_BASE64_TO_FH         => 2;
 use constant M_BASE64_TEMP_DIR      => 3;
 use constant M_SPOOLING_BASE64_DATA => 4;
 
+use Scalar::Util 'reftype';
 use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = '1.25';
+$VERSION = '1.26';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -246,26 +247,22 @@ sub tag_start
         push @{$robj->[M_STACK]}, DATATYPE;
         # If the tag is <base64> and we've been told to use filehandles, set
         # that up.
-        if ($elem eq 'base64')
+        if (($elem eq 'base64') && $robj->[M_BASE64_TO_FH])
         {
-            if (! $robj->[M_BASE64_TO_FH])
-            {
-                return;
-            }
-
-            require Symbol;
             require File::Spec;
             require File::Temp;
-            my ($fh, $tmpdir) = (Symbol::gensym(), File::Spec->tmpdir);
+            my $fh;
+            my $tmpdir = File::Spec->tmpdir;
 
             if ($robj->[M_BASE64_TEMP_DIR])
             {
                 $tmpdir = $robj->[M_BASE64_TEMP_DIR];
             }
-            if (! ($fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
+            $fh = eval { File::Temp->new(UNLINK => 1, DIR => $tmpdir) };
+            if (! $fh)
             {
                 push @{$robj->[M_STACK]},
-                    "Error opening temp file for base64: $!", PARSE_ERROR;
+                    "Error opening temp file for base64: $@", PARSE_ERROR;
                 $self->finish;
             }
             $robj->[M_CDATA] = $fh;

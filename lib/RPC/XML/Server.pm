@@ -110,7 +110,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.58';
+$VERSION = '1.59';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -1913,10 +1913,15 @@ sub process_request ## no critic (ProhibitExcessComplexity)
             {
                 # Start by creating a temp-file
                 $tmpdir = $self->message_temp_dir || File::Spec->tmpdir;
-                if (! ($resp_fh = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
+                # File::Temp->new() croaks on error
+                $resp_fh =
+                    eval { File::Temp->new(UNLINK => 1, DIR => $tmpdir) };
+                if (! $resp_fh)
                 {
-                    $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                        "$me: Error opening tmpfile: $!");
+                    $conn->send_error(
+                        RC_INTERNAL_SERVER_ERROR,
+                        "$me: Error opening tmpfile: $@"
+                    );
                     next;
                 }
                 # Make it auto-flush
@@ -1929,11 +1934,14 @@ sub process_request ## no critic (ProhibitExcessComplexity)
                 # first, so that we can compress it into the primary handle.
                 if ($do_compress)
                 {
-                    my $fh2;
-                    if (! ($fh2 = File::Temp->new(UNLINK => 1, DIR => $tmpdir)))
+                    my $fh2 =
+                        eval { File::Temp->new(UNLINK => 1, DIR => $tmpdir) };
+                    if (! $fh2)
                     {
-                        $conn->send_error(RC_INTERNAL_SERVER_ERROR,
-                            "$me: Error opening tmpfile: $!");
+                        $conn->send_error(
+                            RC_INTERNAL_SERVER_ERROR,
+                            "$me: Error opening compression tmpfile: $@"
+                        );
                         next;
                     }
                     # Make it auto-flush
