@@ -60,7 +60,7 @@ BEGIN
     }
 }
 
-$VERSION = '1.34';
+$VERSION = '1.35';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -213,7 +213,11 @@ sub simple_request
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Class instance
-#                   $req      in      ref       RPC::XML::request object
+#                   $req      in      ref       RPC::XML::request object or
+#                                                 remote method name
+#                   @args     in      list      If $req is a method name, these
+#                                                 are potential arguments for
+#                                                 the remote call
 #
 #   Returns:        Success:    RPC::XML::response object instance
 #                   Failure:    error string
@@ -228,7 +232,11 @@ sub send_request ## no critic (ProhibitExcessComplexity)
 
     $me = ref($self) . '::send_request';
 
-    if (! (blessed $req and $req->isa('RPC::XML::request')))
+    if (! $req)
+    {
+        return "$me: No request object or remote method name given";
+    }
+    elsif (! (blessed $req and $req->isa('RPC::XML::request')))
     {
         # Assume that $req is the name of the routine to be called
         if (! ($req = RPC::XML::request->new($req, @args)))
