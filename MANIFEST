@@ -21,8 +21,6 @@ lib/Apache/RPC/status.code
 lib/Apache/RPC/status.help
 lib/RPC/XML.pm                 # Base data-type manipuation, etc.
 lib/RPC/XML/Client.pm          # Basic client class
-lib/RPC/XML/Function.pm        # Reference client implementation
-lib/RPC/XML/Method.pm          # Class encapsulation of RPC server methods
 lib/RPC/XML/Parser.pm          # Parser base class
 lib/RPC/XML/Parser/XMLParser.pm # Parser implementation class (XML::Parser)
 lib/RPC/XML/Parser/XMLLibXML.pm # Parser implementation class (XML::LibXML)
