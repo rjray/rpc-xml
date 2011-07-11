@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '1.18';
+$VERSION = '1.19';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
@@ -290,7 +290,7 @@ sub dom_request
         $method_name = $nodes[0]->textContent;
         $method_name =~ s/^\s+//;
         $method_name =~ s/\s+$//;
-        if ($method_name !~ m{^[a-zA-Z0-9.:/]+$})
+        if ($method_name !~ m{^[\w.:/]+$})
         {
             return qq{methodName value "$method_name" not a valid name};
         }
