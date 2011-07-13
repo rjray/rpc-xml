@@ -18,7 +18,7 @@ require RPC::XML::Client;
 $dir = File::Spec->catpath($vol, $dir, '');
 require File::Spec->catfile($dir, 'util.pl');
 
-plan tests => 27;
+plan tests => 33;
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -28,6 +28,10 @@ plan tests => 27;
 # environment.
 
 # Start with some very basic things, before actually firing up a live server.
+$cli = RPC::XML::Client->new();
+ok(! ref $cli, 'RPC::XML::Client::new without endpoint fails');
+like($cli, qr/Missing location argument/, 'Correct error message set');
+
 die "No usable port found between 9000 and 10000, skipping"
     if (($port = find_port) == -1);
 $cli = RPC::XML::Client->new("http://localhost:$port");
@@ -39,6 +43,13 @@ ok((! $cli->simple_request('system.identity')) && $RPC::XML::ERROR,
    'Calling a server method without a server sets $RPC::XML::ERROR');
 ok(! ref($cli->send_request('system.identity')),
    'send_request returns a non-ref value when there is no server');
+$res = $cli->send_request();
+ok(! ref $res, 'Call to send_request without a method name fails');
+like($res, qr/No request object/, 'Correct error message set');
+$res = $cli->send_request('bad^method');
+ok(! ref $res, 'Call to send_request with a bad method name fails');
+like($res, qr/Error creating RPC::XML::request object/,
+     'Correct error message set');
 
 # Test the error-handling callback
 $cli->error_handler(sub { $res++ });

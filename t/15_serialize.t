@@ -8,9 +8,8 @@ use vars qw($dir $vol $fh $file $tmpfile $md5_able $faux_req $faux_res $ofh
 
 use RPC::XML ':all';
 
-use Test;
+use Test::More tests => 20;
 use File::Spec;
-use IO::File;
 
 # We'll be using the <nil /> extension here:
 $RPC::XML::ALLOW_NIL = 1;
@@ -20,21 +19,19 @@ $dir = File::Spec->catpath($vol, $dir, '');
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
 $tmpfile = File::Spec->catfile($dir, "__tmp__${$}__");
 
-BEGIN
-{
-    eval "use Digest::MD5";
-    $md5_able = $@ ? 0 : 1;
-
-    plan tests => 8;
-}
-
 END
 {
-    unlink $tmpfile;
+    # Make sure we don't leave any droppings...
+    if (-f $tmpfile)
+    {
+        unlink $tmpfile;
+    }
 }
 
-die "Could not open $file for reading: $!"
-    unless $fh = IO::File->new("< $file");
+if (! (open $fh, '<', $file))
+{
+    die "Could not open $file for reading: $!";
+}
 
 $faux_req = RPC::XML::request->new(
     'test',
@@ -52,47 +49,145 @@ $faux_req = RPC::XML::request->new(
 );
 
 # This is a good place to test the length() method, while we're at it
-ok(length($faux_req->as_string), $faux_req->length);
+is(length($faux_req->as_string), $faux_req->length, 'Testing length() method');
 
-die "Could not open $tmpfile for read/write: $!"
-    unless $ofh = IO::File->new("+> $tmpfile");
-$ofh->autoflush(1);
+if (! (open $ofh, '+>', $tmpfile))
+{
+    die "Could not open $tmpfile for read/write: $!";
+}
+select $ofh; $| = 1; select STDOUT;
 
 $faux_req->serialize($ofh);
-ok(1); # Just happy we made it this far.
+ok(1, 'serialize method did not croak'); # Just happy we made it this far.
 
-ok(-s $ofh, length($faux_req->as_string));
+is(-s $ofh, length($faux_req->as_string), 'File size is correct');
 
-$ofh->seek(0, 0);
+seek $ofh, 0, 0;
 $data = '';
-read($ofh, $data, -s $ofh);
+read $ofh, $data, -s $ofh;
 
-ok($data, $faux_req->as_string);
+is($data, $faux_req->as_string, 'File content is correct');
 
 # Done with these for now
-$ofh->close; unlink $tmpfile;
-$fh->close;
+close $fh;
+close $ofh;
+unlink $tmpfile;
 
-die "Could not open $tmpfile for read/write: $!"
-    unless $ofh = IO::File->new("+> $tmpfile");
-$ofh->autoflush(1);
+# We'll be doing this next set twice, as RPC::XML::response::serialize has a
+# slightly different code-path for faults and all other responses.
+if (! (open $ofh, '+>', $tmpfile))
+{
+    die "Could not open $tmpfile for read/write: $!";
+}
+select $ofh; $| = 1; select STDOUT;
 
 $faux_res = RPC::XML::response->new(RPC::XML::fault->new(1, 'test'));
 
-# This is a good place to test the length() method, while we're at it
-ok(length($faux_res->as_string), $faux_res->length);
+is(length($faux_res->as_string), $faux_res->length,
+   'length() in fault response');
 
 $faux_res->serialize($ofh);
-ok(1); # Again, this means that all the triggered calls managed to not die
+# Again, this means that all the triggered calls managed to not die
+ok(1, 'serialize method did not croak');
 
-ok(-s $ofh, length($faux_res->as_string));
+is(-s $ofh, length($faux_res->as_string), 'Fault-response file size OK');
 
-$ofh->seek(0, 0);
+seek $ofh, 0, 0;
 $data = '';
-read($ofh, $data, -s $ofh);
+read $ofh, $data, -s $ofh;
 
-ok($data, $faux_res->as_string);
+is($data, $faux_res->as_string, 'Fault-response content is correct');
 
-$ofh->close;
+close $ofh;
+unlink $tmpfile;
+
+# Round two, with normal response (not fault)
+if (! (open $ofh, '+>', $tmpfile))
+{
+    die "Could not open $tmpfile for read/write: $!";
+}
+select $ofh; $| = 1; select STDOUT;
+
+$faux_res = RPC::XML::response->new('test');
+
+is(length($faux_res->as_string), $faux_res->length,
+   'length() in normal response');
+
+$faux_res->serialize($ofh);
+# Again, this means that all the triggered calls managed to not die
+ok(1, 'serialize method did not croak');
+
+is(-s $ofh, length($faux_res->as_string), 'Normal response file size OK');
+
+seek $ofh, 0, 0;
+$data = '';
+read $ofh, $data, -s $ofh;
+
+is($data, $faux_res->as_string, 'Normal response content OK');
+
+close $ofh;
+unlink $tmpfile;
+
+# Test some extra code-paths in the base64 logic:
+
+# Route 1: In-memory content
+if (! (open $ofh, '+>', $tmpfile))
+{
+    die "Could not open $tmpfile for read/write: $!";
+}
+select $ofh; $| = 1; select STDOUT;
+
+$faux_res = RPC::XML::response->new(RPC::XML::base64->new('a simple string'));
+
+is(length($faux_res->as_string), $faux_res->length,
+   'length() in normal response');
+
+$faux_res->serialize($ofh);
+# Again, this means that all the triggered calls managed to not die
+ok(1, 'serialize method did not croak');
+
+is(-s $ofh, length($faux_res->as_string), 'Normal response file size OK');
+
+seek $ofh, 0, 0;
+$data = '';
+read $ofh, $data, -s $ofh;
+
+is($data, $faux_res->as_string, 'Normal response content OK');
+
+close $ofh;
+unlink $tmpfile;
+
+# Route 2: Spool from a file that is already encoded
+if (! (open $ofh, '+>', $tmpfile))
+{
+    die "Could not open $tmpfile for read/write: $!";
+}
+select $ofh; $| = 1; select STDOUT;
+
+$file = File::Spec->catfile($dir, 'svsm_text.b64');
+if (! (open $fh, '<', $file))
+{
+    die "Could not open $file for reading: $!";
+}
+$faux_res = RPC::XML::response->new(RPC::XML::base64->new($fh, 'encoded'));
+
+is(length($faux_res->as_string), $faux_res->length,
+   'length() in normal response');
+
+$faux_res->serialize($ofh);
+# Again, this means that all the triggered calls managed to not die
+ok(1, 'serialize method did not croak');
+
+is(-s $ofh, length($faux_res->as_string), 'Normal response file size OK');
+
+seek $ofh, 0, 0;
+$data = '';
+read $ofh, $data, -s $ofh;
+
+is($data, $faux_res->as_string, 'Normal response content OK');
+
+close $fh;
+close $ofh;
+unlink $tmpfile;
 
 exit;

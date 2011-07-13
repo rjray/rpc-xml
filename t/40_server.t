@@ -5,12 +5,12 @@
 use strict;
 use subs qw(start_server find_port);
 use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
-            $list $meth @keys %seen $dir $vol);
+            $list $meth @keys %seen $dir $vol $oldtable $newtable $value);
 
 use Socket;
 use File::Spec;
 
-use Test::More tests => 66;
+use Test::More tests => 75;
 use LWP::UserAgent;
 use HTTP::Request;
 use Scalar::Util 'blessed';
@@ -37,10 +37,10 @@ sub failmsg { sprintf("%s at line %d", @_) }
 
 # Start with some very basic things, without actually firing up a live server.
 $srv = RPC::XML::Server->new(no_http => 1, no_default => 1);
-
 isa_ok($srv, 'RPC::XML::Server', '$srv<1>');
-# Suppress "used only once" warning
-$_ = $RPC::XML::Server::VERSION;
+
+# This assignment is just to suppress "used only once" warnings
+$value = $RPC::XML::Server::VERSION;
 is($srv->version, $RPC::XML::Server::VERSION,
    'RPC::XML::Server::version method');
 ok(! $srv->started, 'RPC::XML::Server::started method');
@@ -49,11 +49,66 @@ ok(! $srv->url, 'RPC::XML::Server::url method (empty)');
 ok(! $srv->requests, 'RPC::XML::Server::requests method (0)');
 ok($srv->response->isa('HTTP::Response'),
    'RPC::XML::Server::response method returns HTTP::Response');
+# Some negative tests:
+$meth = $srv->method_from_file('does_not_exist.xpl');
+ok(! ref $meth, 'Bad file did not result in method reference');
+like($meth, qr/Error opening.*does_not_exist/, 'Correct error message');
+$meth = $srv->proc_from_file('does_not_exist.xpl');
+ok(! ref $meth, 'Bad file did not result in proc reference');
+like($meth, qr/Error opening.*does_not_exist/, 'Correct error message');
+
+# Test the functionality of manipulating the fault table. First get the vanilla
+# table from a simple server object. Then create a new server object with both
+# a fault-base offset and some user-defined faults. We use the existing $srv to
+# get the "plain" table.
+$oldtable = $srv->{__fault_table};
+# Now re-assign $srv
+my $srv2 = RPC::XML::Server->new(
+    no_http         => 1,
+    no_default      => 1,
+    fault_code_base => 1000,
+    fault_table     => {
+        myfault1 => [ 2000, 'test' ],
+        myfault2 => 2001,
+    }
+);
+$newtable = $srv2->{__fault_table};
+# Compare number of faults, the values of the fault codes, and the presence of
+# the user-defined faults:
+ok((scalar(keys %$oldtable) + 2) == (scalar keys %$newtable),
+   'Proper number of relative keys');
+$value = 1;
+for my $key (keys %$oldtable)
+{
+    if ($newtable->{$key}->[0] != ($oldtable->{$key}->[0] + 1000))
+    {
+        $value = 0;
+        last;
+    }
+}
+ok($value, 'Fault codes adjustment yielded correct new codes');
+ok((exists $newtable->{myfault1} && exists $newtable->{myfault2} &&
+    ref($newtable->{myfault1}) eq 'ARRAY' && $newtable->{myfault2} == 2001 &&
+    $newtable->{myfault1}->[0] eq 2000),
+   'User-supplied fault elements look OK');
+
 # Done with this one, let it go
 undef $srv;
 
+# Let's test that server creation properly fails if/when HTTP::Daemon fails.
+# First find a port in use, preferably under 1024:
+SKIP: {
+    $port = find_port_in_use();
+    skip 'No in-use port found for negative testing, skipped', 2
+        if ($port == -1);
+
+    $srv = RPC::XML::Server->new(port => $port);
+    is(ref($srv), q{}, 'Bad new return is not an object');
+    like($srv, qr/Unable to create HTTP::Daemon/, 'Proper error message');
+}
+
 # This one will have a HTTP::Daemon server, but still no default methods
-die "No usable port found between 9000 and 10000, skipping"
+die "No usable port found between 9000 and 11000, skipping"
     if (($port = find_port) == -1);
 $srv = RPC::XML::Server->new(no_default => 1,
                              host => 'localhost', port => $port);
@@ -258,8 +313,11 @@ SKIP: {
         skip "Response content did not parse, cannot test", 2
             unless (ref $res and $res->isa('RPC::XML::response'));
         ok($res->is_fault, 'RT29351 live req: parsed $res is a fault');
-        like($res->value->value->{faultString}, qr/Stack corruption/,
-             'RT29351 live request: correct faultString');
+        like(
+            $res->value->value->{faultString},
+            qr/Illegal content in param tag/,
+            'RT29351 live request: correct faultString'
+        );
     }
 }
 stop_server($child);
@@ -802,4 +860,5 @@ SKIP: {
 
 # Don't leave any children laying around
 stop_server($child);
+
 exit;

@@ -9,17 +9,17 @@ use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
 
 BEGIN
 {
-	use Test::More;
+    use Test::More;
 
-	eval "use XML::LibXML";
-	if ($@)
-	{
-		plan skip_all => "XML::LibXML not installed";
-	}
-	else
-	{
-		plan tests => 62;
-	}
+    eval "use XML::LibXML";
+    if ($@)
+    {
+        plan skip_all => "XML::LibXML not installed";
+    }
+    else
+    {
+        plan tests => 62;
+    }
 }
 
 use Socket;
@@ -235,7 +235,7 @@ SKIP: {
         skip "Response content did not parse, cannot test", 2
             unless (ref $res and $res->isa('RPC::XML::response'));
         ok($res->is_fault, 'RT29351 live req: parsed $res is a fault');
-        like($res->value->value->{faultString}, qr/Extra content/,
+        like($res->value->value->{faultString}, qr/Too many child-nodes/,
              'RT29351 live request: correct faultString');
     }
 }

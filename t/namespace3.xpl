@@ -6,5 +6,5 @@
 <version>1.0</version>
 <signature>string</signature>
 <help>Namespace test method for RPC::XML::Method suite</help>
-<code language="perl">sub test { $value }</code>
+<code language="perl">sub test { no strict; $value }</code>
 </methoddef>

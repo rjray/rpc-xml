@@ -41,7 +41,7 @@ sub find_port
 
     my ($port, $sock);
 
-    for ($port = $start_at; $port < ($start_at + 1000); $port++)
+    for ($port = $start_at; $port < ($start_at + 2000); $port++)
     {
         $sock = IO::Socket->new(Domain   => AF_INET,
                                 PeerAddr => 'localhost',
@@ -52,30 +52,47 @@ sub find_port
     -1;
 }
 
+sub find_port_in_use
+{
+    my $start_at = $_[0] || 80;
+
+    my ($port, $sock);
+
+    for ($port = $start_at; $port < ($start_at + 2000); $port++)
+    {
+        $sock = IO::Socket->new(Domain   => AF_INET,
+                                PeerAddr => 'localhost',
+                                PeerPort => $port);
+        return $port if ref $sock;
+    }
+
+    -1;
+}
+
 sub read_config
 {
-	my $file = shift;
+    my $file = shift;
 
-	return {} unless -f $file;
+    return {} unless -f $file;
 
-	open(my $fh, "< $file") || die "Error opening $file: $!";
+    open(my $fh, "< $file") || die "Error opening $file: $!";
 
-	my $config = {};
+    my $config = {};
 
-	while (defined($_ = <$fh>))
-	{
-		next if /^#/;
-		chomp;
-		next if /^\s*$/;
+    while (defined($_ = <$fh>))
+    {
+        next if /^#/;
+        chomp;
+        next if /^\s*$/;
 
-		my ($key, $value) = split(/\s*=\s*/, $_, 2);
-		$value =~ s/\s+$//; # Lose trailing whitespace
-		$value = [ split(/\s*,\s*/, $value) ];
+        my ($key, $value) = split(/\s*=\s*/, $_, 2);
+        $value =~ s/\s+$//; # Lose trailing whitespace
+        $value = [ split(/\s*,\s*/, $value) ];
 
-		$config->{$key} = $value;
-	}
+        $config->{$key} = $value;
+    }
 
-	$config;
+    $config;
 }
 
 1;

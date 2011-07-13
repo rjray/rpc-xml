@@ -5,8 +5,8 @@
 use strict;
 use vars qw($val $obj);
 
-use Test::More tests => 9;
-use RPC::XML;
+use Test::More tests => 11;
+use RPC::XML 'smart_encode';
 
 # First ensure that we can't actually create these objects unless we explicitly
 # enable the extension:
@@ -27,7 +27,7 @@ is($obj->length, 6, 'Length of element');
 # Test the convenience function
 {
     use RPC::XML 'RPC_NIL';
-    
+
     isa_ok(RPC_NIL, 'RPC::XML::nil');
 }
 
@@ -37,5 +37,11 @@ $obj = RPC::XML::nil->new('ignored');
 isa_ok($obj, 'RPC::XML::nil');
 is($obj->as_string, '<nil/>', 'Stringification');
 is($obj->length, 6, 'Length of element');
+
+# With nil enabled, smart_encode() should now encode undef as a nil, not as a
+# null-length string:
+$obj = smart_encode(undef);
+is($obj->type, 'nil', 'smart_encode undef->string type');
+is($obj->value, undef, 'smart_encode undef->string value');
 
 exit 0;
