@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2010 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -58,7 +58,7 @@ BEGIN
                               RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.53';
+$VERSION = '1.54';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
@@ -138,17 +138,10 @@ sub RPC_NIL ()
 sub time2iso8601
 {
     my $time = shift || time;
-    my $zone = shift || q{};
 
     my @time = gmtime $time;
     $time = sprintf '%4d%02d%02dT%02d:%02d:%02dZ',
                     $time[5] + 1900, $time[4] + 1, @time[3, 2, 1, 0];
-    if ($zone)
-    {
-        my $char = $zone > 0 ? q{+} : q{-};
-        chop $time; # Lose the Z if we're specifying a zone
-        $time .= $char . sprintf '%02d:00', abs $zone;
-    }
 
     return $time;
 }
@@ -340,6 +333,14 @@ sub new
 
     $RPC::XML::ERROR = q{};
     $class = ref($class) || $class;
+
+    if ($class eq 'RPC::XML::simple_type')
+    {
+        $RPC::XML::ERROR = 'RPC::XML::simple_type::new: Cannot instantiate ' .
+            'this class directly';
+        return;
+    }
+
     if (ref $value)
     {
         # If it is a scalar reference, just deref
@@ -352,6 +353,7 @@ sub new
             # We can only manage scalar references (or blessed scalar refs)
             $RPC::XML::ERROR = "${class}::new: Cannot instantiate from a " .
                 'reference not derived from scalar';
+            return;
         }
     }
 
@@ -362,6 +364,13 @@ sub new
 sub value
 {
     my $self = shift;
+
+    if (! ref $self)
+    {
+        $RPC::XML::ERROR =
+            "{$self}::value: Cannot be called as a static method";
+        return;
+    }
 
     return ${$self};
 }
@@ -374,6 +383,8 @@ sub as_string
     my $class = ref $self;
     if (! $class)
     {
+        $RPC::XML::ERROR =
+            "{$self}::as_string: Cannot be called as a static method";
         return;
     }
     $class =~ s/^.*\://;
@@ -460,11 +471,13 @@ sub as_string
 {
     my $self = shift;
 
-    my $class = $self->type;
-    if (! $class)
+    if (! ref $self)
     {
+        $RPC::XML::ERROR =
+            "{$self}::as_string: Cannot be called as a static method";
         return;
     }
+    my $class = $self->type;
 
     (my $value = sprintf '%.20f', ${$self}) =~ s/([.]\d+?)0+$/$1/;
 
@@ -490,11 +503,13 @@ sub as_string
 
     my ($class, $value);
 
-    $class = $self->type;
-    if (! $class)
+    if (! ref $self)
     {
+        $RPC::XML::ERROR =
+            "{$self}::as_string: Cannot be called as a static method";
         return;
     }
+    $class = $self->type;
 
     ($value = defined ${$self} ? ${$self} : q{} )
         =~ s/$RPC::XML::XMLRE/$RPC::XML::XMLMAP{$1}/ge;
@@ -1077,17 +1092,23 @@ sub to_file
 
     my ($fh, $buf, $do_close, $count) = (undef, q{}, 0, 0);
 
-    if (ref $file and reftype($file) eq 'GLOB')
+    if (ref $file)
     {
-        $fh = $file;
+        if (reftype($file) eq 'GLOB')
+        {
+            $fh = $file;
+        }
+        else
+        {
+            $RPC::XML::ERROR = 'Unusable reference type passed to to_file';
+            return -1;
+        }
     }
     else
     {
-        require Symbol;
-        $fh = Symbol::gensym();
         if (! open $fh, '>', $file) ## no critic (RequireBriefOpen)
         {
-            $RPC::XML::ERROR = $!;
+            $RPC::XML::ERROR = "Error opening $file for writing: $!";
             return -1;
         }
         binmode $fh;
@@ -1124,6 +1145,8 @@ sub to_file
         }
         else
         {
+            # If the data is already decoded in the filehandle, then just copy
+            # it over.
             my $size;
             while ($size = read $self->{value_fh}, $buf, 4096)
             {
@@ -1131,6 +1154,8 @@ sub to_file
                 $count += $size;
             }
         }
+
+        # Restore the position of the file-pointer for the internal FH
         seek $self->{value_fh}, $self->{fh_pos}, 0;
     }
 
@@ -1138,7 +1163,7 @@ sub to_file
     {
         if (! close $fh)
         {
-            $RPC::XML::ERROR = $!;
+            $RPC::XML::ERROR = "Error closing $file after writing: $!";
             return -1;
         }
     }
@@ -1179,7 +1204,7 @@ sub new
         # Take the keys and values from the struct object as our own
         %args = %{$args[0]->value('shallow')};
     }
-    elsif (@args == 2)
+    elsif ((@args == 2) && ($args[0] =~ /^-?\d+$/) && length $args[1])
     {
         # This is a special convenience-case to make simple new() calls clearer
         %args = (faultCode   => RPC::XML::int->new($args[0]),
@@ -1299,6 +1324,14 @@ sub new
 
     # This is the method name to be called
     $name = shift @argz;
+    # Is it valid?
+    if ($name !~ m{^[\w.:/]+$})
+    {
+        $RPC::XML::ERROR =
+            'RPC::XML::request::new: Invalid method name specified';
+        return;
+    }
+
     # All the remaining args must be data.
     @argz = RPC::XML::smart_encode(@argz);
 
@@ -1307,7 +1340,7 @@ sub new
 
 # Accessor methods
 sub name { return shift->{name}; }
-sub args { return shift->{args} || []; }
+sub args { return shift->{args}; }
 
 ###############################################################################
 #

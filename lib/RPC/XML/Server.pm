@@ -67,7 +67,7 @@ package RPC::XML::Server;
 use 5.008008;
 use strict;
 use warnings;
-use vars qw($VERSION @ISA $INSTANCE $INSTALL_DIR %FAULT_TABLE  @XPL_PATH
+use vars qw($VERSION $INSTALL_DIR %FAULT_TABLE  @XPL_PATH
             $IO_SOCKET_SSL_HACK_NEEDED $COMPRESSION_AVAILABLE);
 
 use Carp qw(carp croak);
@@ -86,7 +86,8 @@ use RPC::XML::Procedure;
 
 BEGIN
 {
-    $INSTALL_DIR = (File::Spec->splitpath(__FILE__))[1];
+    $INSTALL_DIR =
+        File::Spec->catpath((File::Spec->splitpath(__FILE__))[0, 1], q{});
     @XPL_PATH = ($INSTALL_DIR, File::Spec->curdir);
 
     # For now, I have an ugly hack in place to make the functionality that
@@ -110,7 +111,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.59';
+$VERSION = '1.60';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -215,7 +216,6 @@ sub new ## no critic (ProhibitExcessComplexity)
     }
 
     # Compression support
-    $self->{__compress} = q{};
     if (delete $args{no_compress})
     {
         $self->{__compress} = q{};
@@ -247,22 +247,18 @@ sub new ## no critic (ProhibitExcessComplexity)
     # Set up the table of response codes/messages that will be used when the
     # server is sending a controlled error message to a client (as opposed to
     # something HTTP-level that is less within our control).
-    $self->{__fault_table} = {%FAULT_TABLE};
+    $self->{__fault_table} = {};
+    for my $fault (keys %FAULT_TABLE)
+    {
+        $self->{__fault_table}->{$fault} = [ @{$FAULT_TABLE{$fault}} ];
+    }
     if ($args{fault_code_base})
     {
         my $base = delete $args{fault_code_base};
         # Apply the numerical offset to all (current) error codes
         for my $key (keys %{$self->{__fault_table}})
         {
-            if (ref($self->{__fault_table}->{$key}))
-            {
-                # A ref is a listref where the first element is the code
-                $self->{__fault_table}->{$key}->[0] += $base;
-            }
-            else
-            {
-                $self->{__fault_table}->{$key} += $base;
-            }
+            $self->{__fault_table}->{$key}->[0] += $base;
         }
     }
     if ($args{fault_table})
@@ -1439,14 +1435,10 @@ sub method_from_file
 
     if (! File::Spec->file_name_is_absolute($file))
     {
-        my ($path, @path);
-        if (ref $self)
+        my $path;
+        for my $dir (@{$self->xpl_path}, @XPL_PATH)
         {
-            push @path, @{$self->xpl_path};
-        }
-        for (@path, @XPL_PATH)
-        {
-            $path = File::Spec->catfile($_, $file);
+            $path = File::Spec->catfile($dir, $file);
             if (-e $path)
             {
                 $file = File::Spec->canonpath($path);
@@ -1500,7 +1492,7 @@ sub get_method
         {
             # Try to load this dynamically on the fly, from any of the dirs
             # that are in this object's @xpl_path
-            (my $loadname = $name) =~ s/^system\.//;
+            (my $loadname = $name) =~ s/^system[.]//;
             $self->add_method("$loadname.xpl");
         }
         # If method is still not in the table, we were unable to load it
@@ -2177,8 +2169,6 @@ sub call
 #                   $self     in      ref       Object reference/static class
 #                   @details  in      ref       Details of names to add or skip
 #
-#   Globals:        $INSTALL_DIR
-#
 #   Returns:        $self
 #
 ###############################################################################
@@ -2186,7 +2176,7 @@ sub add_default_methods
 {
     my ($self, @details) = @_;
 
-    return $self->add_methods_in_dir($INSTALL_DIR, @details);
+    return $self->add_methods_in_dir($self->INSTALL_DIR, @details);
 }
 
 ###############################################################################
@@ -2223,7 +2213,7 @@ sub add_methods_in_dir
         }
         for (@details)
         {
-            if (! /\.xpl$/)
+            if (! /[.]xpl$/)
             {
                 $_ .= '.xpl';
             }
@@ -2236,7 +2226,7 @@ sub add_methods_in_dir
     {
         return "Error opening $dir for reading: $!";
     }
-    my @files = grep { $_ =~ /\.xpl$/ } readdir $dh;
+    my @files = grep { $_ =~ /[.]xpl$/ } readdir $dh;
     closedir $dh;
 
     for my $file (@files)

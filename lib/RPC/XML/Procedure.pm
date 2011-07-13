@@ -64,7 +64,7 @@ use RPC::XML 'smart_encode';
 # This module also provides RPC::XML::Method
 ## no critic (ProhibitMultiplePackages)
 
-$VERSION = '1.24';
+$VERSION = '1.25';
 $VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -95,8 +95,14 @@ sub new
     if (ref $argz[0])
     {
         # 1. A hashref containing all the relevant keys
-        $data  = {};
-        %{$data} = %{$argz[0]};
+        $data = {
+            namespace => q{},
+            version   => 0,
+            hidden    => 0,
+            help      => q{},
+            signature => [],
+        };
+        for (keys %{$argz[0]}) { $data->{$_} = $argz[0]->{$_} }
     }
     elsif (@argz == 1)
     {
@@ -115,7 +121,7 @@ sub new
             $data = $class->load_xpl_file($argz[0]);
             if (! ref $data)
             {
-                # load_XPL_path signalled an error
+                # load_xpl_path signalled an error
                 return $data;
             }
         }
@@ -126,7 +132,7 @@ sub new
             $data = load_xpl_file(\$class, $argz[0]);
             if (! ref $data)
             {
-                # load_XPL_path signalled an error
+                # load_xpl_path signalled an error
                 return $data;
             }
             $class = "RPC::XML::$class";
@@ -137,8 +143,13 @@ sub new
         # 3. If there is more than one arg, it's a sort-of-hash. That is, the
         #    key 'signature' is allowed to repeat.
         my ($key, $val);
-        $data = {};
-        $data->{signature} = [];
+        $data = {
+            namespace => q{},
+            version   => 0,
+            hidden    => 0,
+            help      => q{},
+            signature => [],
+        };
         while (@argz)
         {
             ($key, $val) = splice @argz, 0, 2;
@@ -150,10 +161,6 @@ sub new
                 push @{$data->{signature}},
                     ref $val ? join q{ } => @{$val} : $val;
             }
-            elsif (exists $data->{$key})
-            {
-                return "${class}::new: Key '$key' may not be repeated";
-            }
             else
             {
                 $data->{$key} = $val;
@@ -161,7 +168,7 @@ sub new
         }
     }
 
-    if (! (exists $data->{signature} &&
+    if (! ((exists $data->{signature}) &&
            (ref($data->{signature}) eq 'ARRAY') &&
            scalar(@{$data->{signature}}) &&
            $data->{name} &&
@@ -228,7 +235,10 @@ sub help
 {
     my ($self, $value) = @_;
 
-    $value and $self->{help} = $value;
+    if ($value)
+    {
+        $self->{help} = $value;
+    }
 
     return $self->{help};
 }
@@ -237,7 +247,10 @@ sub version
 {
     my ($self, $value) = @_;
 
-    $value and $self->{version} = $value;
+    if ($value)
+    {
+        $self->{version} = $value;
+    }
 
     return $self->{version};
 }
@@ -246,7 +259,10 @@ sub hidden
 {
     my ($self, $value) = @_;
 
-    $value and $self->{hidden} = $value;
+    if ($value)
+    {
+        $self->{hidden} = $value;
+    }
 
     return $self->{hidden};
 }
@@ -255,7 +271,10 @@ sub code
 {
     my ($self, $value) = @_;
 
-    ref $value eq 'CODE' and $self->{code} = $value;
+    if ($value and ref $value eq 'CODE')
+    {
+        $self->{code} = $value;
+    }
 
     return $self->{code};
 }
@@ -264,17 +283,29 @@ sub signature
 {
     my ($self, $sig) = @_;
 
-    if ($sig and ref $sig eq 'ARRAY')
+    if ($sig)
     {
-        my $old = $self->{signature};
-        $self->{signature} = $sig;
-        if (! ref $self->make_sig_table)
+        if (ref $sig eq 'ARRAY')
         {
-            # If it failed to re-init the table, restore the old list (and old
-            # table). We don't have to check this return, since it had worked
-            # before.
-            $self->{signature} = $old;
-            $self->make_sig_table;
+            my $old = $self->{signature};
+            $self->{signature} = $sig;
+            my $tmp = $self->make_sig_table;
+            if (! ref $tmp)
+            {
+                # If it failed to re-init the table, restore the old list (and
+                # old table). We don't have to check this return, since it had
+                # worked before.
+                $self->{signature} = $old;
+                $self->make_sig_table;
+
+                # Return an error message, since this failed:
+                return ref($self) . "::signature: $tmp";
+            }
+        }
+        else
+        {
+            # Anything not an array ref isn't useful
+            return ref($self) . "::signature: Bad value '$sig'";
         }
     }
 
@@ -334,9 +365,8 @@ sub is_valid
 {
     my $self = shift;
 
-    return (    (ref($self->{code}) eq 'CODE')
-            and $self->{name}
-            and (ref($self->{signature}) && scalar(@{$self->{signature}})));
+    return ((ref($self->{code}) eq 'CODE') && $self->{name} &&
+            (ref($self->{signature}) && scalar(@{$self->{signature}})));
 }
 
 ###############################################################################
@@ -387,29 +417,28 @@ sub delete_signature
 {
     my ($self, @args) = @_;
 
-    my (%sigs, $tmp, $old);
+    my %sigs;
 
-    # Preserve the original in case adding the new one causes a problem
-    $old = $self->{signature};
+    my $old = $self->{signature};
     %sigs = map { $_ => 1 } @{$self->{signature}};
     for my $one_sig (@args)
     {
-        $tmp = (ref $one_sig) ? join q{ } => @{$one_sig} : $one_sig;
+        my $tmp = (ref $one_sig) ? join q{ } => @{$one_sig} : $one_sig;
         delete $sigs{$tmp};
     }
     $self->{signature} = [ keys %sigs ];
-    $tmp = $self->make_sig_table;
-    if  (! ref $tmp)
+
+    if (@{$self->{signature}} == 0)
     {
-        # Because this failed, we have to restore the old table and return
-        # an error
+        # Don't have to re-run make_sig_table, because it's still valid for
+        # this set:
         $self->{signature} = $old;
-        $self->make_sig_table;
-        return
-            ref $self . '::delete_signature: Error re-hashing table: ' . $tmp;
+        return ref($self) . '::delete_signature: Cannot delete last signature';
     }
 
-    return $self;
+    # This can't fail, because deleting a signature will never cause an
+    # ambiguity in the table like adding one could.
+    return $self->make_sig_table;
 }
 
 ###############################################################################
@@ -506,7 +535,8 @@ sub load_xpl_file
 
     require XML::Parser;
 
-    my ($me, $data, $signature, $code, $codetext, $accum, $P, %attr);
+    my ($me, $data, $signature, $code, $codetext, $accum, $P, $fh, $eval_ret,
+        %attr);
 
     if (ref($self) eq 'SCALAR')
     {
@@ -519,10 +549,10 @@ sub load_xpl_file
     }
     $data = {};
     # So these don't end up undef, since they're optional elements
-    $data->{hidden}  = 0;
-    $data->{version} = q{};
-    $data->{help}    = q{};
-    $data->{called}  = 0;
+    $data->{hidden}    = 0;
+    $data->{version}   = q{};
+    $data->{help}      = q{};
+    $data->{namespace} = __PACKAGE__;
     $P = XML::Parser->new(
         ErrorContext => 1,
         Handlers     => {
@@ -531,12 +561,16 @@ sub load_xpl_file
             End => sub {
                 my $elem = $_[1];
 
-                $accum =~ s/^[\s\n]+//;
-                $accum =~ s/[\s\n]+$//;
+                $accum =~ s/^\s+//;
+                $accum =~ s/\s+$//;
                 if ($elem eq 'signature')
                 {
                     $data->{signature} ||= [];
                     push @{$data->{signature}}, $accum;
+                }
+                elsif ($elem eq 'hidden')
+                {
+                    $data->{hidden} = 1;
                 }
                 elsif ($elem eq 'code')
                 {
@@ -570,31 +604,20 @@ sub load_xpl_file
     {
         return "$me: Error creating XML::Parser object";
     }
-    open my $fh, '<', $file or
-        return "$me: Error opening $file for reading: $!";
+    open $fh, '<', $file or return "$me: Error opening $file for reading: $!";
     # Trap any errors
-    eval { $P->parse($fh); }; ## no critic (RequireCheckingReturnValueOfEval)
+    $eval_ret = eval { $P->parse($fh); 1; };
     close $fh or return "$me: Error closing $file: $!";
-    if ($@)
+    if (! $eval_ret)
     {
         return "$me: Error parsing $file: $@";
     }
 
     # Try to normalize $codetext before passing it to eval
 
-    # First step is set the namespace the code will live in. The default is
-    # the package that we're in (be it ::Procedure, ::Method, etc.). If they
-    # specify one, use it instead.
-    if ($data->{namespace})
-    {
-        # Fudge a little and let them use '.' as a synonym for '::' in the
-        # namespace hierarchy.
-        $data->{namespace} =~ s/[.]/::/g;
-    }
-    else
-    {
-        $data->{namespace} = __PACKAGE__;
-    }
+    # Fudge a little and let them use '.' as a synonym for '::' in the
+    # namespace hierarchy.
+    $data->{namespace} =~ s/[.]/::/g;
 
     # Next step is to munge away any actual subroutine name so that the eval
     # yields an anonymous sub. Also insert the namespace declaration.
@@ -604,9 +627,11 @@ sub load_xpl_file
     return "$me: Error creating anonymous sub: $@" if $@;
 
     $data->{code} = $code;
-    # Add the file's mtime for when we check for stat-based reloading
-    $data->{mtime} = (stat $file)[9];
-    $data->{file}  = $file;
+    # Add the file's mtime for when we check for stat-based reloading, name
+    # for reloading, and init the "called" counter to 0.
+    $data->{mtime}  = (stat $file)[9];
+    $data->{file}   = $file;
+    $data->{called} = 0;
 
     return $data;
 }
@@ -887,8 +912,8 @@ when methods were implemented simply as hash references.
 
 If there is more than one argument in the list, then the list is assumed to be
 a sort of "ersatz" hash construct, in that one of the keys (C<signature>) is
-allowed to occur multiple times. Otherwise, each of the following is allowed,
-but may only occur once:
+allowed to "stack" if it occur multiple times. Otherwise, any keys that occur
+multiple times overwrite the previous value:
 
 =over 12
 
@@ -903,8 +928,8 @@ calls for the method
 
 =item signature
 
-(May appear more than once) Provides one calling-signature for the method, as
-either a space-separated string of types or a list-reference
+Provides one calling-signature for the method, as either a space-separated
+string of types or a list-reference
 
 =item help
 
@@ -1104,6 +1129,8 @@ The lightweight DTD for the layout can be summarized as:
                                   signature+, help?, code)>
         <!ELEMENT  methoddef     (name, namespace?, version?, hidden?,
                                   signature+, help?, code)>
+        <!ELEMENT  functiondef   (name, namespace?, version?, hidden?,
+                                  signature+, help?, code)>
         <!ELEMENT  name       (#PCDATA)>
         <!ELEMENT  namespace  (#PCDATA)>
         <!ELEMENT  version    (#PCDATA)>
@@ -1113,8 +1140,8 @@ The lightweight DTD for the layout can be summarized as:
         <!ELEMENT  code       (#PCDATA)>
         <!ATTLIST  code       language (#PCDATA)>
 
-The containing tag is always one of C<< <methoddef> >> or
-C<< <proceduredef> >>. The tags that specify name, signatures and the code
+The containing tag is always one of C<< <methoddef> >>, C<< <proceduredef> >>
+or C<< <functiondef> >>. The tags that specify name, signatures and the code
 itself must always be present. Some optional information may also be
 supplied. The "help" text, or what an introspection API would expect to use to
 document the method, is also marked as optional.  Having some degree of
