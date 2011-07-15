@@ -64,7 +64,7 @@ use RPC::XML 'smart_encode';
 # This module also provides RPC::XML::Method
 ## no critic (ProhibitMultiplePackages)
 
-$VERSION = '1.25';
+$VERSION = '1.26';
 $VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -89,7 +89,10 @@ sub new
 
     my $data;    # This will be a hashref that eventually gets blessed
 
-    $class = ref($class) || $class;
+    if (ref $class)
+    {
+        return __PACKAGE__ . '::new: Must be called as a static method';
+    }
 
     # There are three things that @argz could be:
     if (ref $argz[0])
@@ -108,35 +111,24 @@ sub new
     {
         # 2. Exactly one non-ref element, a file to load
 
-        # And here is where I cheat in a way that makes even me uncomfortable.
-        #
         # Loading code from an XPL file, it can actually be of a type other
         # than how this constructor was called. So what we are going to do is
-        # this: If $class is undef, that can only mean that we were called
-        # with the intent of letting the XPL file dictate the resulting object.
-        # If $class is set, then we'll call load_xpl_file normally, as a
-        # method, to allow for subclasses to tweak things.
-        if (defined $class)
+        # this: If $class is RPC::XML::Procedure, act like a factory method
+        # and return whatever the file claims to be. Otherwise, the file has
+        # to match $class or it's an error.
+        ($data, my $pkg) = load_xpl_file($argz[0]);
+        if (! ref $data)
         {
-            $data = $class->load_xpl_file($argz[0]);
-            if (! ref $data)
-            {
-                # load_xpl_path signalled an error
-                return $data;
-            }
+            # load_xpl_path signalled an error
+            return $data;
         }
-        else
+        if ($class ne 'RPC::XML::Procedure' && $pkg ne $class)
         {
-            # Spoofing the "class" argument to load_xpl_file makes me feel
-            # even dirtier...
-            $data = load_xpl_file(\$class, $argz[0]);
-            if (! ref $data)
-            {
-                # load_xpl_path signalled an error
-                return $data;
-            }
-            $class = "RPC::XML::$class";
+            return "${class}::new: File loaded ($argz[0]) must match " .
+                'this calling class';
         }
+
+        $class = $pkg;
     }
     else
     {
@@ -486,13 +478,15 @@ sub reload
 {
     my $self = shift;
 
+    my $class = ref $self;
+    my $me = "${class}::reload";
+
     if (! $self->{file})
     {
-        return sprintf '%s::reload: No file associated with method %s',
-            ref $self, $self->{name};
+        return "$me: No file associated with method $self->{name}";
     }
 
-    my $tmp = $self->load_xpl_file($self->{file});
+    my ($tmp) = load_xpl_file($self->{file});
 
     if (ref $tmp)
     {
@@ -504,8 +498,10 @@ sub reload
         # Re-calculate the signature table, in case that changed as well
         return $self->make_sig_table;
     }
-
-    return $tmp;
+    else
+    {
+        return "$me: Error loading $self->{file}: $tmp";
+    }
 }
 
 ###############################################################################
@@ -515,13 +511,10 @@ sub reload
 #   Description:    Load a XML-encoded method description (generally denoted
 #                   by a *.xpl suffix) and return the relevant information.
 #
-#                   Note that this does not fill in $self if $self is a hash
-#                   or object reference. This routine is not a substitute for
-#                   calling new() (which is why it isn't part of the public
-#                   API).
+#                   Note that this is not a method, it does not take $self as
+#                   an argument.
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $self     in      ref       Object of this class
 #                   $file     in      scalar    File to load
 #
 #   Returns:        Success:    hashref of values
@@ -530,23 +523,15 @@ sub reload
 ###############################################################################
 sub load_xpl_file
 {
-    my $self = shift;
     my $file = shift;
 
     require XML::Parser;
 
     my ($me, $data, $signature, $code, $codetext, $accum, $P, $fh, $eval_ret,
-        %attr);
+        $class, %attr);
 
-    if (ref($self) eq 'SCALAR')
-    {
-        $me = __PACKAGE__ . '::load_xpl_file';
-    }
-    else
-    {
-        $me = (ref $self) || $self || __PACKAGE__;
-        $me .= '::load_xpl_file';
-    }
+    $me = __PACKAGE__ . '::load_xpl_file';
+
     $data = {};
     # So these don't end up undef, since they're optional elements
     $data->{hidden}    = 0;
@@ -582,13 +567,7 @@ sub load_xpl_file
                 }
                 elsif ('def' eq substr $elem, -3)
                 {
-                    # Don't blindly store the container tag...
-                    # We may need it to tell the caller what
-                    # our type is
-                    if (ref $self eq 'SCALAR')
-                    {
-                        ${$self} = ucfirst substr $elem, 0, -3;
-                    }
+                    $class = 'RPC::XML::' . ucfirst substr $elem, 0, -3;
                 }
                 else
                 {
@@ -633,7 +612,7 @@ sub load_xpl_file
     $data->{file}   = $file;
     $data->{called} = 0;
 
-    return $data;
+    return ($data, $class);
 }
 
 ###############################################################################
@@ -791,7 +770,7 @@ use subs qw(new signature make_sig_table clone is_valid match_signature);
 
 # These two are only implemented here at all, because some of the logic in
 # other places call them
-sub signature        { return; }
+sub signature        { return [ 'scalar' ]; }
 sub make_sig_table   { return shift; }
 sub add_signature    { return shift; }
 sub delete_signature { return shift; }

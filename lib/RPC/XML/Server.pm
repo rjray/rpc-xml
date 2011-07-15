@@ -111,7 +111,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.60';
+$VERSION = '1.61';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -1453,7 +1453,10 @@ sub method_from_file
         $file = File::Spec->rel2abs($file);
     }
 
-    return RPC::XML::Procedure::new(undef, $file);
+    # When reading a XPL file, RPC::XML::Procedure->new() acts sort of like a
+    # factory constructor, returning the type of object the XPL file specifies
+    # even when that isn't RPC::XML::Procedure.
+    return RPC::XML::Procedure->new($file);
 }
 
 # Same as above, but for name-symmetry

@@ -4,7 +4,7 @@
 
 use strict;
 use warnings;
-use vars qw($obj $obj2 $flag $dir $vol $tmp);
+use vars qw($obj $obj2 $flag $dir $vol $tmp $tmpfile $fh);
 
 use File::Spec;
 use Test::More;
@@ -12,10 +12,11 @@ use Test::More;
 use RPC::XML qw($ALLOW_NIL RPC_INT);
 use RPC::XML::Procedure;
 
-plan tests => 60;
+plan tests => 76;
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, '');
+$tmpfile = File::Spec->catfile($dir, "tmp_xpl_$$.xpl");
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -32,6 +33,12 @@ isa_ok($obj, 'RPC::XML::Procedure', '$obj');
 SKIP: {
     skip 'Cannot test without object', 16
         unless (ref($obj) eq 'RPC::XML::Procedure');
+
+    # Arguments here don't matter, just testing that trying to call new() on a
+    # referent fails:
+    $obj2 = $obj->new();
+    like($obj2, qr/Must be called as a static method/,
+         'Correct error message from bad new()');
 
     ok(($obj->name() eq 'test.test') &&
        ($obj->namespace() eq '') &&
@@ -72,7 +79,11 @@ SKIP: {
     is(scalar(@{$obj->signature}), 3, 'signature() reverted to old value');
     # This should fail for a different reason
     $err = $obj->signature(1);
-    like($err, qr/Bad value '1'/, 'signature() failed correctly on bad input')
+    like($err, qr/Bad value '1'/, 'signature() failed correctly on bad input');
+
+    # What happens if I try reload() on it?
+    $err = $obj->reload();
+    like($err, qr/No file associated with method/, 'reload() fails OK');
 }
 
 # Basic new() using faux hash table input
@@ -134,7 +145,7 @@ like($obj, qr/error parsing/i, 'Bad XPL [2] not loaded');
 
 # And the third bowl of porridge was _just_ _right_...
 $obj = RPC::XML::Method->new(File::Spec->catfile($dir, 'meth_good_1.xpl'));
-isa_ok($obj, 'RPC::XML::Method');
+isa_ok($obj, 'RPC::XML::Method', '$obj');
 
 SKIP: {
     skip 'Cannot test without a value $obj', 20
@@ -149,8 +160,10 @@ SKIP: {
     ok(ref($obj) && (ref($obj->code) eq 'CODE'),
        'Good XPL load, code() accessor');
 
-    # This looks more complex than it is. The code returns this specific key:
-    is($obj->code->({ method_name => $obj->name }), $obj->name(),
+    # This looks more complex than it is. The code returns this specific key,
+    # but because this is a RPC::XML::Method, it expects a ref as the first
+    # argument, representing a RPC::XML::Server (or derived) instance.
+    is($obj->code->(undef, { method_name => $obj->name }), $obj->name(),
        'Good XPL load, code() invocation');
 
     # Time to test cloning
@@ -224,6 +237,42 @@ SKIP: {
     undef $obj;
 }
 
+# Check the other two proc-types being loaded from files:
+$obj = RPC::XML::Procedure->new(File::Spec->catfile($dir, 'meth_good_2.xpl'));
+isa_ok($obj, 'RPC::XML::Procedure', '$obj');
+
+# This should return an RPC::XML::Function object, despite being called via
+# RPC::XML::Procedure.
+$obj = RPC::XML::Procedure->new(File::Spec->catfile($dir, 'meth_good_3.xpl'));
+isa_ok($obj, 'RPC::XML::Function', '$obj');
+
+# With this later object, test some of the routines that are overridden in
+# RPC::XML::Function:
+SKIP: {
+    skip 'Cannot test without RPC::XML::Function object', 6
+        if (ref($obj) ne 'RPC::XML::Function');
+
+    ok($obj->is_valid, 'RPC::XML::Function passed is_valid test');
+    ok((ref($obj->signature) eq 'ARRAY' && (@{$obj->signature} == 1)),
+       'RPC::XML::Function valid return from signature() <1>');
+    is($obj->add_signature('int int'), $obj,
+       'RPC::XML::Function valid add_signature');
+    ok((ref($obj->signature) eq 'ARRAY' && (@{$obj->signature} == 1)),
+       'RPC::XML::Function valid return from signature() <2>');
+    is($obj->match_signature('int'), 'scalar',
+       'RPC::XML::Function correct signature match');
+    is($obj->delete_signature('int int'), $obj,
+       'RPC::XML::Function valid delete_signature');
+    ok((ref($obj->signature) eq 'ARRAY' && (@{$obj->signature} == 1)),
+       'RPC::XML::Function valid return from signature() <3>');
+}
+
+# But this should fail, as only RPC::XML::Procedure is allowed to act as a
+# factory constructor:
+$obj = RPC::XML::Method->new(File::Spec->catfile($dir, 'meth_good_3.xpl'));
+like($obj, qr/must match this calling class/,
+     'Correct error message on bad constructor call');
+
 # Test procedures that utilize nil data-types
 $ALLOW_NIL = 1;
 
@@ -286,6 +335,66 @@ SKIP: {
     is($obj->match_signature('int'), 'nil', 'Test match_signature() with nil');
     ok(! $obj->match_signature('string'),
        'Test match_signature() with nil [2]');
+}
+
+# This one will be fun. To truly test the reload() method, I need a file to
+# actually change. So create a file, load it as XPL, rewrite it and reload it.
+if (! (open $fh, '>', $tmpfile))
+{
+    die "Error opening $tmpfile for writing: $!";
+}
+print {$fh} <<END;
+<?xml version="1.0"?>
+<!DOCTYPE proceduredef SYSTEM "rpc-method.dtd">
+<proceduredef>
+  <name>test</name>
+  <version>1.0</version>
+  <signature>string</signature>
+  <help>Simple test method for RPC::XML::Procedure class</help>
+  <code language="perl">sub test { 'foo' }</code>
+</proceduredef>
+END
+close $fh;
+$obj = RPC::XML::Procedure->new($tmpfile);
+isa_ok($obj, 'RPC::XML::Procedure', '$obj');
+SKIP: {
+    skip 'Cannot test without object', 3
+        if (ref($obj) ne 'RPC::XML::Procedure');
+
+    if (! (open $fh, '>', $tmpfile))
+    {
+        die "Error opening $tmpfile for writing: $!";
+    }
+    print {$fh} <<END;
+<?xml version="1.0"?>
+<!DOCTYPE proceduredef SYSTEM "rpc-method.dtd">
+<proceduredef>
+  <name>test</name>
+  <version>1.0</version>
+  <signature>string</signature>
+  <help>Simple test method for RPC::XML::Procedure class</help>
+  <code language="perl">sub test { 'bar' }</code>
+</proceduredef>
+END
+    close $fh;
+    is($obj->reload(), $obj, 'reload() returns ok');
+    my $val;
+    eval { $val = $obj->call(); };
+    is($val->value, 'bar', 'Reloaded method gave correct value');
+
+    # Try to reload again, after unlinking the file
+    unlink $tmpfile;
+    $val = $obj->reload();
+    like($val, qr/Error loading/, 'Correct error from reload() after unlink');
+}
+
+END
+{
+    # Just in case...
+    if (-e $tmpfile)
+    {
+        unlink $tmpfile;
+    }
 }
 
 exit 0;
