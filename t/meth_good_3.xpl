@@ -3,7 +3,6 @@
 <functiondef>
 <name>test.rpc.xml.function</name>
 <version>1.0</version>
-<signature>string</signature>
 <help>Simple test method for RPC::XML::Function class</help>
 <code language="perl">sub test { $_[0] }</code>
 </functiondef>

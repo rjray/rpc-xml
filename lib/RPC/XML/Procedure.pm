@@ -21,7 +21,6 @@
 #                   version      /
 #                   hidden      /
 #                   clone
-#                   is_valid
 #                   add_signature
 #                   delete_signature
 #                   make_sig_table
@@ -52,9 +51,10 @@ use 5.008008;
 use strict;
 use warnings;
 use vars qw($VERSION);
-use subs qw(new is_valid name code signature help version hidden
-    add_signature delete_signature make_sig_table match_signature
-    reload load_xpl_file);
+use subs qw(
+    new name code signature help version hidden add_signature
+    delete_signature make_sig_table match_signature reload load_xpl_file
+);
 
 use File::Spec;
 use Scalar::Util 'blessed';
@@ -64,7 +64,7 @@ use RPC::XML 'smart_encode';
 # This module also provides RPC::XML::Method
 ## no critic (ProhibitMultiplePackages)
 
-$VERSION = '1.26';
+$VERSION = '1.27';
 $VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -160,13 +160,17 @@ sub new
         }
     }
 
-    if (! ((exists $data->{signature}) &&
-           (ref($data->{signature}) eq 'ARRAY') &&
-           scalar(@{$data->{signature}}) &&
-           $data->{name} &&
-           $data->{code}))
+    # A sanity check on the content of the object before we bless it:
+    if (! ($data->{name} && $data->{code}))
     {
-        return "${class}::new: Missing required data";
+        return "${class}::new: Missing required data (name or code)";
+    }
+    if (($class ne 'RPC::XML::Function') &&
+        (! ((exists $data->{signature}) &&
+            (ref($data->{signature}) eq 'ARRAY') &&
+            scalar(@{$data->{signature}}))))
+    {
+        return "${class}::new: Missing required data (signatures)";
     }
     bless $data, $class;
 
@@ -336,29 +340,6 @@ sub clone
     }
 
     return bless $new_self, ref $self;
-}
-
-###############################################################################
-#
-#   Sub Name:       is_valid
-#
-#   Description:    Boolean test to tell if the calling object has sufficient
-#                   data to be used as a server method for RPC::XML::Server or
-#                   Apache::RPC::Server.
-#
-#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $self     in      ref       Object to test
-#
-#   Returns:        Success:    1, valid/complete
-#                   Failure:    0, invalid/incomplete
-#
-###############################################################################
-sub is_valid
-{
-    my $self = shift;
-
-    return ((ref($self->{code}) eq 'CODE') && $self->{name} &&
-            (ref($self->{signature}) && scalar(@{$self->{signature}})));
 }
 
 ###############################################################################
@@ -752,7 +733,6 @@ use vars qw(@ISA);
 #
 #   Functions:      signature
 #                   make_sig_table (called by some superclass methods)
-#                   is_valid
 #                   add_signature
 #                   delete_signature
 #                   match_signature
@@ -764,7 +744,7 @@ package RPC::XML::Function;
 use strict;
 use warnings;
 use vars qw(@ISA);
-use subs qw(new signature make_sig_table clone is_valid match_signature);
+use subs qw(new signature make_sig_table clone match_signature);
 
 @ISA = qw(RPC::XML::Procedure);
 
@@ -774,28 +754,6 @@ sub signature        { return [ 'scalar' ]; }
 sub make_sig_table   { return shift; }
 sub add_signature    { return shift; }
 sub delete_signature { return shift; }
-
-###############################################################################
-#
-#   Sub Name:       is_valid
-#
-#   Description:    Boolean test to tell if the calling object has sufficient
-#                   data to be used as a server method for RPC::XML::Server or
-#                   Apache::RPC::Server.
-#
-#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $self     in      ref       Object to test
-#
-#   Returns:        Success:    1, valid/complete
-#                   Failure:    0, invalid/incomplete
-#
-###############################################################################
-sub is_valid
-{
-    my $self = shift;
-
-    return ((ref $self->{code} eq 'CODE') and $self->{name});
-}
 
 ###############################################################################
 #
@@ -990,14 +948,6 @@ value.
 
 Returns or sets the version string for the method (overwriting as with the
 other accessors).
-
-=item is_valid
-
-Returns a true/false value as to whether the object currently has enough
-content to be a valid method for a server to publish. This entails having at
-the very least a name, one or more signatures, and a code-reference to route
-the calls to. A server created from the classes in this software suite will
-not accept a method that is not valid.
 
 =item add_signature(LIST)
 

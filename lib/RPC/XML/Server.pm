@@ -111,7 +111,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.61';
+$VERSION = '1.62';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -426,13 +426,6 @@ sub add_method
     {
         return "$me: Method argument must be a file name, a hash " .
             'reference or an object derived from RPC::XML::Procedure';
-    }
-
-    # Do some sanity-checks
-    if (! $meth->is_valid)
-    {
-        return "$me: Method missing required data; check name, code and/or " .
-            'signature';
     }
 
     $self->{__method_table}->{$meth->name} = $meth;

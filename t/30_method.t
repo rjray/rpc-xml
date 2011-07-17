@@ -12,7 +12,7 @@ use Test::More;
 use RPC::XML qw($ALLOW_NIL RPC_INT);
 use RPC::XML::Procedure;
 
-plan tests => 76;
+plan tests => 75;
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, '');
@@ -31,7 +31,7 @@ $obj = RPC::XML::Procedure->new({ name      => 'test.test',
                                   code      => sub { $flag = 1; } });
 isa_ok($obj, 'RPC::XML::Procedure', '$obj');
 SKIP: {
-    skip 'Cannot test without object', 16
+    skip 'Cannot test without object', 15
         unless (ref($obj) eq 'RPC::XML::Procedure');
 
     # Arguments here don't matter, just testing that trying to call new() on a
@@ -48,7 +48,6 @@ SKIP: {
     $flag = 0;
     eval { $obj->code->(); };
     ok((! $@) && $flag, 'Calling the code');
-    ok($obj->is_valid(), 'Test is_valid() method');
 
     # What about the missing values?
     is($obj->help(),      '', 'Null value for help()');
@@ -96,7 +95,7 @@ $obj = RPC::XML::Procedure->new(
 );
 isa_ok($obj, 'RPC::XML::Procedure', '$obj<2>');
 SKIP: {
-    skip 'Cannot test without object', 3
+    skip 'Cannot test without object', 2
         unless (ref($obj) eq 'RPC::XML::Procedure');
 
     ok(($obj->name() eq 'test.test') &&
@@ -107,7 +106,6 @@ SKIP: {
        'Basic accessors <2>');
     $flag = eval { $obj->code->(); };
     ok((! $@) && $flag, 'Calling the code <2>');
-    ok($obj->is_valid(), 'Test is_valid() method <2>');
 }
 
 # This should succeed, but "hidden" is false because the second overrides the
@@ -123,17 +121,29 @@ $obj = RPC::XML::Procedure->new(
 isa_ok($obj, 'RPC::XML::Procedure', '$obj<3>');
 is($obj->hidden(), 0, 'hidden() is correctly false');
 
+# This should fail due to missing name
+$obj = RPC::XML::Procedure->new({ code => sub { 1; } });
+like($obj, qr/Missing required data \(name or code\)/,
+     'Correct constructor failure [1]');
+
+# This should fail due to missing code
+$obj = RPC::XML::Procedure->new({ name => 'test.test1' });
+like($obj, qr/Missing required data \(name or code\)/,
+     'Correct constructor failure [2]');
+
 # This should fail due to missing information (the signature)
 $obj = RPC::XML::Method->new({ name => 'test.test2',
                                code => sub { $flag = 2; } });
-ok(! ref($obj), 'Correct constructor failure [1]');
+like($obj, qr/Missing required data \(signatures\)/,
+     'Correct constructor failure [3]');
 
 # This one fails because the signatures have a collision
 $obj = RPC::XML::Method->new({ name      => 'test.test2',
                                signature => [ 'int int',
                                               'string int' ],
                                code      => sub { $flag = 2; } });
-ok(! ref($obj), 'Correct constructor failure [2]');
+like($obj, qr/two different return values for one set of params/,
+     'Correct constructor failure [4]');
 
 # This file will not load due to missing required information
 $obj = RPC::XML::Method->new(File::Spec->catfile($dir, 'meth_bad_1.xpl'));
@@ -249,10 +259,9 @@ isa_ok($obj, 'RPC::XML::Function', '$obj');
 # With this later object, test some of the routines that are overridden in
 # RPC::XML::Function:
 SKIP: {
-    skip 'Cannot test without RPC::XML::Function object', 6
+    skip 'Cannot test without RPC::XML::Function object', 5
         if (ref($obj) ne 'RPC::XML::Function');
 
-    ok($obj->is_valid, 'RPC::XML::Function passed is_valid test');
     ok((ref($obj->signature) eq 'ARRAY' && (@{$obj->signature} == 1)),
        'RPC::XML::Function valid return from signature() <1>');
     is($obj->add_signature('int int'), $obj,
