@@ -10,7 +10,7 @@ use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
 use Socket;
 use File::Spec;
 
-use Test::More tests => 75;
+use Test::More tests => 83;
 use LWP::UserAgent;
 use HTTP::Request;
 use Scalar::Util 'blessed';
@@ -856,6 +856,174 @@ SKIP: {
     skip "Server response was error, cannot test", 1 unless $res;
     $res = $res->value->value;
     is($res->{total_requests}, 20, 'system.status, final request tally');
+}
+
+# This time we have to stop the server regardless of whether the response was
+# an error. We're going to add some more methods to test some of the error code
+# and other bits in RPC::XML::Procedure.
+stop_server($child);
+$srv->add_method({
+    type      => 'procedure',
+    name      => 'argcount.p',
+    signature => [ 'int' ],
+    code      => sub { return scalar(@_); },
+});
+$srv->add_method({
+    name      => 'argcount.m',
+    signature => [ 'int' ],
+    code      => sub { return scalar(@_); },
+});
+$srv->add_method({
+    type => 'function',
+    name => 'argcount.f',
+    code => sub { return scalar(@_); },
+});
+$srv->add_method({
+    name      => 'die1',
+    signature => [ 'int' ],
+    code      => sub { die "die\n"; },
+});
+$srv->add_method({
+    name      => 'die2',
+    signature => [ 'int' ],
+    code      => sub { die RPC::XML::fault->new(999, 'inner fault'); },
+});
+
+# Start the server again, with the new methods
+$child = start_server($srv);
+
+# First, call the argcount.? routines, to see that we are getting the correct
+# number of args passed in. Up to now, everything running on $srv has been in
+# the RPC::XML::Method class. This will test some of the other code.
+my @returns = ();
+for my $type (qw(p m f))
+{
+    $req->content(RPC::XML::request->new("argcount.$type")->as_string);
+    $bucket = 0;
+    $SIG{ALRM} = sub { $bucket++ };
+    alarm 120;
+    $res = $UA->request($req);
+    alarm 0;
+    if ($bucket)
+    {
+        push @returns, 'timed-out';
+    }
+    else
+    {
+        $res = $parser->parse($res->content);
+        if (ref($res) ne 'RPC::XML::response')
+        {
+            push @returns, 'parse-error';
+        }
+        else
+        {
+            push @returns, $res->value->value;
+        }
+    }
+}
+# Finally, test what we got from those three calls:
+is(join(q{,} => @returns), '0,1,0', 'Arg-count testing of procedure types');
+
+# While we're at it... test that a ::Function can take any args list
+$req->content(RPC::XML::request->new("argcount.f", 1, 1, 1)->as_string);
+$bucket = 0;
+$SIG{ALRM} = sub { $bucket++ };
+alarm 120;
+$res = $UA->request($req);
+alarm 0;
+SKIP: {
+    if ($bucket)
+    {
+        skip 'Second call to argcount.f timed out', 1;
+    }
+    else
+    {
+        $res = $parser->parse($res->content);
+        if (ref($res) ne 'RPC::XML::response')
+        {
+            skip 'Second call to argcount.f failed to parse', 1;
+        }
+        else
+        {
+            is($res->value->value, 3, 'A function takes any argslist');
+        }
+    }
+}
+
+# And test that those that aren't ::Function recognize bad parameter lists
+$req->content(RPC::XML::request->new("argcount.p", 1, 1, 1)->as_string);
+$bucket = 0;
+$SIG{ALRM} = sub { $bucket++ };
+alarm 120;
+$res = $UA->request($req);
+alarm 0;
+SKIP: {
+    if ($bucket)
+    {
+        skip 'Second call to argcount.f timed out', 1;
+    }
+    else
+    {
+        $res = $parser->parse($res->content);
+        if (ref($res) ne 'RPC::XML::response')
+        {
+            skip 'Second call to argcount.f failed to parse', 1;
+        }
+        else
+        {
+            skip "Test did not return fault, cannot test", 2
+                if (! $res->is_fault);
+            is($res->value->code, 201,
+               'Bad params list test: Correct faultCode');
+            like($res->value->string,
+                 qr/no matching signature for the argument list/,
+                 'Bad params list test: Correct faultString');
+        }
+    }
+}
+
+# Test behavior when the called function throws an exception
+my %die_tests = (
+    die1 => {
+        code   => 300,
+        string => "Code execution error: Method die1 returned error: die\n",
+    },
+    die2 => {
+        code   => 999,
+        string => 'inner fault',
+    },
+);
+for my $test (sort keys %die_tests)
+{
+    $req->content(RPC::XML::request->new($test)->as_string);
+    $bucket = 0;
+    $SIG{ALRM} = sub { $bucket++ };
+    alarm 120;
+    $res = $UA->request($req);
+    alarm 0;
+  SKIP: {
+        if ($bucket)
+        {
+            skip "Test '$test' timed out, cannot test results", 2;
+        }
+        else
+        {
+            $res = $parser->parse($res->content);
+            if (ref($res) ne 'RPC::XML::response')
+            {
+                skip "Test '$test' failed to parse, cannot test results", 2;
+            }
+            else
+            {
+                skip "Test '$test' did not return fault, cannot test", 2
+                    if (! $res->is_fault);
+                is($res->value->code, $die_tests{$test}{code},
+                   "Test $test: Correct faultCode");
+                is($res->value->string, $die_tests{$test}{string},
+                   "Test $test: Correct faultString");
+            }
+        }
+    }
 }
 
 # Don't leave any children laying around

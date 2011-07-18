@@ -50,7 +50,7 @@ package RPC::XML::Procedure;
 use 5.008008;
 use strict;
 use warnings;
-use vars qw($VERSION);
+use vars qw($VERSION %VALID_TYPES);
 use subs qw(
     new name code signature help version hidden add_signature
     delete_signature make_sig_table match_signature reload load_xpl_file
@@ -64,8 +64,15 @@ use RPC::XML 'smart_encode';
 # This module also provides RPC::XML::Method
 ## no critic (ProhibitMultiplePackages)
 
-$VERSION = '1.27';
+$VERSION = '1.28';
 $VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
+
+# This should match the set of type-classes defined in RPC::XML.pm. Note that
+# we use "datetime_iso8601" instead of "dateTime.iso8601", because that is how
+# it has to be in the signature.
+%VALID_TYPES = map { $_ => 1 }
+    (qw(int i4 i8 double string boolean datetime_iso8601 nil array struct
+        base64));
 
 ###############################################################################
 #
@@ -98,13 +105,15 @@ sub new
     if (ref $argz[0])
     {
         # 1. A hashref containing all the relevant keys
+
+        # Start wtih the defaults for the optional keys
         $data = {
             namespace => q{},
             version   => 0,
             hidden    => 0,
             help      => q{},
-            signature => [],
         };
+        # Copy everything from the hash, don't try to use it directly
         for (keys %{$argz[0]}) { $data->{$_} = $argz[0]->{$_} }
     }
     elsif (@argz == 1)
@@ -189,6 +198,8 @@ sub new
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object of this class
 #
+#   Globals:        %VALID_TYPES
+#
 #   Returns:        Success:    $self
 #                   Failure:    error message
 #
@@ -197,23 +208,36 @@ sub make_sig_table
 {
     my $self = shift;
 
-    my ($return, $rest);
+    my ($return, $rest, @rest);
+    my $me = ref($self) . '::make_sig_table';
 
     delete $self->{sig_table};
     for my $sig (@{$self->{signature}})
     {
-        ($return, $rest) = split / /, $sig, 2;
-        if (! $rest)
+        ($return, @rest) = split / /, $sig;
+        if (! $return)
         {
-            $rest = q{};
+            return "$me: Invalid signature, cannot be null";
         }
+        if (! $VALID_TYPES{$return})
+        {
+            return "$me: Unknown return type '$return'";
+        }
+        # Not going to add List::MoreUtils to my dependencies list, so suppress
+        # this ciritic flag:
+        ## no critic (ProhibitBooleanGrep)
+        if (grep { ! $VALID_TYPES{$_} } @rest)
+        {
+            return "$me: One or more invalid types in signature";
+        }
+
+        $rest = join q{ } => @rest;
         # If the key $rest already exists, then this is a collision
         if ($self->{sig_table}->{$rest})
         {
             return
-                ref($self) . '::make_sig_table: Cannot have two different ' .
-                "return values for one set of params ($return vs. " .
-                "$self->{sig_table}->{$rest})";
+                "$me: Cannot have two different return values for one set " .
+                "of params ($return vs. $self->{sig_table}->{$rest})";
         }
 
         $self->{sig_table}->{$rest} = $return;
@@ -615,14 +639,14 @@ sub load_xpl_file
 #   Environment:    None.
 #
 #   Returns:        Success:    value
-#                   Failure:    dies with RPC::XML::Fault object as message
+#                   Failure:    RPC::XML::fault object
 #
 ###############################################################################
 sub call
 {
     my ($self, $srv, @data) = @_;
 
-    my (@paramtypes, @params, $signature, $resptype, $response, $name, $noinc);
+    my (@paramtypes, @params, $signature, $resptype, $response, $name);
 
     $name = $self->name;
     # Create the param list.
@@ -642,25 +666,10 @@ sub call
         );
     }
 
-    # Make sure that the response-type is a valid XML-RPC type
-    if (($resptype ne 'scalar') && (! "RPC::XML::$resptype"->can('new')))
-    {
-        return $srv->server_fault(badsignature =>
-            "Signature [$signature] for method $name has unknown " .
-            "return-type '$resptype'");
-    }
-
     # Set these in case the server object is part of the param list
     local $srv->{signature} =          ## no critic (ProhibitLocalVars)
         [ $resptype, @paramtypes ];
     local $srv->{method_name} = $name; ## no critic (ProhibitLocalVars)
-    # If the method being called is "system.status", check to see if we should
-    # increment the server call-count.
-    $noinc =
-        (($name eq 'system.status') &&
-            @data &&
-            ($paramtypes[0] eq 'boolean') &&
-            $params[0]) ? 1 : 0;
     # For RPC::XML::Method (and derivatives), pass the server object
     if ($self->isa('RPC::XML::Method'))
     {
@@ -672,15 +681,24 @@ sub call
     {
         # On failure, propagate user-generated RPC::XML::fault exceptions, or
         # transform Perl-level error/failure into such an object
-        if ($@)
+        if (blessed $@ and $@->isa('RPC::XML::fault'))
         {
-            return (blessed $@ and $@->isa('RPC::XML::fault')) ?
-                $@ : $srv->server_fault(execerror =>
-                                        "Method $name returned error: $@");
+            return $@;
+        }
+        else
+        {
+            return $srv->server_fault(
+                execerror => "Method $name returned error: $@"
+            );
         }
     }
 
-    if (! $noinc)
+    # Increment the 'called' key on the proc UNLESS the proc is named
+    # 'system.status' and has a boolean-true as the first param.
+    if (! (($name eq 'system.status') &&
+           @data &&
+           ($paramtypes[0] eq 'boolean') &&
+           $params[0]))
     {
         $self->{called}++;
     }
@@ -744,35 +762,20 @@ package RPC::XML::Function;
 use strict;
 use warnings;
 use vars qw(@ISA);
-use subs qw(new signature make_sig_table clone match_signature);
+use subs qw(
+    signature make_sig_table add_signature delete_signature match_signature
+);
 
 @ISA = qw(RPC::XML::Procedure);
 
-# These two are only implemented here at all, because some of the logic in
-# other places call them
+# These are the bits that have to be different for RPC::XML::Function versus
+# the other procedure types. They are simple-enough that they don't need
+# dedicated comment-blocks for them.
 sub signature        { return [ 'scalar' ]; }
 sub make_sig_table   { return shift; }
 sub add_signature    { return shift; }
 sub delete_signature { return shift; }
-
-###############################################################################
-#
-#   Sub Name:       match_signature
-#
-#   Description:    Noop. Needed for RPC::XML::Server.
-#
-#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
-#                   $self     in      ref       Object of this class
-#                   $sig      in      scalar    Signature to check for
-#
-#   Returns:        Success:    return type as a string
-#                   Failure:    0
-#
-###############################################################################
-sub match_signature
-{
-    return 'scalar';
-}
+sub match_signature  { return 'scalar'; }
 
 1;
 

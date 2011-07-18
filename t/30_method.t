@@ -12,7 +12,7 @@ use Test::More;
 use RPC::XML qw($ALLOW_NIL RPC_INT);
 use RPC::XML::Procedure;
 
-plan tests => 75;
+plan tests => 81;
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, '');
@@ -145,6 +145,27 @@ $obj = RPC::XML::Method->new({ name      => 'test.test2',
 like($obj, qr/two different return values for one set of params/,
      'Correct constructor failure [4]');
 
+# Fails because of a null signature
+$obj = RPC::XML::Method->new({ name      => 'test.test2',
+                               signature => [ '' ],
+                               code      => sub { $flag = 2; } });
+like($obj, qr/Invalid signature, cannot be null/,
+     'Correct constructor failure [5]');
+
+# Fails because of an unknown type in the return value slot
+$obj = RPC::XML::Method->new({ name      => 'test.test2',
+                               signature => [ 'frob int' ],
+                               code      => sub { $flag = 2; } });
+like($obj, qr/Unknown return type 'frob'/,
+     'Correct constructor failure [6]');
+
+# Fails because of an unknown type in the args-list
+$obj = RPC::XML::Method->new({ name      => 'test.test2',
+                               signature => [ 'int string frob int' ],
+                               code      => sub { $flag = 2; } });
+like($obj, qr/One or more invalid types in signature/,
+     'Correct constructor failure [7]');
+
 # This file will not load due to missing required information
 $obj = RPC::XML::Method->new(File::Spec->catfile($dir, 'meth_bad_1.xpl'));
 like($obj, qr/missing/i, 'Bad XPL [1] not loaded');
@@ -259,7 +280,7 @@ isa_ok($obj, 'RPC::XML::Function', '$obj');
 # With this later object, test some of the routines that are overridden in
 # RPC::XML::Function:
 SKIP: {
-    skip 'Cannot test without RPC::XML::Function object', 5
+    skip 'Cannot test without RPC::XML::Function object', 8
         if (ref($obj) ne 'RPC::XML::Function');
 
     ok((ref($obj->signature) eq 'ARRAY' && (@{$obj->signature} == 1)),
@@ -274,6 +295,15 @@ SKIP: {
        'RPC::XML::Function valid delete_signature');
     ok((ref($obj->signature) eq 'ARRAY' && (@{$obj->signature} == 1)),
        'RPC::XML::Function valid return from signature() <3>');
+    # Can we clone it?
+    $obj2 = $obj->clone();
+    isa_ok($obj2, ref($obj), '$obj2');
+    ok(($obj->name()    eq $obj2->name())    &&
+       ($obj->version() eq $obj2->version()) &&
+       ($obj->help()    eq $obj2->help()),
+       'Compare accessors of clone and source');
+    is($obj->code(), $obj2->code(),
+       'Clone code() ref value is same as source');
 }
 
 # But this should fail, as only RPC::XML::Procedure is allowed to act as a

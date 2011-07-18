@@ -111,7 +111,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.62';
+$VERSION = '1.63';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -419,7 +419,10 @@ sub add_method
     }
     elsif (ref $meth eq 'HASH')
     {
-        my $class = 'RPC::XML::' . ucfirst($meth->{type} || 'method');
+        # If the type of this method is not set, default to "method". The
+        # add_procedure and add_function calls should set this as needed.
+        $meth->{type} ||= 'method';
+        my $class = 'RPC::XML::' . ucfirst $meth->{type};
         $meth = $class->new($meth);
     }
     elsif (! (blessed $meth and $meth->isa('RPC::XML::Procedure')))
@@ -2106,7 +2109,9 @@ sub dispatch
     }
     else
     {
-        $response = $self->server_fault(badmethod => $meth);
+        $response = $self->server_fault(
+            badmethod => "No method '$meth' on server"
+        );
     }
 
     # All the eval'ing and error-trapping happened within the method class
