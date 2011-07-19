@@ -58,7 +58,7 @@ BEGIN
                               RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.54';
+$VERSION = '1.55';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
@@ -1578,7 +1578,7 @@ RPC::XML - A set of classes for core data, message and XML handling
     use RPC::XML;
 
     $req = RPC::XML::request->new('fetch_prime_factors',
-                                  RPC::XML::int->new(985120528));
+                                  RPC::XML::int->new(985_120_528));
     ...
     $resp = RPC::XML::ParserFactory->new()->parse(STREAM);
     if (ref($resp))
@@ -1592,14 +1592,16 @@ RPC::XML - A set of classes for core data, message and XML handling
 
 =head1 DESCRIPTION
 
-The B<RPC::XML> package is an implementation of the B<XML-RPC> standard.
+The B<RPC::XML> package is an implementation of the B<XML-RPC> standard. The
+package as a whole provides classes for data, for clients, for servers and for
+parsers (based on the L<XML::Parser|XML::Parser> and L<XML::LibXML|XML::LibXML>
+packages from CPAN).
 
-The package provides a set of classes for creating values to pass to the
+This module provides a set of classes for creating values to pass to the
 constructors for requests and responses. These are lightweight objects, most of
-which are implemented as tied scalars so as to associate specific type
-information with the value. Classes are also provided for requests, responses,
-faults (errors) and a parsers based on the L<XML::Parser|XML::Parser> and
-L<XML::LibXML|XML::LibXML> packages from CPAN.
+which are implemented as blessed scalar references so as to associate specific
+type information with the value. Classes are also provided for requests,
+responses and faults (errors) and a parsers .
 
 This module does not actually provide any transport implementation or server
 basis. For these, see L<RPC::XML::Client|RPC::XML::Client> and
@@ -1607,9 +1609,8 @@ L<RPC::XML::Server|RPC::XML::Server>, respectively.
 
 =head1 SUBROUTINES/METHODS
 
-At present, three simple subroutines are available for import. They must be
-explicitly imported as part of the C<use> statement, or with a direct call to
-C<import>:
+At present, two subroutines are available for import. They must be explicitly
+imported as part of the C<use> statement, or with a direct call to C<import>:
 
 =over 4
 
@@ -1650,7 +1651,7 @@ B<RPC::XML::datetime_iso8601> class.
 =back
 
 In addition to these, the following "helper" functions are also available. They
-may be imported explicitly, or via a tag of C<:types>:
+may be imported explicitly, or all may be imported via the tag C<:types>:
 
     RPC_BOOLEAN RPC_INT RPC_I4 RPC_I8 RPC_DOUBLE
     RPC_DATETIME_ISO8601 RPC_BASE64 RPC_STRING RPC_NIL
@@ -1664,7 +1665,7 @@ the tag C<:all>.
 
 =head1 CLASSES
 
-The classes provided by this module are broken into two groups: I<datatype>
+The classes provided by this module are broken into two groups: I<data>
 classes and I<message> classes.
 
 =head2 Data Classes
@@ -1696,7 +1697,7 @@ Returns the value as a XML-RPC fragment, with the proper tags, etc.
 =item serialize($filehandle)
 
 Send the stringified rendition of the data to the given file handle. This
-allows messages with arbitrarily-large Base-64 data within them to be sent
+allows messages with arbitrarily-large base-64 data within them to be sent
 without having to hold the entire message within process memory.
 
 =item length
@@ -1759,18 +1760,22 @@ program may specify any of: C<0>, C<no>, C<false>, C<1>, C<yes>, C<true>.
 =item RPC::XML::datetime_iso8601
 
 Creates an instance of the XML-RPC C<dateTime.iso8601> type. The specification
-for ISO 8601 may be found elsewhere. No processing is done to the data.
+for ISO 8601 may be found elsewhere. No processing is done to the data. Note
+that the XML-RPC specification actually got the format of an ISO 8601 date
+slightly wrong. Because this is what is in the published spec, this package
+produces dates that match the XML-RPC spec, not the the ISO 8601 spec. However,
+it will I<read> date-strings in proper ISO 8601 format.
 
 =item RPC::XML::nil
 
 Creates a C<nil> value. The value returned will always be B<undef>. No value
 should be passed when calling the constructor.
 
-Note that nil is an extension to B<XML-RPC>, which is not supported by
-all implementations. B<$RPC::XML::ALLOW_NIL> must be set to a non-false
-value before objects of this type can be constructed. See
-L</GLOBAL VARIABLES>. If B<$RPC::XML::ALLOW_NIL> is set to a false value,
-the parsers will not recognize the C<< <nil /> >> tag at all.
+Note that nil is an extension to B<XML-RPC>, which is not supported by all
+implementations. B<$RPC::XML::ALLOW_NIL> must be set to a non-false value
+before objects of this type can be constructed. See L</GLOBAL
+VARIABLES>. However, even if B<$RPC::XML::ALLOW_NIL> is set to a false value,
+the parsers will recognize the C<< <nil /> >> tag and construct an object.
 
 In practice, this type is only useful to denote the equivalent of a "void"
 return value from a function. The type itself is not interchangeable with
@@ -1943,7 +1948,7 @@ provided for clarity and simplicity.
 =head1 DIAGNOSTICS
 
 All constructors (in all data classes) return C<undef> upon failure, with the
-error message available in the package-global variable B<C<$RPC::XML::ERROR>>.
+error message available in the package-global variable B<$RPC::XML::ERROR>.
 
 =head1 GLOBAL VARIABLES
 
@@ -2013,6 +2018,10 @@ L<http://cpanratings.perl.org/d/RPC-XML>
 
 L<http://search.cpan.org/dist/RPC-XML>
 
+=item * MetaCPAN
+
+L<https://metacpan.org/release/RPC-XML>
+
 =item * Source code on GitHub
 
 L<http://github.com/rjray/rpc-xml>
@@ -2021,7 +2030,7 @@ L<http://github.com/rjray/rpc-xml>
 
 =head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2010 by Randy J. Ray.
+This file and the code within are copyright (c) 2011 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or

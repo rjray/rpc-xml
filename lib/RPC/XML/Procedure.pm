@@ -790,19 +790,12 @@ RPC::XML::Procedure - Object encapsulation of server-side RPC procedures
     require RPC::XML::Procedure;
 
     ...
-    $method_1 = RPC::XML::Procedure->new({ name => 'system.identity',
-                                           code => sub { ... },
-                                           signature => [ 'string' ] });
-    $method_2 = RPC::XML::Procedure->new('/path/to/status.xpl');
-
-=head1 IMPORTANT NOTE
-
-This package is comprised of the code that was formerly B<RPC::XML::Method>.
-The package was renamed when the decision was made to support procedures and
-methods as functionally different entities. It is not necessary to include
-both this module and B<RPC::XML::Method> -- this module provides the latter as
-an empty subclass. In time, B<RPC::XML::Method> will be removed from the
-distribution entirely.
+    $procedure = RPC::XML::Procedure->new({ name => 'system.identity',
+                                            code => sub { ... },
+                                            signature => [ 'string' ] });
+    $method    = RPC::XML::Method->new('/path/to/status.xpl');
+    $function  = RPC::XML::Function->new(name => 'add',
+                                         code => sub { ... });
 
 =head1 DESCRIPTION
 
@@ -820,6 +813,42 @@ themselves. In the spirit of the original hashes, all the key data is kept in
 clear, intuitive hash keys (rather than obfuscated as the other classes
 do). Thus it is important to be clear on the interface here before
 sub-classing this package.
+
+=head1 CLASSES
+
+This module provides three classes, representing the three types of procedures
+that servers can use:
+
+=over
+
+=item Methods (B<RPC::XML::Method>)
+
+Code that is considered a "method" by the server is called as though it were,
+in fact, a method in that class. The first argument in the list is the server
+object itself, with the arguments to the call making up the rest of the list.
+The server checks the signature of the method against the arguments list
+before the call is made. See below (L</"How Procedures Are Called">) for more
+on the invocation of code as methods.
+
+=item Procedures (B<RPC::XML::Procedure>)
+
+Code that is considered a "procedure" by the server is called like a normal
+(non-method) subroutine call. The server object is not injected into the
+arguments list. The signature of the procedure is checked again the list of
+arguments before the call is made, as with methods.
+
+=item Functions (B<RPC::XML::Function>)
+
+Lastly, code that is considered a "function" is the simplest of the three:
+it does not have the server object injected into the arguments list, and no
+check of signatures is done before the call is made. It is the responsibility
+of the function to properly understand the arguments list, and to return a
+value that the caller will understand.
+
+=back
+
+There is (currently) no version that is called like a method but ignores
+signatures like a function.
 
 =head1 SUBROUTINES/METHODS
 
@@ -1089,7 +1118,7 @@ may serve as examples of what the file should look like.
 Some of the information in the XPL file is only for book-keeping: the version
 stamp of a method is never involved in the invocation. The server also keeps
 track of the last-modified time of the file the method is read from, as well
-as the full directory path to that file. The C<E<lt>hidden /E<gt>> tag is used
+as the full directory path to that file. The C<< <hidden /> >> tag is used
 to identify those methods that should not be exposed to the outside world
 through any sort of introspection/documentation API. They are still available
 and callable, but the client must possess the interface information in order
@@ -1197,6 +1226,10 @@ L<http://cpanratings.perl.org/d/RPC-XML>
 
 L<http://search.cpan.org/dist/RPC-XML>
 
+=item * MetaCPAN
+
+L<https://metacpan.org/release/RPC-XML>
+
 =item * Source code on GitHub
 
 L<http://github.com/rjray/rpc-xml>
@@ -1205,7 +1238,7 @@ L<http://github.com/rjray/rpc-xml>
 
 =head1 LICENSE AND COPYRIGHT
 
-This file and the code within are copyright (c) 2010 by Randy J. Ray.
+This file and the code within are copyright (c) 2011 by Randy J. Ray.
 
 Copying and distribution are permitted under the terms of the Artistic
 License 2.0 (L<http://www.opensource.org/licenses/artistic-license-2.0.php>) or
