@@ -102,7 +102,7 @@ use XML::Parser;
 
 require RPC::XML;
 
-$VERSION = '1.27';
+$VERSION = '1.28';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -329,7 +329,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
 {
     my ($robj, $self, $elem) = @_;
 
-    my ($op, $obj, $class, $list, $name);
+    my ($op, $newobj, $class, $list, $name);
 
     # This should always be one of the stack machine ops defined above
     $op = pop @{$robj->[M_STACK]};
@@ -384,12 +384,12 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
 
         $class = "RPC::XML::$class";
         # The string at the end is only seen by the RPC::XML::base64 class
-        $obj = $class->new($cdata, 'base64 is encoded, nil is allowed');
-        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
+        $newobj = $class->new($cdata, 'base64 is encoded, nil is allowed');
+        push @{$robj->[M_STACK]}, $newobj, DATAOBJECT;
         if ($robj->[M_SPOOLING_BASE64_DATA])
         {
             $robj->[M_SPOOLING_BASE64_DATA] = 0;
-            $robj->[M_CDATA] = undef; # Doesn't close FH, $obj still holds it
+            $robj->[M_CDATA] = undef; # Won't close FH, $newobj still holds it
         }
     }
     elsif ($elem eq 'value')
@@ -398,7 +398,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         # the marker token in which case the CDATA is used as a string value.
         if ($op == DATAOBJECT)
         {
-            ($op, $obj) = splice @{$robj->[M_STACK]}, -2;
+            ($op, $newobj) = splice @{$robj->[M_STACK]}, -2;
             if ($op != VALUEMARKER)
             {
                 return stack_error($robj, $self, $elem);
@@ -406,10 +406,10 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         }
         else
         {
-            $obj = RPC::XML::string->new($cdata);
+            $newobj = RPC::XML::string->new($cdata);
         }
 
-        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
+        push @{$robj->[M_STACK]}, $newobj, DATAOBJECT;
     }
     elsif ($elem eq 'param')
     {
@@ -421,12 +421,12 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
             return error($robj, $self,
                          'No <value> found within <param> container');
         }
-        ($op, $obj) = splice @{$robj->[M_STACK]}, -2;
+        ($op, $newobj) = splice @{$robj->[M_STACK]}, -2;
         if ($op != PARAM)
         {
             return error($robj, $self, "Illegal content in $elem tag");
         }
-        push @{$robj->[M_STACK]}, $obj, PARAMENT;
+        push @{$robj->[M_STACK]}, $newobj, PARAMENT;
     }
     elsif ($elem eq 'params')
     {
@@ -457,20 +457,20 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         {
             return stack_error($robj, $self, $elem);
         }
-        ($op, $obj) = splice @{$robj->[M_STACK]}, -2;
-        if (! $obj->isa('RPC::XML::struct'))
+        ($op, $newobj) = splice @{$robj->[M_STACK]}, -2;
+        if (! $newobj->isa('RPC::XML::struct'))
         {
             return error($robj, $self,
                          'Only a <struct> value may be within a <fault>');
         }
-        $obj = RPC::XML::fault->new($obj);
-        if (! $obj)
+        $newobj = RPC::XML::fault->new($newobj);
+        if (! $newobj)
         {
             return error($robj, $self, 'Unable to instantiate fault object: ' .
                          $RPC::XML::ERROR);
         }
 
-        push @{$robj->[M_STACK]}, $obj, FAULTENT;
+        push @{$robj->[M_STACK]}, $newobj, FAULTENT;
     }
     elsif ($elem eq 'member')
     {
@@ -481,7 +481,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
                 $robj, $self, 'Element mismatch, expected to see value'
             );
         }
-        ($op, $obj) = splice @{$robj->[M_STACK]}, -2;
+        ($op, $newobj) = splice @{$robj->[M_STACK]}, -2;
         if ($op != STRUCTNAME)
         {
             return error(
@@ -492,7 +492,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         # under it
         ($op, $name) = splice @{$robj->[M_STACK]}, -2;
         # Push the name back on, with the value and the new marker (STRUCTMEM)
-        push @{$robj->[M_STACK]}, $name, $obj, STRUCTMEM;
+        push @{$robj->[M_STACK]}, $name, $newobj, STRUCTMEM;
     }
     elsif ($elem eq 'name')
     {
@@ -513,8 +513,8 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         while ($op == STRUCTMEM)
         {
             # Next on stack (in list-order): name, value
-            ($name, $obj) = splice @{$robj->[M_STACK]}, -2;
-            $list->{$name} = $obj;
+            ($name, $newobj) = splice @{$robj->[M_STACK]}, -2;
+            $list->{$name} = $newobj;
             $op = pop @{$robj->[M_STACK]};
         }
         # Now that we see something ! STRUCTMEM, it needs to be STRUCT
@@ -522,9 +522,9 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         {
             return error($robj, $self, 'Bad content inside struct block');
         }
-        $obj = RPC::XML::struct->new($list);
+        $newobj = RPC::XML::struct->new($list);
 
-        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
+        push @{$robj->[M_STACK]}, $newobj, DATAOBJECT;
     }
     elsif ($elem eq 'data')
     {
@@ -556,9 +556,9 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         # put it on the stack with a DATAOBJECT marker. Then the end-tag of
         # the <array /> can just look to make sure there is exactly one
         # DATAOBJECT/value pair between it and the start of the array.
-        $obj = RPC::XML::array->new(from => $list);
+        $newobj = RPC::XML::array->new(from => $list);
 
-        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
+        push @{$robj->[M_STACK]}, $newobj, DATAOBJECT;
     }
     elsif ($elem eq 'array')
     {
@@ -570,7 +570,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         # Only DATAOBJECT or ARRAY should be visible
         if ($op == DATAOBJECT)
         {
-            ($op, $obj) = splice @{$robj->[M_STACK]}, -2;
+            ($op, $newobj) = splice @{$robj->[M_STACK]}, -2;
         }
 
         # Now only ARRAY should be
@@ -583,7 +583,7 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         # here on the stack when we started. But at this point we've validated
         # the form of the <array /> block and removed the ARRAY marker from the
         # stack.
-        push @{$robj->[M_STACK]}, $obj, DATAOBJECT;
+        push @{$robj->[M_STACK]}, $newobj, DATAOBJECT;
     }
     elsif ($elem eq 'methodName')
     {
@@ -629,14 +629,14 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         }
 
         # Create the request object and push it on the stack
-        $obj = RPC::XML::request->new($name, @{$list});
-        if (! $obj)
+        $newobj = RPC::XML::request->new($name, @{$list});
+        if (! $newobj)
         {
             return error($robj, $self,
                          "Error creating request object: $RPC::XML::ERROR");
         }
 
-        push @{$robj->[M_STACK]}, $obj, METHODENT;
+        push @{$robj->[M_STACK]}, $newobj, METHODENT;
     }
     elsif ($elem eq 'methodResponse')
     {
@@ -676,8 +676,8 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
         }
 
         # Create the response object and push it on the stack
-        $obj = RPC::XML::response->new($list);
-        push @{$robj->[M_STACK]}, $obj, RESPONSEENT;
+        $newobj = RPC::XML::response->new($list);
+        push @{$robj->[M_STACK]}, $newobj, RESPONSEENT;
     }
 
     return;
@@ -686,15 +686,15 @@ sub tag_end ## no critic (ProhibitExcessComplexity)
 # This just spools the character data until a closing tag makes use of it
 sub char_data
 {
-     my ($robj, undef, $data) = @_;
+     my ($robj, undef, $characters) = @_;
 
      if ($robj->[M_SPOOLING_BASE64_DATA])
      {
-         print {$robj->[M_CDATA]} $data;
+         print {$robj->[M_CDATA]} $characters;
      }
      else
      {
-         push @{$robj->[M_CDATA]}, $data;
+         push @{$robj->[M_CDATA]}, $characters;
      }
 
      return;

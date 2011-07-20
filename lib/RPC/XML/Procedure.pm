@@ -64,7 +64,7 @@ use RPC::XML 'smart_encode';
 # This module also provides RPC::XML::Method
 ## no critic (ProhibitMultiplePackages)
 
-$VERSION = '1.28';
+$VERSION = '1.29';
 $VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
 
 # This should match the set of type-classes defined in RPC::XML.pm. Note that
@@ -94,7 +94,7 @@ sub new
 {
     my ($class , @argz) = @_;
 
-    my $data;    # This will be a hashref that eventually gets blessed
+    my $new_proc;    # This will be a hashref that eventually gets blessed
 
     if (ref $class)
     {
@@ -107,14 +107,14 @@ sub new
         # 1. A hashref containing all the relevant keys
 
         # Start wtih the defaults for the optional keys
-        $data = {
+        $new_proc = {
             namespace => q{},
             version   => 0,
             hidden    => 0,
             help      => q{},
         };
         # Copy everything from the hash, don't try to use it directly
-        for (keys %{$argz[0]}) { $data->{$_} = $argz[0]->{$_} }
+        for (keys %{$argz[0]}) { $new_proc->{$_} = $argz[0]->{$_} }
     }
     elsif (@argz == 1)
     {
@@ -125,11 +125,11 @@ sub new
         # this: If $class is RPC::XML::Procedure, act like a factory method
         # and return whatever the file claims to be. Otherwise, the file has
         # to match $class or it's an error.
-        ($data, my $pkg) = load_xpl_file($argz[0]);
-        if (! ref $data)
+        ($new_proc, my $pkg) = load_xpl_file($argz[0]);
+        if (! ref $new_proc)
         {
             # load_xpl_path signalled an error
-            return $data;
+            return $new_proc;
         }
         if ($class ne 'RPC::XML::Procedure' && $pkg ne $class)
         {
@@ -144,7 +144,7 @@ sub new
         # 3. If there is more than one arg, it's a sort-of-hash. That is, the
         #    key 'signature' is allowed to repeat.
         my ($key, $val);
-        $data = {
+        $new_proc = {
             namespace => q{},
             version   => 0,
             hidden    => 0,
@@ -159,32 +159,32 @@ sub new
                 # Since there may be more than one signature, we allow it to
                 # repeat. Of course, that's also why we can't just take @argz
                 # directly as a hash. *shrug*
-                push @{$data->{signature}},
+                push @{$new_proc->{signature}},
                     ref $val ? join q{ } => @{$val} : $val;
             }
             else
             {
-                $data->{$key} = $val;
+                $new_proc->{$key} = $val;
             }
         }
     }
 
     # A sanity check on the content of the object before we bless it:
-    if (! ($data->{name} && $data->{code}))
+    if (! ($new_proc->{name} && $new_proc->{code}))
     {
         return "${class}::new: Missing required data (name or code)";
     }
     if (($class ne 'RPC::XML::Function') &&
-        (! ((exists $data->{signature}) &&
-            (ref($data->{signature}) eq 'ARRAY') &&
-            scalar(@{$data->{signature}}))))
+        (! ((exists $new_proc->{signature}) &&
+            (ref($new_proc->{signature}) eq 'ARRAY') &&
+            scalar(@{$new_proc->{signature}}))))
     {
         return "${class}::new: Missing required data (signatures)";
     }
-    bless $data, $class;
+    bless $new_proc, $class;
 
     # This needs to happen post-bless in case of error (for error messages)
-    return $data->make_sig_table;
+    return $new_proc->make_sig_table;
 }
 
 ###############################################################################
@@ -309,8 +309,8 @@ sub signature
         {
             my $old = $self->{signature};
             $self->{signature} = $sig;
-            my $tmp = $self->make_sig_table;
-            if (! ref $tmp)
+            my $is_good = $self->make_sig_table;
+            if (! ref $is_good)
             {
                 # If it failed to re-init the table, restore the old list (and
                 # old table). We don't have to check this return, since it had
@@ -319,7 +319,7 @@ sub signature
                 $self->make_sig_table;
 
                 # Return an error message, since this failed:
-                return ref($self) . "::signature: $tmp";
+                return ref($self) . "::signature: $is_good";
             }
         }
         else
@@ -386,25 +386,26 @@ sub add_signature
 {
     my ($self, @args) = @_;
 
-    my (%sigs, $tmp, $old);
+    my (%sigs, $is_good, $old);
 
     # Preserve the original in case adding the new one causes a problem
     $old = $self->{signature};
     %sigs = map { $_ => 1 } @{$self->{signature}};
     for my $one_sig (@args)
     {
-        $tmp = (ref $one_sig) ? join q{ } => @{$one_sig} : $one_sig;
-        $sigs{$tmp} = 1;
+        my $sig_key = (ref $one_sig) ? join q{ } => @{$one_sig} : $one_sig;
+        $sigs{$sig_key} = 1;
     }
     $self->{signature} = [ keys %sigs ];
-    $tmp = $self->make_sig_table;
-    if (! ref $tmp)
+    $is_good = $self->make_sig_table;
+    if (! ref $is_good)
     {
         # Because this failed, we have to restore the old table and return
         # an error
         $self->{signature} = $old;
         $self->make_sig_table;
-        return ref($self) . '::add_signature: Error re-hashing table: ' . $tmp;
+        return ref($self) . '::add_signature: Error re-hashing table: ' .
+            $is_good;
     }
 
     return $self;
@@ -420,8 +421,8 @@ sub delete_signature
     %sigs = map { $_ => 1 } @{$self->{signature}};
     for my $one_sig (@args)
     {
-        my $tmp = (ref $one_sig) ? join q{ } => @{$one_sig} : $one_sig;
-        delete $sigs{$tmp};
+        my $sig_key = (ref $one_sig) ? join q{ } => @{$one_sig} : $one_sig;
+        delete $sigs{$sig_key};
     }
     $self->{signature} = [ keys %sigs ];
 
@@ -491,21 +492,21 @@ sub reload
         return "$me: No file associated with method $self->{name}";
     }
 
-    my ($tmp) = load_xpl_file($self->{file});
+    my ($newly_loaded) = load_xpl_file($self->{file});
 
-    if (ref $tmp)
+    if (ref $newly_loaded)
     {
         # Update the information on this actual object
-        for (keys %{$tmp})
+        for (keys %{$newly_loaded})
         {
-            $self->{$_} = $tmp->{$_};
+            $self->{$_} = $newly_loaded->{$_};
         }
         # Re-calculate the signature table, in case that changed as well
         return $self->make_sig_table;
     }
     else
     {
-        return "$me: Error loading $self->{file}: $tmp";
+        return "$me: Error loading $self->{file}: $newly_loaded";
     }
 }
 
@@ -532,17 +533,17 @@ sub load_xpl_file
 
     require XML::Parser;
 
-    my ($me, $data, $signature, $code, $codetext, $accum, $P, $fh, $eval_ret,
-        $class, %attr);
+    my ($me, $new_proc, $signature, $code, $codetext, $accum, $P, $fh,
+        $eval_ret, $class, %attr);
 
     $me = __PACKAGE__ . '::load_xpl_file';
 
-    $data = {};
+    $new_proc = {};
     # So these don't end up undef, since they're optional elements
-    $data->{hidden}    = 0;
-    $data->{version}   = q{};
-    $data->{help}      = q{};
-    $data->{namespace} = __PACKAGE__;
+    $new_proc->{hidden}    = 0;
+    $new_proc->{version}   = q{};
+    $new_proc->{help}      = q{};
+    $new_proc->{namespace} = __PACKAGE__;
     $P = XML::Parser->new(
         ErrorContext => 1,
         Handlers     => {
@@ -555,19 +556,19 @@ sub load_xpl_file
                 $accum =~ s/\s+$//;
                 if ($elem eq 'signature')
                 {
-                    $data->{signature} ||= [];
-                    push @{$data->{signature}}, $accum;
+                    $new_proc->{signature} ||= [];
+                    push @{$new_proc->{signature}}, $accum;
                 }
                 elsif ($elem eq 'hidden')
                 {
-                    $data->{hidden} = 1;
+                    $new_proc->{hidden} = 1;
                 }
                 elsif ($elem eq 'code')
                 {
                     if (! ($attr{language} &&
                            $attr{language} ne 'perl'))
                     {
-                        $data->{$elem} = $accum;
+                        $new_proc->{$elem} = $accum;
                     }
                 }
                 elsif ('def' eq substr $elem, -3)
@@ -576,7 +577,7 @@ sub load_xpl_file
                 }
                 else
                 {
-                    $data->{$elem} = $accum;
+                    $new_proc->{$elem} = $accum;
                 }
 
                 %attr  = ();
@@ -601,23 +602,23 @@ sub load_xpl_file
 
     # Fudge a little and let them use '.' as a synonym for '::' in the
     # namespace hierarchy.
-    $data->{namespace} =~ s/[.]/::/g;
+    $new_proc->{namespace} =~ s/[.]/::/g;
 
     # Next step is to munge away any actual subroutine name so that the eval
     # yields an anonymous sub. Also insert the namespace declaration.
-    ($codetext = $data->{code}) =~
-        s/sub\s+(?:[\w:]+)?\s*[{]/sub \{ package $data->{namespace}; /;
+    ($codetext = $new_proc->{code}) =~
+        s/sub\s+(?:[\w:]+)?\s*[{]/sub \{ package $new_proc->{namespace}; /;
     $code = eval $codetext; ## no critic (ProhibitStringyEval)
     return "$me: Error creating anonymous sub: $@" if $@;
 
-    $data->{code} = $code;
+    $new_proc->{code} = $code;
     # Add the file's mtime for when we check for stat-based reloading, name
     # for reloading, and init the "called" counter to 0.
-    $data->{mtime}  = (stat $file)[9];
-    $data->{file}   = $file;
-    $data->{called} = 0;
+    $new_proc->{mtime}  = (stat $file)[9];
+    $new_proc->{file}   = $file;
+    $new_proc->{called} = 0;
 
-    return ($data, $class);
+    return ($new_proc, $class);
 }
 
 ###############################################################################
@@ -632,7 +633,7 @@ sub load_xpl_file
 #                   $self     in      ref       Object of this class
 #                   $srv      in      ref       An object derived from the
 #                                                 RPC::XML::Server class
-#                   @data     in      list      The params for the call itself
+#                   @params_in in     list      The params for the call itself
 #
 #   Globals:        None.
 #
@@ -644,15 +645,15 @@ sub load_xpl_file
 ###############################################################################
 sub call
 {
-    my ($self, $srv, @data) = @_;
+    my ($self, $srv, @params_in) = @_;
 
     my (@paramtypes, @params, $signature, $resptype, $response, $name);
 
     $name = $self->name;
     # Create the param list.
     # The type for the response will be derived from the matching signature
-    @paramtypes = map { $_->type } @data;
-    @params     = map { $_->value } @data;
+    @paramtypes = map { $_->type } @params_in;
+    @params     = map { $_->value } @params_in;
     $signature = join q{ } => @paramtypes;
     $resptype = $self->match_signature($signature);
     # Since there must be at least one signature with a return value (even
@@ -696,7 +697,7 @@ sub call
     # Increment the 'called' key on the proc UNLESS the proc is named
     # 'system.status' and has a boolean-true as the first param.
     if (! (($name eq 'system.status') &&
-           @data &&
+           @params_in &&
            ($paramtypes[0] eq 'boolean') &&
            $params[0]))
     {

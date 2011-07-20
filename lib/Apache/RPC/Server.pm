@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-our $VERSION = '1.38';
+our $VERSION = '1.39';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 sub version { return $Apache::RPC::Server::VERSION }
@@ -228,16 +228,16 @@ sub handler ($$) ## no critic (ProhibitExcessComplexity)
             # first, so that we can compress it into the primary handle.
             if ($do_compress)
             {
-                my $fh2 = Apache::File->tmpfile;
-                if (! $fh2)
+                my $fh_compress = Apache::File->tmpfile;
+                if (! $fh_compress)
                 {
                     $r->log_error("$me: Error opening second tmpfile");
                     return SERVER_ERROR;
                 }
 
                 # Write the request to the second FH
-                $resp->serialize($fh2);
-                seek $fh2, 0, 0;
+                $resp->serialize($fh_compress);
+                seek $fh_compress, 0, 0;
 
                 # Spin up the compression engine
                 if (! ($com_engine = Compress::Zlib::deflateInit()))
@@ -251,7 +251,7 @@ sub handler ($$) ## no critic (ProhibitExcessComplexity)
                 # into the intended FH.
                 my $buf = q{};
                 my $out;
-                while (read $fh2, $buf, 4096)
+                while (read $fh_compress, $buf, 4096)
                 {
                     if (! (defined($out = $com_engine->deflate(\$buf))))
                     {
@@ -270,7 +270,7 @@ sub handler ($$) ## no critic (ProhibitExcessComplexity)
 
                 # Close the secondary FH. Rewinding the primary is done
                 # later.
-                close $fh2; ## no critic (RequireCheckedClose)
+                close $fh_compress; ## no critic (RequireCheckedClose)
             }
             else
             {

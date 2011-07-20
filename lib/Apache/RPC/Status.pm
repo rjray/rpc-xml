@@ -56,14 +56,13 @@ use CGI;
 
 # We use the server module to get the class methods for server objects, etc.
 require Apache::RPC::Server;
-require RPC::XML::Method;
+require RPC::XML::Procedure;
 
-#$SERVER_VER = SERVER_VERSION;
 $SERVER_CLASS = 'Apache::RPC::Server';
 $STARTED    = scalar localtime $^T;
 $PERL_VER   = $^V ? sprintf 'v%vd', $^V : $];
 
-our $VERSION = '1.12';
+our $VERSION = '1.13';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 #
@@ -99,7 +98,6 @@ sub new
     my ($class, @args) = @_;
 
     my %self = %proto;
-    $class = ref $class || $class;
 
     return bless \%self, $class;
 }
@@ -257,7 +255,7 @@ sub header
     {
         $title = " - $title";
     }
-    $title = (ref $self || $self) . $title;
+    $title = ref($self) . $title;
 
     $r->send_http_header('text/html');
     $r->print(<<"EOF");
@@ -289,7 +287,7 @@ sub footer
 {
     my ($self, $r) = @_;
 
-    my $name = ref $self || $self;
+    my $name = ref $self;
     my $vers = $self->version;
     my $date = scalar localtime;
 
@@ -454,7 +452,7 @@ sub server_detail
 {
     my ($self, $R, $Q, $flag) = @_;
 
-    my ($srv, $server, @lines, @methods, $meth1, $meth2, $base_url);
+    my ($srv, $server, @lines, @methods, $meth_left, $meth_right, $base_url);
 
     $server = $Q->param('server');
     # Override this before calling make_url:
@@ -501,15 +499,16 @@ sub server_detail
         push @lines, '<tr><td colspan="2"><table width="100%" border="1">';
         while (@methods)
         {
-            ($meth1, $meth2) = splice @methods, 0, 2;
+            ($meth_left, $meth_right) = splice @methods, 0, 2;
             push @lines, '<tr valign="top"><td width="50%">';
-            push @lines, method_summary($Q, $server, $srv->get_method($meth1),
+            push @lines, method_summary($Q, $server,
+                                        $srv->get_method($meth_left),
                                         $base_url);
             push @lines, '</td><td width="50%">';
-            if ($meth2)
+            if ($meth_right)
             {
                 push @lines, method_summary($Q, $server,
-                                            $srv->get_method($meth2),
+                                            $srv->get_method($meth_right),
                                             $base_url);
             }
             else
@@ -587,7 +586,7 @@ sub method_detail
     my ($self, $R, $Q, $flag) = @_;
     # $flag has no relevance in this routine
 
-    my ($server, $srv, $method, $meth, $tmp, @lines);
+    my ($server, $srv, $method, $meth, $version, $help, @lines);
 
     $server = $Q->param('server');
     $method = $Q->param('method');
@@ -612,10 +611,11 @@ sub method_detail
     push @lines, '<div align="center">', $Q->b('Method: '), $Q->tt($method);
     push @lines, $Q->br(), $Q->br();
     push @lines, '<table border="0" width="75%">';
-    if ($tmp = $meth->version)
+    if ($version = $meth->version)
     {
         push @lines, $Q->TR({ -valign => 'top' },
-                            $Q->td($Q->b('Version:')), $Q->td($Q->tt($tmp)));
+                            $Q->td($Q->b('Version:')),
+                            $Q->td($Q->tt($version)));
     }
     push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td({ -width => '30%' }, $Q->b('Hidden from API:')),
@@ -635,10 +635,10 @@ sub method_detail
     push @lines, $Q->TR({ -valign => 'top' },
                         $Q->td($Q->b('Signatures:')),
                         $Q->td($Q->tt(join '<br>' => @{$meth->signature})));
-    if ($tmp = $meth->help)
+    if ($help = $meth->help)
     {
         push @lines, $Q->TR($Q->td({ -colspan => 2 }, $Q->b('Help string:')));
-        push @lines, $Q->TR($Q->td({ -colspan => 2 }, $Q->pre($Q->tt($tmp))));
+        push @lines, $Q->TR($Q->td({ -colspan => 2 }, $Q->pre($Q->tt($help))));
     }
     push @lines, '</table></div>';
 

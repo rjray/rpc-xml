@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '1.19';
+$VERSION = '1.20';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
@@ -186,7 +186,7 @@ sub parse
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object of this class
-#                   @data     in      list      One or more chunks of XML
+#                   @chunks   in      list      One or more chunks of XML
 #
 #   Returns:        Success:    $self
 #                   Failure:    dies
@@ -194,9 +194,9 @@ sub parse
 ###############################################################################
 sub parse_more
 {
-    my ($self, @data) = @_;
+    my ($self, @chunks) = @_;
 
-    for (@data)
+    for (@chunks)
     {
         $self->{parser}->push($_);
     }
@@ -254,16 +254,16 @@ sub dom_to_obj
     # and then walk the resulting DOM to make sure that what I get is what I
     # needed.
 
-    my ($element, $data, $retval);
+    my ($element, $nodename, $retval);
     $element = $dom->documentElement();
-    if (($data = $element->nodeName) =~ /^method(Call|Response)$/)
+    if (($nodename = $element->nodeName) =~ /^method(Call|Response)$/)
     {
         $retval = ($1 eq 'Call') ?
             $self->dom_request($element) : $self->dom_response($element);
     }
     else
     {
-        return "Unknown tag: $data";
+        return "Unknown tag: $nodename";
     }
 
     return $retval;

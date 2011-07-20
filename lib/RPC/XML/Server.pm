@@ -111,7 +111,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.65';
+$VERSION = '1.66';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -323,7 +323,9 @@ sub product_tokens
 {
     my $self = shift;
 
-    return sprintf '%s/%s', (ref $self || $self), $self->version;
+    my $class = ref $self;
+    $class ||= $self;
+    return sprintf '%s/%s', $class, $self->version;
 }
 
 # This fetches/sets the internal "started" timestamp. Unlike the other
@@ -1986,9 +1988,9 @@ sub process_request ## no critic (ProhibitExcessComplexity)
                 # first, so that we can compress it into the primary handle.
                 if ($do_compress)
                 {
-                    my $fh2 =
+                    my $fh_compress =
                         eval { File::Temp->new(UNLINK => 1, DIR => $tmpdir) };
-                    if (! $fh2)
+                    if (! $fh_compress)
                     {
                         $conn->send_error(
                             RC_INTERNAL_SERVER_ERROR,
@@ -1997,11 +1999,11 @@ sub process_request ## no critic (ProhibitExcessComplexity)
                         next;
                     }
                     # Make it auto-flush
-                    $fh2->autoflush();
+                    $fh_compress->autoflush();
 
                     # Write the request to the second FH
-                    $respxml->serialize($fh2);
-                    seek $fh2, 0, 0;
+                    $respxml->serialize($fh_compress);
+                    seek $fh_compress, 0, 0;
 
                     # Spin up the compression engine
                     if (! ($com_engine = Compress::Zlib::deflateInit()))
@@ -2016,7 +2018,7 @@ sub process_request ## no critic (ProhibitExcessComplexity)
                     # into the intended FH.
                     $buf = q{};
                     my $out;
-                    while (read $fh2, $buf, 4096)
+                    while (read $fh_compress, $buf, 4096)
                     {
                         if (! defined($out = $com_engine->deflate(\$buf)))
                         {
@@ -2037,7 +2039,7 @@ sub process_request ## no critic (ProhibitExcessComplexity)
 
                     # Close the secondary FH. Rewinding the primary is done
                     # later.
-                    if (! close $fh2)
+                    if (! close $fh_compress)
                     {
                         carp "Error closing temp file: $!";
                     }
@@ -2119,7 +2121,7 @@ sub dispatch
 {
     my ($self, $xml) = @_;
 
-    my ($reqobj, @data, $response, $name, $meth);
+    my ($reqobj, @args, $response, $name, $meth);
 
     if (ref $xml eq 'SCALAR')
     {
@@ -2151,7 +2153,7 @@ sub dispatch
         }
     }
 
-    @data = @{$reqobj->args};
+    @args = @{$reqobj->args};
     $name = $reqobj->name;
 
     # Get the method, call it, and bump the internal requests counter. Create
@@ -2159,11 +2161,11 @@ sub dispatch
     $meth = $self->get_method($name);
     if (ref $meth)
     {
-        $response = $meth->call($self, @data);
+        $response = $meth->call($self, @args);
         if (! (($name eq 'system.status') &&
-               @data &&
-               ($data[0]->type eq 'boolean') &&
-               ($data[0]->value)))
+               @args &&
+               ($args[0]->type eq 'boolean') &&
+               ($args[0]->value)))
         {
             $self->{__requests}++;
         }
@@ -2408,7 +2410,7 @@ sub share_methods
 {
     my ($self, $src_srv, @names) = @_;
 
-    my ($me, $pkg, %tmp, @tmp, $meth, @list, @missing);
+    my ($me, $pkg, %methods, @methods, $meth, @list, @missing);
 
     $me  = ref($self) . '::share_methods';
     $pkg = __PACKAGE__; # So it can go inside quoted strings
@@ -2426,23 +2428,23 @@ sub share_methods
     # the list.
     #
     # Only do this once:
-    @tmp = keys %{$src_srv->{__method_table}};
-    for my $tmp (@names)
+    @methods = keys %{$src_srv->{__method_table}};
+    for my $name (@names)
     {
-        if (ref $tmp eq 'Regexp')
+        if (ref $name eq 'Regexp')
         {
-            for (grep { $_ =~ $tmp } @tmp)
+            for (grep { $_ =~ $name } @methods)
             {
-                $tmp{$_}++;
+                $methods{$_}++;
             }
         }
         else
         {
-            $tmp{$tmp}++;
+            $methods{$name}++;
         }
     }
     # This has the benefit of trimming any redundancies caused by regex's
-    @names = keys %tmp;
+    @names = keys %methods;
 
     # Note that the method refs are saved until we've verified all of them.
     # If we have to return a failure message, I don't want to leave a half-
@@ -2507,7 +2509,7 @@ sub copy_methods
 {
     my ($self, $src_srv, @names) = @_;
 
-    my ($me, $pkg, %tmp, @tmp, $meth, @list, @missing);
+    my ($me, $pkg, %methods, @methods, $meth, @list, @missing);
 
     $me  = ref($self) . '::copy_methods';
     $pkg = __PACKAGE__; # So it can go inside quoted strings
@@ -2525,23 +2527,23 @@ sub copy_methods
     # the list.
     #
     # Only do this once:
-    @tmp = keys %{$src_srv->{__method_table}};
-    for my $tmp (@names)
+    @methods = keys %{$src_srv->{__method_table}};
+    for my $name (@names)
     {
-        if (ref $names[$tmp] eq 'Regexp')
+        if (ref $name eq 'Regexp')
         {
-            for (grep { $_ =~ $tmp } @tmp)
+            for (grep { $_ =~ $name } @methods)
             {
-                $tmp{$_}++;
+                $methods{$_}++;
             }
         }
         else
         {
-            $tmp{$tmp}++;
+            $methods{$name}++;
         }
     }
     # This has the benefit of trimming any redundancies caused by regex's
-    @names = keys %tmp;
+    @names = keys %methods;
 
     # Note that the method clones are saved until we've verified all of them.
     # If we have to return a failure message, I don't want to leave a half-

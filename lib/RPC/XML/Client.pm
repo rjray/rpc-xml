@@ -60,7 +60,7 @@ BEGIN
     }
 }
 
-$VERSION = '1.37';
+$VERSION = '1.38';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -287,17 +287,19 @@ sub send_request ## no critic (ProhibitExcessComplexity)
         # into the primary handle.
         if ($do_compress && ($req->length >= $self->compress_thresh))
         {
-            my $fh2 = eval { File::Temp->new(UNLINK => 1, DIR => $tmpdir) };
-            if (! $fh2)
+            my $fh_compress = eval {
+                File::Temp->new(UNLINK => 1, DIR => $tmpdir);
+            };
+            if (! $fh_compress)
             {
                 return "$me: Error opening compression tmpfile: $@";
             }
             # Make it auto-flush
-            $fh2->autoflush();
+            $fh_compress->autoflush();
 
             # Write the request to the second FH
-            $req->serialize($fh2);
-            seek $fh2, 0, 0;
+            $req->serialize($fh_compress);
+            seek $fh_compress, 0, 0;
 
             # Spin up the compression engine
             $com_engine = Compress::Zlib::deflateInit();
@@ -310,7 +312,7 @@ sub send_request ## no critic (ProhibitExcessComplexity)
             # the intended FH.
             my $buf = q{};
             my $out;
-            while (read $fh2, $buf, 4096)
+            while (read $fh_compress, $buf, 4096)
             {
                 $out = $com_engine->deflate(\$buf);
                 if (! defined $out)
@@ -328,7 +330,7 @@ sub send_request ## no critic (ProhibitExcessComplexity)
             print {$req_fh} $out;
 
             # Close the secondary FH. Rewinding the primary is done later.
-            if (! close $fh2)
+            if (! close $fh_compress)
             {
                 return "$me: Error closing spool-file: $!";
             }
@@ -371,7 +373,7 @@ sub send_request ## no critic (ProhibitExcessComplexity)
     my $compression;
     my $parser = $self->parser->parse(); # Gets the ExpatNB object
     my $cb = sub {
-        my ($data, $resp) = @_;
+        my ($data_in, $resp) = @_;
 
         if (! defined $compression)
         {
@@ -394,13 +396,13 @@ sub send_request ## no critic (ProhibitExcessComplexity)
         if ($compression)
         {
             my $error;
-            if (! (($data, $error) = $com_engine->inflate($data)))
+            if (! (($data_in, $error) = $com_engine->inflate($data_in)))
             {
                 die "$me: Error in inflate() expanding data: $error\n";
             }
         }
 
-        $parser->parse_more($data);
+        $parser->parse_more($data_in);
         1;
     };
 
