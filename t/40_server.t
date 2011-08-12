@@ -3,14 +3,16 @@
 # Test the RPC::XML::Server class
 
 use strict;
+use warnings;
 use subs qw(start_server find_port);
 use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
             $list $meth @keys %seen $dir $vol $oldtable $newtable $value);
 
+use Carp qw(croak);
 use Socket;
 use File::Spec;
 
-use Test::More tests => 83;
+use Test::More tests => 86;
 use LWP::UserAgent;
 use HTTP::Request;
 use Scalar::Util 'blessed';
@@ -24,10 +26,15 @@ require RPC::XML::ParserFactory;
                   system.status);
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
-$dir = File::Spec->catpath($vol, $dir, '');
+$dir = File::Spec->catpath($vol, $dir, q{});
 require File::Spec->catfile($dir, 'util.pl');
 
-sub failmsg { sprintf("%s at line %d", @_) }
+sub failmsg
+{
+    my ($msg, $line) = @_;
+
+    return sprintf '%s at line %d', $msg, $line;
+}
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -44,7 +51,7 @@ $value = $RPC::XML::Server::VERSION;
 is($srv->version, $RPC::XML::Server::VERSION,
    'RPC::XML::Server::version method');
 ok(! $srv->started, 'RPC::XML::Server::started method');
-like($srv->product_tokens, qr|/|, 'RPC::XML::Server::product_tokens method');
+like($srv->product_tokens, qr{/}, 'RPC::XML::Server::product_tokens method');
 ok(! $srv->url, 'RPC::XML::Server::url method (empty)');
 ok(! $srv->requests, 'RPC::XML::Server::requests method (0)');
 ok($srv->response->isa('HTTP::Response'),
@@ -63,7 +70,7 @@ like($meth, qr/Error opening.*does_not_exist/, 'Correct error message');
 # get the "plain" table.
 $oldtable = $srv->{__fault_table};
 # Now re-assign $srv
-my $srv2 = RPC::XML::Server->new(
+$srv = RPC::XML::Server->new(
     no_http         => 1,
     no_default      => 1,
     fault_code_base => 1000,
@@ -72,13 +79,13 @@ my $srv2 = RPC::XML::Server->new(
         myfault2 => 2001,
     }
 );
-$newtable = $srv2->{__fault_table};
+$newtable = $srv->{__fault_table};
 # Compare number of faults, the values of the fault codes, and the presence of
 # the user-defined faults:
-ok((scalar(keys %$oldtable) + 2) == (scalar keys %$newtable),
+ok((scalar(keys %{$oldtable}) + 2) == (scalar keys %{$newtable}),
    'Proper number of relative keys');
 $value = 1;
-for my $key (keys %$oldtable)
+for my $key (keys %{$oldtable})
 {
     if ($newtable->{$key}->[0] != ($oldtable->{$key}->[0] + 1000))
     {
@@ -89,18 +96,51 @@ for my $key (keys %$oldtable)
 ok($value, 'Fault codes adjustment yielded correct new codes');
 ok((exists $newtable->{myfault1} && exists $newtable->{myfault2} &&
     ref($newtable->{myfault1}) eq 'ARRAY' && $newtable->{myfault2} == 2001 &&
-    $newtable->{myfault1}->[0] eq 2000),
+    $newtable->{myfault1}->[0] == 2000),
    'User-supplied fault elements look OK');
 
 # Done with this one, let it go
 undef $srv;
 
+# Test that the url() method behaves like we expect it for certain ports
+$srv = RPC::XML::Server->new(
+    no_default => 1,
+    no_http    => 1,
+    host       => 'localhost',
+    port       => 80
+);
+SKIP: {
+    if (ref($srv) ne 'RPC::XML::Server')
+    {
+        skip 'Failed to get port-80 server, cannot test', 1;
+    }
+
+    is($srv->url, 'http://localhost', 'Default URL for port-80 server');
+}
+
+$srv = RPC::XML::Server->new(
+    no_default => 1,
+    no_http    => 1,
+    host       => 'localhost',
+    port       => 443
+);
+SKIP: {
+    if (ref($srv) ne 'RPC::XML::Server')
+    {
+        skip 'Failed to get port-443 server, cannot test', 1;
+    }
+
+    is($srv->url, 'https://localhost', 'Default URL for port-443 server');
+}
+
 # Let's test that server creation properly fails if/when HTTP::Daemon fails.
 # First find a port in use, preferably under 1024:
 SKIP: {
     $port = find_port_in_use();
-    skip 'No in-use port found for negative testing, skipped', 2
-        if ($port == -1);
+    if ($port == -1)
+    {
+        skip 'No in-use port found for negative testing, skipped', 2;
+    }
 
     $srv = RPC::XML::Server->new(port => $port);
     is(ref($srv), q{}, 'Bad new return is not an object');
@@ -108,8 +148,10 @@ SKIP: {
 }
 
 # This one will have a HTTP::Daemon server, but still no default methods
-die "No usable port found between 9000 and 11000, skipping"
-    if (($port = find_port) == -1);
+if (($port = find_port) == -1)
+{
+    croak 'No usable port found between 9000 and 11000, skipping';
+}
 $srv = RPC::XML::Server->new(no_default => 1,
                              host => 'localhost', port => $port);
 isa_ok($srv, 'RPC::XML::Server', '$srv<2>');
@@ -138,6 +180,11 @@ $res = $srv->get_method('perl.test.suite.test1');
 isa_ok($res, 'RPC::XML::Method', 'get_method return value');
 $res = $srv->get_method('perl.test.suite.not.added.yet');
 ok(! ref($res), 'get_method for non-existent method');
+# Throw junk at add_method
+$res = $srv->add_method([]);
+like($res, qr/file name, a hash reference or an object/,
+     'add_method() fails on bad data');
+
 # Here goes...
 $parser = RPC::XML::ParserFactory->new;
 $UA = LWP::UserAgent->new;

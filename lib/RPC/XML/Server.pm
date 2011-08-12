@@ -111,7 +111,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.66';
+$VERSION = '1.67';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -135,8 +135,7 @@ sub new ## no critic (ProhibitExcessComplexity)
     my ($class, %args) = @_;
 
     my (
-        $self,     $http,        $resp, $host,
-        $port,     $queue,       $URI,  $srv_version,
+        $self, $http, $resp, $host, $port, $queue, $URI, $srv_version,
         $srv_name
     );
 
@@ -145,7 +144,7 @@ sub new ## no critic (ProhibitExcessComplexity)
 
     $srv_version = delete $args{server_version} || $self->version;
     $srv_name    = delete $args{server_name}    || $class;
-    $self->{__version} = "$srv_name/$srv_version";
+    $self->{__server_token} = "$srv_name/$srv_version";
 
     if (delete $args{no_http})
     {
@@ -177,16 +176,12 @@ sub new ## no critic (ProhibitExcessComplexity)
 
     # Create and store the cached response object for later cloning and use
     $resp = HTTP::Response->new();
-    if (! $resp)
-    {
-        return "${class}::new: Unable to create HTTP::Response object";
-    }
-
-    $resp->header(    # This is essentially the same string returned by the
-                      # default "identity" method that may be loaded from a
-                      # XPL file. But it hasn't been loaded yet, and may not
-                      # be, hence we set it here (possibly from option values)
-        RPC_Server   => $self->{__version},
+    $resp->header(
+        # This is essentially the same string returned by the
+        # default "identity" method that may be loaded from a
+        # XPL file. But it hasn't been loaded yet, and may not
+        # be, hence we set it here (possibly from option values)
+        RPC_Server   => $self->{__server_token},
         RPC_Encoding => 'XML-RPC',
         # Set any other headers as well
         Accept => 'text/xml'
@@ -207,7 +202,8 @@ sub new ## no critic (ProhibitExcessComplexity)
     $self->{__xpl_path}     = delete $args{xpl_path} || [];
     $self->{__timeout}      = delete $args{timeout} || 10;
     $self->{__parser}       = RPC::XML::ParserFactory->new(
-        $args{parser} ? @{delete $args{parser}} : ());
+        $args{parser} ? @{delete $args{parser}} : ()
+    );
 
     # Set up the default methods unless requested not to
     if (! delete $args{no_default})
@@ -284,7 +280,7 @@ sub new ## no critic (ProhibitExcessComplexity)
 # Most of these tiny subs are accessors to the internal hash keys. They not
 # only control access to the internals, they ease sub-classing.
 
-sub version { return $RPC::XML::Server::VERSION }
+sub version { return $VERSION }
 
 sub INSTALL_DIR { return $INSTALL_DIR }
 
