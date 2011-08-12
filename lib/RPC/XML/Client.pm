@@ -60,7 +60,7 @@ BEGIN
     }
 }
 
-$VERSION = '1.38';
+$VERSION = '1.39';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -94,16 +94,15 @@ sub new
     my ($self, $UA, $REQ);
 
     # Start by getting the LWP::UA object
-    $UA = LWP::UserAgent->new((exists $attrs{useragent}) ?
-                              @{$attrs{useragent}} : ()) or
-        return "${class}::new: Unable to get LWP::UserAgent object";
+    $UA = LWP::UserAgent->new(
+        (exists $attrs{useragent}) ? @{$attrs{useragent}} : ()
+    );
     $UA->agent(sprintf '%s/%s %s', $class, $VERSION, $UA->agent);
     $self->{__useragent} = $UA;
     delete $attrs{useragent};
 
     # Next get the request object for later use
-    $REQ = HTTP::Request->new(POST => $location) or
-        return "${class}::new: Unable to get HTTP::Request object";
+    $REQ = HTTP::Request->new(POST => $location);
     $self->{__request} = $REQ;
     $REQ->header(Content_Type => 'text/xml');
     $REQ->protocol('HTTP/1.0');
