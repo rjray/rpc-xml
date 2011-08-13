@@ -310,7 +310,7 @@ sub read_from_opts
 sub read_external
 {
     my $file = shift;
-    my ($fh, $tmp);
+    my ($fh, $content);
 
     if (! open $fh, '<', $file)
     {
@@ -318,12 +318,12 @@ sub read_external
     }
     else
     {
-        $tmp = do { local $/ = undef; <$fh> };
+        $content = do { local $/ = undef; <$fh> };
         close $fh or
             croak "Error closing $file: $!, stopped";
     }
 
-    return \$tmp;
+    return \$content;
 }
 
 ###############################################################################
