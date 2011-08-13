@@ -437,9 +437,9 @@ sub add_method
 #
 #   Sub Name:       add_procedure
 #
-#   Description:    This filters through to add_method, but unlike the other
-#                   front-ends defined later, this one may have to alter the
-#                   data in one type of calling-convention.
+#   Description:    This filters through to add_method, but if the passed-in
+#                   value is a hash reference forces the "type" to be
+#                   "procedure".
 #
 #   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
 #                   $self     in      ref       Object reference
@@ -456,6 +456,34 @@ sub add_procedure
     if (ref($meth) eq 'HASH')
     {
         $meth->{type} = 'procedure';
+    }
+
+    return $self->add_method($meth);
+}
+
+###############################################################################
+#
+#   Sub Name:       add_procedure
+#
+#   Description:    This filters through to add_method, but if the passed-in
+#                   value is a hash reference forces the "type" to be
+#                   "function".
+#
+#   Arguments:      NAME      IN/OUT  TYPE      DESCRIPTION
+#                   $self     in      ref       Object reference
+#                   $meth     in      scalar    Procedure to add
+#
+#   Returns:        threads through to add_method
+#
+###############################################################################
+sub add_function
+{
+    my ($self, $meth) = @_;
+
+    # Anything else but a hash-reference goes through unaltered
+    if (ref($meth) eq 'HASH')
+    {
+        $meth->{type} = 'function';
     }
 
     return $self->add_method($meth);
@@ -505,14 +533,6 @@ sub method_from_file
     # factory constructor, returning the type of object the XPL file specifies
     # even when that isn't RPC::XML::Procedure.
     return RPC::XML::Procedure->new($file);
-}
-
-# Same as above, but for name-symmetry
-sub proc_from_file
-{
-    my ($self, $file) = @_;
-
-    return $self->method_from_file($file);
 }
 
 ###############################################################################
@@ -567,13 +587,8 @@ sub get_method
     return $meth;
 }
 
-# Same as above, but for name-symmetry
-sub get_procedure
-{
-    my ($self, $name) = @_;
-
-    return $self->get_method($name);
-}
+# For name-symmetry:
+*get_procedure = *get_function = \&get_method;
 
 ###############################################################################
 #
@@ -1301,13 +1316,8 @@ sub add_methods_in_dir
     return $self;
 }
 
-# Same as above, but for name-symmetry
-sub add_procedures_in_dir
-{
-    my ($self, @args) = @_;
-
-    return $self->add_methods_in_dir(@args);
-}
+# For name-symmetry:
+*add_procedures_in_dir = *add_functions_in_dir = \&add_methods_in_dir;
 
 ###############################################################################
 #
@@ -1345,13 +1355,8 @@ sub delete_method
     return $self;
 }
 
-# Same as above, but for name-symmetry
-sub delete_procedure
-{
-    my ($self, $name) = @_;
-
-    return $self->delete_method($name);
-}
+# For name-symmetry:
+*delete_procedure = *delete_function = \&delete_method;
 
 ###############################################################################
 #
@@ -1371,13 +1376,8 @@ sub list_methods
     return keys %{shift->{__method_table}};
 }
 
-# Same as above, but for name-symmetry
-sub list_procedures
-{
-    my ($self) = @_;
-
-    return $self->list_methods();
-}
+# For name-symmetry:
+*list_procedures = *list_functions = \&list_methods;
 
 ###############################################################################
 #
@@ -1468,13 +1468,8 @@ sub share_methods
     return $self;
 }
 
-# Same as above, but for name-symmetry
-sub share_procedures
-{
-    my ($self, @args) = @_;
-
-    return $self->share_methods(@args);
-}
+# For name-symmetry:
+*share_procedures = *share_functions = \&share_methods;
 
 ###############################################################################
 #
@@ -1566,13 +1561,8 @@ sub copy_methods
     return $self;
 }
 
-# Same as above, but for name-symmetry
-sub copy_procedures
-{
-    my ($self, @args) = @_;
-
-    return $self->copy_methods(@args);
-}
+# For name-symmetry:
+*copy_procedures = *copy_functions = \&copy_methods;
 
 ###############################################################################
 #
@@ -2089,7 +2079,7 @@ This method adds all the default methods (those that are shipped with this
 extension) to the calling server object. The files are denoted by their
 C<*.xpl> extension, and are installed into the same directory as this
 B<Server.pm> file. The set of default methods are described below (see
-L<"The Default Procedures Provided">).
+L<"The Default Methods Provided">).
 
 If any names are passed as a list of arguments to this call, then only those
 methods specified are actually loaded. If the C<*.xpl> extension is absent on
@@ -2102,7 +2092,7 @@ B<Apache::RPC::Server> module uses this to prevent the loading of the default
 C<system.status> method while still loading all the rest of the defaults. (It
 then provides a more Apache-centric status method.)
 
-Note that there is no symmetric call in this case. The provided API is
+Note that there are no symmetric calls in this case. The provided API is
 implemented as methods, and thus only this interface is provided.
 
 =item add_methods_in_dir(DIR [, DETAILS])
@@ -2304,7 +2294,7 @@ independant of specific namespaces. If a group of routines are expected to work
 in close concert, each should explicitly set the namespace with a C<package>
 declaration as the first statement within the routines themselves.
 
-=head2 The Default Procedures Provided
+=head2 The Default Methods Provided
 
 The following methods are provided with this package, and are the ones
 installed on newly-created server objects unless told not to. These are

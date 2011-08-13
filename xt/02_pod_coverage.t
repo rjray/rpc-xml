@@ -26,7 +26,10 @@ pod_coverage_ok('RPC::XML::Parser::XMLLibXML' =>
 pod_coverage_ok('RPC::XML::Procedure' =>
                 { also_private => [ qw(load_xpl_file make_sig_table) ] } =>
                 'RPC::XML::Procedure');
-pod_coverage_ok('RPC::XML::Server' => { also_private => [ 'compress_re' ] } =>
+pod_coverage_ok('RPC::XML::Server' =>
+                { also_private => [ qw(compress_re call method_from_file
+                                       post_configure_hook pre_loop_hook
+                                       process_request) ] } =>
                 'RPC::XML::Server');
 
 exit;

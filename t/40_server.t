@@ -12,7 +12,7 @@ use Carp qw(croak);
 use Socket;
 use File::Spec;
 
-use Test::More tests => 86;
+use Test::More tests => 84;
 use LWP::UserAgent;
 use HTTP::Request;
 use Scalar::Util 'blessed';
@@ -59,9 +59,6 @@ ok($srv->response->isa('HTTP::Response'),
 # Some negative tests:
 $meth = $srv->method_from_file('does_not_exist.xpl');
 ok(! ref $meth, 'Bad file did not result in method reference');
-like($meth, qr/Error opening.*does_not_exist/, 'Correct error message');
-$meth = $srv->proc_from_file('does_not_exist.xpl');
-ok(! ref $meth, 'Bad file did not result in proc reference');
 like($meth, qr/Error opening.*does_not_exist/, 'Correct error message');
 
 # Test the functionality of manipulating the fault table. First get the vanilla
