@@ -158,6 +158,10 @@ sub handler ($$) ## no critic (ProhibitExcessComplexity)
         while ($length)
         {
             $r->read($content, ($length < 2048) ? $length : 2048);
+            # If $content is undef, then the client has closed the connection
+            # on its end, and we're done (like it or not).
+            last if (! defined $content);
+
             $length -= length $content;
             if ($do_compress)
             {
