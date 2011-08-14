@@ -16,11 +16,346 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2011-08-13T17:30:00-07:00" version="0.75" sc:tag="0.75">
+    <change git:commit="69eba1c169417b60c13b9a00665f9f0a52e3b949">
+      <file path="MANIFEST" />
+      <description>
+        Somehow, t/13_no_deep_recursion.t never got added to MANIFEST.
+      </description>
+    </change>
+    <change git:commit="d0f00193b051e8dce1ef072348737c515e02dd8d">
+      <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=65154">RT #65154</xhtml:a>:
+        Fixed a cut/paste error in an error message.
+      </description>
+    </change>
+    <change git:commit="b86ad6375b3fa5f1d19522cff84b71fa97a14bb7">
+      <fileset>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="t/51_client_with_host_header.t" action="ADD" />
+      </fileset>
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=68792">RT #68792</xhtml:a>:
+        Merge pull request #2 from dragon3/master
+        (<xhtml:a href="https://github.com/dragon3">https://github.com/dragon3</xhtml:a>).
+        Allow setting of "Host" header, and test suite for it.
+      </description>
+    </change>
+    <change git:commit="51448ca16b097537f0eac4120f840e7542ec0e66">
+      <fileset>
+        <file path="MANIFEST" />
+        <file path="t/51_client_with_host_header.t" />
+      </fileset>
+      <description>
+        Added new test suite to MANIFEST, fixed spelling.
+        Also added "plan tests" line to the test suite.
+      </description>
+    </change>
+    <change git:commit="c7dfbfccde32621caf59b1fd5c3919fbaf8b2e02">
+      <fileset>
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="t/20_xml_parser.t" />
+        <file path="t/21_xml_libxml.t" />
+        <file path="t/41_server_hang.t" />
+      </fileset>
+      <description>
+        Merge pull request #3 from yannk/master
+        (<xhtml:a href="https://github.com/yannk">https://github.com/yannk</xhtml:a>).
+        Expat parser subclass is protected against ext ent attack, libxml isn't.
+      </description>
+    </change>
+    <change git:commit="2e5292c32d326d90699da355c9c3543606c120af">
+      <file path="t/41_server_hang.t" />
+      <description>
+        Undo a change to this suite from yannk's pull.
+      </description>
+    </change>
+    <change git:commit="70e5e86e5d53c7aa2e3d6ecbdc450da599dc8dff">
+      <fileset>
+        <file path="etc/make_method" />
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/Apache/RPC/Status.pm" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Function.pm" />
+        <file path="lib/RPC/XML/Method.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="lib/RPC/XML/ParserFactory.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        More perlcritic-driven clean-up.
+        This is mostly POD sections, but also includes heavy re-working of
+        etc/make_method and parts of lib/RPC/XML.pm.
+      </description>
+    </change>
+    <change git:commit="ed371c566925c1fff75c1abe26844e5ab3b16e50">
+      <fileset>
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="t/21_xml_libxml.t" />
+      </fileset>
+      <description>
+        Fixed external entity handling on MacOS.
+        Also made small change to the test suite to be cleaner.
+      </description>
+    </change>
+    <change git:commit="2c63eeb48fb59087c9768e7be32e064a9b012982">
+      <fileset>
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+      </fileset>
+      <description>
+        Took out warnings on external entities blocking.
+        Now it blocks silently. Also cleaned up some docs.
+      </description>
+    </change>
+    <change git:commit="c17c8f05bf132ff8564fd3d633d7b8ed6d59d64b">
+      <file path="t/15_serialize.t" />
+      <description>
+        Additions to increase code coverage in XML.pm.
+      </description>
+    </change>
+    <change git:commit="1a92f352abc670dc1e54b3fbdbffebd0aefdc60c">
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Turns out this wasn't exporting RPC_I8.
+      </description>
+    </change>
+    <change git:commit="235afd8c7c7140b5a3eb837b1ec38c3cbb26c35e">
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/Apache/RPC/Status.pm" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Function.pm" />
+        <file path="lib/RPC/XML/Method.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="lib/RPC/XML/ParserFactory.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="xt/02_pod_coverage.t" />
+      </fileset>
+      <description>
+        Made 5.8.8 the new minimum-required perl.
+        Also dropped the utf8_downgrade hack, which affected an xt test.
+      </description>
+    </change>
+    <change git:commit="7edab9cbb49b96ef2c3bb5c1f42157f15ae888ad">
+      <file path="lib/RPC/XML/Client.pm" />
+      <description>
+        Improved arguments-checking in send_request.
+      </description>
+    </change>
+    <change git:commit="f82de550319e5e16c292d96a0b6ffcbea1fe365d">
+      <fileset>
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Fixed error-cases in usage of File::Temp->new().
+        File::Temp::new croaks on errors, doesn't return undef like I thought.
+      </description>
+    </change>
+    <change git:commit="11db8815f41084b3a3ab099a4741959cdf0bd9fd">
+      <fileset>
+        <file path="MANIFEST" />
+        <file path="lib/RPC/XML/Function.pm" action="DELETE" />
+        <file path="lib/RPC/XML/Method.pm" action="DELETE" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+      </fileset>
+      <description>
+        Roll Method.pm and Function.pm into Procedure.pm.
+        Remove Method.pm and Function.pm from distro.
+      </description>
+    </change>
+    <change git:commit="61241910ef453f45de89fbbecb51212bd7eb829e">
+      <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+      <description>
+        Fixed regexp for methodName validation.
+      </description>
+    </change>
+    <change git:commit="343e66b597f2d1f5fe5a903bddb01876001e5294">
+      <fileset>
+        <file path="t/10_data.t" />
+        <file path="t/11_base64_fh.t" />
+        <file path="t/12_nil.t" />
+        <file path="t/15_serialize.t" />
+        <file path="t/20_xml_parser.t" />
+        <file path="t/21_xml_libxml.t" />
+        <file path="t/25_parser_negative.t" action="ADD" />
+        <file path="t/29_parserfactory.t" />
+        <file path="t/30_method.t" />
+        <file path="t/40_server.t" />
+        <file path="t/40_server_xmllibxml.t" />
+        <file path="t/50_client.t" />
+        <file path="t/BadParserClass.pm" action="ADD" />
+        <file path="t/meth_good_1.xpl" />
+        <file path="t/namespace3.xpl" />
+        <file path="t/svsm_text.b64" action="ADD" />
+        <file path="t/util.pl" />
+      </fileset>
+      <description>
+        First round of Devel::Cover-inspired improvements.
+        These are the changes to the test suites to increase coverage of the
+        code.
+      </description>
+    </change>
+    <change git:commit="d04bd3c06a69b3885857fb85179458e2830db69c">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Fixes and such from Devel::Cover analysis.
+      </description>
+    </change>
+    <change git:commit="b8f94379ae4b01ae922e352a31b6150e0e3c7cbf">
+      <fileset>
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/30_method.t" />
+        <file path="t/meth_good_1.xpl" />
+        <file path="t/meth_good_2.xpl" action="ADD" />
+        <file path="t/meth_good_3.xpl" action="ADD" />
+      </fileset>
+      <description>
+        Fixes for file-based method loading/reloading.
+        New tests in the suite, and re-working of the ugliest hacky part of this
+        package.
+      </description>
+    </change>
+    <change git:commit="ffb4ccff320e9b521308c81279845d5a67eb64f8">
+      <fileset>
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/30_method.t" />
+        <file path="t/meth_good_3.xpl" />
+      </fileset>
+      <description>
+        RPC::XML::Procedure test-coverage improvement.
+        Also removed some unneeded code.
+      </description>
+    </change>
+    <change git:commit="105d7d2a5f38a208772f34ebf990bac428abf129">
+      <fileset>
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/30_method.t" />
+        <file path="t/40_server.t" />
+      </fileset>
+      <description>
+        Last round of RPC::XML::Procedure test coverage.
+        This is mostly in t/40_server.t, though some bugs were found and
+        addressed in the modules and in t/30_method.t.
+      </description>
+    </change>
+    <change git:commit="010bc4ad28cd73b092ac4fdaa7e7f94d463b46ec">
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/Apache/RPC/Status.pm" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Parser.pm" />
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="lib/RPC/XML/ParserFactory.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Documentation clean-up and update.
+      </description>
+    </change>
+    <change git:commit="b801e5449ec901ee40a637f65950e5598c26089b">
+      <fileset>
+        <file path="lib/Apache/RPC/Server.pm" />
+        <file path="lib/Apache/RPC/Status.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Changes from new Perl::Critic::Bangs policies.
+      </description>
+    </change>
+    <change git:commit="2da2abffca68579b10f1b906ec9adbcd61a">
+      <fileset>
+        <file path="xt/01_pod.t" />
+        <file path="xt/02_pod_coverage.t" />
+        <file path="xt/03_meta.t" />
+        <file path="xt/04_minimumversion.t" />
+        <file path="xt/05_critic.t" />
+      </fileset>
+      <description>
+        Adjustments to reflect moving from t to xt.
+        Also made changes to xt/02_pod_coverage.t to reflect changes to
+        modules.
+      </description>
+    </change>
+    <change git:commit="fd93112b964188a551e8ce206a5941011a8f152c">
+      <file path="lib/RPC/XML/Client.pm" />
+      <description>
+        Removed some error checks that can never fail.
+      </description>
+    </change>
+    <change git:commit="681a9a7a600b87898aea5a6fe797439dfc319c1d">
+      <fileset>
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/40_server.t" />
+      </fileset>
+      <description>
+        Code-coverage-driven changes and added tests.
+      </description>
+    </change>
+    <change git:commit="8f30897dfe5f8af5a7d2b2b6e7e956bebb47d31d">
+      <file path="etc/make_method" />
+      <description>
+        Fixes from new Perl::Critic::Bangs policies.
+      </description>
+    </change>
+    <change git:commit="72b0b1e897bee75dc6b40b15dbcd4d51d38ec6e7">
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Removed usage of AutoLoader completely.
+      </description>
+    </change>
+    <change git:commit="294c25cec95168b2ba0ab2187c0dbb1d8d7677a7">
+      <fileset>
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/40_server.t" />
+        <file path="xt/02_pod_coverage.t" />
+      </fileset>
+      <description>
+        Removed some dead code and better did the aliases.
+        This required a change in t/40_server.t for a private sub that no
+        longer exists. Also updated xt/02_pod_coverage.t for private subs that
+        have no pod.
+      </description>
+    </change>
+    <change git:commit="9babd1c2a1dd035db0456a5a6de814f120d7a516">
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=67694">RT #67694</xhtml:a>:
+        Fix a potential infinite-loop condition.
+      </description>
+    </change>
+  </release>
   <release date="2011-01-23T12:50:00-08:00" version="0.74" sc:tag="0.74">
     <change git:commit="a8537225834935868bda315946f0a0ce8088ac26">
       <file path="t/90_rt54183_sigpipe.t" />
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=56800">RT #56800</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=56800">RT #56800</xhtml:a>:
         Make this suite skip all tests on Windows platforms.
       </description>
     </change>
@@ -37,7 +372,7 @@
         <file path="t/90_rt58323_push_parser.t" action="ADD" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=58323">RT #58323</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=58323">RT #58323</xhtml:a>:
         Started as making the parser interfaces correctly report errors when
         passed null-length strings or "0" values. Turned out that the error
         return interface from XMLLibXML.pm was not consistent with the rest of
@@ -50,7 +385,7 @@
         <file path="t/40_server.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=58240">RT #58240</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=58240">RT #58240</xhtml:a>:
         Applied a patch from Martijn van de Streek that adds access to the
         HTTP::Request object to called method code.
       </description>
@@ -63,7 +398,7 @@
         <file path="t/90_rt58065_allow_nil.t" action="ADD" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=58065">RT #58065</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=58065">RT #58065</xhtml:a>:
         Allow the parsing of <xhtml:tt>&lt;nil /&gt;</xhtml:tt> tags when they
         are encountered, even if $RPC::XML::ALLOW_NIL is not set. Only limit
         the generation of these tags.
@@ -93,7 +428,7 @@
         <file path="t/21_xml_libxml.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=62916">RT #62916</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=62916">RT #62916</xhtml:a>:
         Previous adjustments to the <xhtml:tt>dateTime.iso8601</xhtml:tt>
         stringification caused it to no longer fit the XML-RPC spec. Fixed.
       </description>
@@ -139,7 +474,7 @@
         <file path="t/90_rt54183_sigpipe.t" action="ADD" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=54183">RT #54183</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=54183">RT #54183</xhtml:a>:
         Provide handling of SIGPIPE when sending the response to the client,
         in case they've terminated the connection.
       </description>
@@ -168,7 +503,7 @@
         <file path="t/90_rt54494_blessed_refs.t" action="ADD" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=54494">RT #54494</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=54494">RT #54494</xhtml:a>:
         Fix handling of blessed references in smart_encode().
       </description>
     </change>
@@ -206,7 +541,7 @@
         <file path="t/40_server_xmllibxml.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=52662">RT #52662</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=52662">RT #52662</xhtml:a>:
         Fix requirement specification for XML::LibXML.
       </description>
     </change>
@@ -264,7 +599,7 @@
         <file path="t/10_data.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=49406">RT #49406</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=49406">RT #49406</xhtml:a>:
         Make Base64 data-type allow zero-length data.
       </description>
     </change>
@@ -297,7 +632,7 @@
         <file path="t/28_parser_bugs_50013.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=50013">RT #50013</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=50013">RT #50013</xhtml:a>:
         Restore backwards-compatibility for projects that use RPC::XML::Parser
         directly.
       </description>
@@ -305,7 +640,7 @@
     <change git:commit="2660dfe40d48647e0be328a44f498f7173a65f19">
       <file path="lib/RPC/XML/Procedure.pm" />
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=50143">RT #50143</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=50143">RT #50143</xhtml:a>:
         Incorrectly called server_fault() as if it were a coderef.
       </description>
     </change>
@@ -417,7 +752,7 @@
         <file path="t/50_client.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=47806">RT #47806</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=47806">RT #47806</xhtml:a>:
         One more patch for Windows compatibility with temp-files.
       </description>
     </change>
@@ -470,7 +805,7 @@
         <file path="lib/RPC/XML/Server.pm" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=42736">RT #42736</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=42736">RT #42736</xhtml:a>:
         Support user-adjustment of server-based faults, and normalize the
         existing faults.
       </description>
@@ -488,7 +823,7 @@
         <file path="t/13_no_deep_recursion.t" action="ADD" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=41063">RT #41063</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=41063">RT #41063</xhtml:a>:
         Re-visit how arrays and structs are smart-encoded and constructed, so
         as to avoid cyclical data structure references.
       </description>
@@ -502,7 +837,7 @@
         <file path="t/70_compression_detect.t" action="ADD" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=47219">RT #47219</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=47219">RT #47219</xhtml:a>:
         Mis-read the patch from previous fix, this actually fixes it.
         Also added a test suite to check for compression-detection.
       </description>
@@ -515,7 +850,7 @@
         <file path="lib/RPC/XML/Server.pm" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=47219">RT #47219</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=47219">RT #47219</xhtml:a>:
         Re-did the detection of compression availability (testing for the
         Compress::Zlib module) based on comments in this bug.
       </description>
@@ -523,7 +858,7 @@
     <change git:commit="8ce60bd0d5f982ea435760f24a1fdd92eaea614d">
       <file path="t/60_net_server.t" />
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=47220">RT #47220</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=47220">RT #47220</xhtml:a>:
         Net::Server tests are not (currently) viable on Windows. Also made
         script taint-safe.
       </description>
@@ -535,7 +870,7 @@
         <file path="t/util.pl"/>
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=47221">RT #47221</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=47221">RT #47221</xhtml:a>:
         Applied a patch from kmx@volny.cz, for better Windows testing.
       </description>
     </change>
@@ -609,12 +944,12 @@
         <file path="t/30_method.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=34132">RT #34132</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=34132">RT #34132</xhtml:a>:
         Based on a patch from the requestor, added support for &lt;nil/&gt;.
         Documentation and tests are present, but a little sparse. This change
         also incorporates a small add to <xhtml:tt>lib/RPC/XML/Parser.pm</xhtml:tt>
         to address
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=42033">RT #42033</xhtml:a>.
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=42033">RT #42033</xhtml:a>.
       </description>
     </change>
     <change git:commit="c22788c9b05600fe2275827cc853e26da3e4dce9">
@@ -623,7 +958,7 @@
         <file path="t/41_server_hang.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=27778">RT #27778</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=27778">RT #27778</xhtml:a>:
         Fix problems with child-process management on Windows that was causing
         <xhtml:tt>t/40_server.t</xhtml:tt> to hang during test runs. Also put
         skip-clause into <xhtml:tt>t/41_server_hang.t</xhtml:tt>, as according
@@ -650,7 +985,7 @@
         <file path="t/10_data.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=35106">RT ticket #35106</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=35106">RT ticket #35106</xhtml:a>:
         Make the behavior of RPC::XML::array constructor work as expected.
         This led to adding use of Scalar::Util and cleaning up the places where
         I was still doing "UNIVERSAL::isa(...)" hacks to test refs without the
@@ -680,14 +1015,14 @@
         <file path="t/50_client.t" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=34559">RT ticket #34559</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=34559">RT ticket #34559</xhtml:a>:
         Allow control of LWP::UA timeouts from within client class.
       </description>
     </change>
     <change git:commit="f6b4ee845076ebde9f1c7921e6c70235b4e499f5">
       <file path="lib/RPC/XML/Server.pm" />
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=43019">RT ticket #43019</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=43019">RT ticket #43019</xhtml:a>:
         Small hack to the existing SSL hack for Socket6 problems.
       </description>
     </change>
@@ -725,7 +1060,7 @@
       </fileset>
       <description>
         Lingering problem from
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30354">RT ticket #30354</xhtml:a>,
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=30354">RT ticket #30354</xhtml:a>,
         RPC::XML::Parser did not get the change committed that included
         parser-level support for &lt;i8&gt;. Also added tests for parsing
         RPC::XML::request objects and all the data-type objects to the parser
@@ -795,7 +1130,7 @@
       <file path="t/40_server.t" revision="349" />
       <description>
         Fix for
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=36078">RT ticket #36078</xhtml:a>,
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=36078">RT ticket #36078</xhtml:a>,
         fix the URL testing on the server object to be less strict. Instead of
         only allowing "localhost", now also allows "localhost.localdomain" and
         does a look-up of "localhost" for the 127.* IP address and permits
@@ -810,7 +1145,7 @@
       </fileset>
       <description>
         Per
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30354">RT ticket #30354</xhtml:a>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=30354">RT ticket #30354</xhtml:a>
         and specific request from a large agency using this package,
         implemented an "i8" type as an extension to the official XML-RPC
         specification. Documentation and tests included.
@@ -845,7 +1180,7 @@
       </fileset>
       <description>
         Related to the main change of
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30849">RT ticket #30849</xhtml:a>,
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=30849">RT ticket #30849</xhtml:a>,
         fixes potential problem in the creation of temporary file names if a
         test script is run directly from the "t" directory. While at it, added
         a line with the Subversion "Id" keyword and set the "svn:keywords"
@@ -856,7 +1191,7 @@
     <change>
       <file path="lib/RPC/XML/Client.pm" revision="329" />
       <description>
-        Per <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30849">RT ticket #30849</xhtml:a>,
+        Per <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=30849">RT ticket #30849</xhtml:a>,
         fix problem caused by having colons in temp-file names. Fix largely
         from patch suggested by Jörg Meltzer &lt;joerg@joergmeltzer.de&gt;.
       </description>
@@ -886,7 +1221,7 @@
         <file path="t/10_data.t" revision="333" />
       </fileset>
       <description>
-        Per <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=30042">RT ticket #30042</xhtml:a>,
+        Per <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=30042">RT ticket #30042</xhtml:a>,
         made a do-nothing branch in RPC::XML::smart_encode actually die with an
         error when a reference-type is passed in that cannot be converted.
         Added two tests to cover this, and took the opportunity to convert
@@ -922,7 +1257,7 @@
         <file path="t/40_server.t" revision="337" />
       </fileset>
       <description>
-        Per <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=29351">RT ticket #29351</xhtml:a>,
+        Per <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=29351">RT ticket #29351</xhtml:a>,
         fixed a bug that caused a server to incorrectly report the location and
         cause of an XML parsing error in the request. The actual bug and
         solution were different than initially reported in the ticket.
@@ -934,7 +1269,7 @@
         <file path="t/10_data.t" revision="338" />
       </fileset>
       <description>
-        Per <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=31818">RT ticket #31818</xhtml:a>,
+        Per <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=31818">RT ticket #31818</xhtml:a>,
         fix to the XML serialization of double values to conform to the
         XML-RPC spec, as it does not allow for exponential notation. This also
         required changes to the tests, as values were no longer being
@@ -963,7 +1298,7 @@
         <file path="t/40_server.t" revision="341" />
       </fileset>
       <description>
-        <xhtml:a href="http://rt.cpan.org/Ticket/Display.html?id=34557">RT ticket #34557</xhtml:a>:
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=34557">RT ticket #34557</xhtml:a>:
         Provide access to client-side connection info to methods called on
         the server, by placing the data from get_peeraddr() (as abstracted
         through existing methods in HTTP::Daemon::ClientConn and

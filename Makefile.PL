@@ -46,7 +46,7 @@ END
 }
 
 $CLEAN = 'pod2html-* *.html *.spec *.rpm rpmrc rpmmacro *.log t/*.log ' .
-    'META.yml *.ppd ';
+    'META.yml META.json MYMETA.yml MYMETA.json *.ppd cover_db ';
 
 @scripts = (File::Spec->catfile(qw(etc make_method)));
 $CLEAN  .= File::Spec->catfile(qw(methods *.xpl));
@@ -82,7 +82,7 @@ find(sub {
 
 WriteMakefile(
     NAME      => 'RPC::XML',
-    VERSION   => '0.74',
+    VERSION   => '0.75',
     AUTHOR    => 'Randy J. Ray',
     ABSTRACT  => 'Data, client and server classes for XML-RPC',
     EXE_FILES => \@scripts,

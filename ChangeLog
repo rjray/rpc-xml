@@ -9,6 +9,208 @@
 		allowing choice of character-set encodings for  
 		XML messages.                                   
 
+0.75	Saturday August 13, 2011, 05:30:00 PM -0700
+
+	* MANIFEST
+	Somehow, t/13_no_deep_recursion.t never got added to MANIFEST.  
+
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	RT #65154: Fixed a cut/paste error in an error message.         
+
+	* lib/RPC/XML/Client.pm
+	* t/51_client_with_host_header.t (added)
+	RT #68792: Merge pull request #2 from dragon3/master            
+	(https://github.com/dragon3). Allow setting of "Host" header,   
+	and test suite for it.                                          
+
+	* MANIFEST
+	* t/51_client_with_host_header.t
+	Added new test suite to MANIFEST, fixed spelling. Also added    
+	"plan tests" line to the test suite.                            
+
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* t/20_xml_parser.t
+	* t/21_xml_libxml.t
+	* t/41_server_hang.t
+	Merge pull request #3 from yannk/master                         
+	(https://github.com/yannk). Expat parser subclass is protected  
+	against ext ent attack, libxml isn't.                           
+
+	* t/41_server_hang.t
+	Undo a change to this suite from yannk's pull.                  
+
+	* etc/make_method
+	* lib/Apache/RPC/Server.pm
+	* lib/Apache/RPC/Status.pm
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Function.pm
+	* lib/RPC/XML/Method.pm
+	* lib/RPC/XML/Parser.pm
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* lib/RPC/XML/ParserFactory.pm
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	More perlcritic-driven clean-up. This is mostly POD sections,   
+	but also includes heavy re-working of etc/make_method and parts 
+	of lib/RPC/XML.pm.                                              
+
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* t/21_xml_libxml.t
+	Fixed external entity handling on MacOS. Also made small change 
+	to the test suite to be cleaner.                                
+
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	Took out warnings on external entities blocking. Now it blocks  
+	silently. Also cleaned up some docs.                            
+
+	* t/15_serialize.t
+	Additions to increase code coverage in XML.pm.                  
+
+	* lib/RPC/XML.pm
+	Turns out this wasn't exporting RPC_I8.                         
+
+	* lib/Apache/RPC/Server.pm
+	* lib/Apache/RPC/Status.pm
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Function.pm
+	* lib/RPC/XML/Method.pm
+	* lib/RPC/XML/Parser.pm
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* lib/RPC/XML/ParserFactory.pm
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	* xt/02_pod_coverage.t
+	Made 5.8.8 the new minimum-required perl. Also dropped the      
+	utf8_downgrade hack, which affected an xt test.                 
+
+	* lib/RPC/XML/Client.pm
+	Improved arguments-checking in send_request.                    
+
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* lib/RPC/XML/Server.pm
+	Fixed error-cases in usage of File::Temp->new().                
+	File::Temp::new croaks on errors, doesn't return undef like I   
+	thought.                                                        
+
+	* MANIFEST
+	* lib/RPC/XML/Function.pm (deleted)
+	* lib/RPC/XML/Method.pm (deleted)
+	* lib/RPC/XML/Procedure.pm
+	Roll Method.pm and Function.pm into Procedure.pm. Remove        
+	Method.pm and Function.pm from distro.                          
+
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	Fixed regexp for methodName validation.                         
+
+	* t/10_data.t
+	* t/11_base64_fh.t
+	* t/12_nil.t
+	* t/15_serialize.t
+	* t/20_xml_parser.t
+	* t/21_xml_libxml.t
+	* t/25_parser_negative.t (added)
+	* t/29_parserfactory.t
+	* t/30_method.t
+	* t/40_server.t
+	* t/40_server_xmllibxml.t
+	* t/50_client.t
+	* t/BadParserClass.pm (added)
+	* t/meth_good_1.xpl
+	* t/namespace3.xpl
+	* t/svsm_text.b64 (added)
+	* t/util.pl
+	First round of Devel::Cover-inspired improvements. These are    
+	the changes to the test suites to increase coverage of the code.
+
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	Fixes and such from Devel::Cover analysis.                      
+
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	* t/30_method.t
+	* t/meth_good_1.xpl
+	* t/meth_good_2.xpl (added)
+	* t/meth_good_3.xpl (added)
+	Fixes for file-based method loading/reloading. New tests in the 
+	suite, and re-working of the ugliest hacky part of this package.
+
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	* t/30_method.t
+	* t/meth_good_3.xpl
+	RPC::XML::Procedure test-coverage improvement. Also removed     
+	some unneeded code.                                             
+
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	* t/30_method.t
+	* t/40_server.t
+	Last round of RPC::XML::Procedure test coverage. This is mostly 
+	in t/40_server.t, though some bugs were found and addressed in  
+	the modules and in t/30_method.t.                               
+
+	* lib/Apache/RPC/Server.pm
+	* lib/Apache/RPC/Status.pm
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Parser.pm
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* lib/RPC/XML/ParserFactory.pm
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	Documentation clean-up and update.                              
+
+	* lib/Apache/RPC/Server.pm
+	* lib/Apache/RPC/Status.pm
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* lib/RPC/XML/Parser/XMLParser.pm
+	* lib/RPC/XML/Procedure.pm
+	* lib/RPC/XML/Server.pm
+	Changes from new Perl::Critic::Bangs policies.                  
+
+	* xt/01_pod.t
+	* xt/02_pod_coverage.t
+	* xt/03_meta.t
+	* xt/04_minimumversion.t
+	* xt/05_critic.t
+	Adjustments to reflect moving from t to xt. Also made changes   
+	to xt/02_pod_coverage.t to reflect changes to modules.          
+
+	* lib/RPC/XML/Client.pm
+	Removed some error checks that can never fail.                  
+
+	* lib/RPC/XML/Server.pm
+	* t/40_server.t
+	Code-coverage-driven changes and added tests.                   
+
+	* etc/make_method
+	Fixes from new Perl::Critic::Bangs policies.                    
+
+	* lib/RPC/XML/Server.pm
+	Removed usage of AutoLoader completely.                         
+
+	* lib/RPC/XML/Server.pm
+	* t/40_server.t
+	* xt/02_pod_coverage.t
+	Removed some dead code and better did the aliases. This         
+	required a change in t/40_server.t for a private sub that no    
+	longer exists. Also updated xt/02_pod_coverage.t for private    
+	subs that have no pod.                                          
+
+	* lib/Apache/RPC/Server.pm
+	RT #67694: Fix a potential infinite-loop condition.             
+
 0.74	Sunday January 23, 2011, 12:50:00 PM -0800
 
 	* t/90_rt54183_sigpipe.t
@@ -1439,9 +1641,9 @@
 	* *
 	All files are tracked from this point forward.                  
 
-# Generated on Sunday January 23, 2011, 12:47:00 PM -0800
-# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/1.70,             
-# XML::LibXSLT/1.70, libxml/2.7.7, libxslt/1.1.26 (with exslt)                 
+# Generated on Saturday August 13, 2011, 05:19:28 PM -0700
+# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/1.84,             
+# XML::LibXSLT/1.70, libxml/2.7.3, libxslt/1.1.24 (with exslt)                 
 # XSLT sources:
 #     $Id: changelog2text.xslt 8 2009-01-19 06:46:50Z rjray $
 #     $Id: common-text.xslt 8 2009-01-19 06:46:50Z rjray $
