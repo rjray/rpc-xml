@@ -160,7 +160,11 @@ sub handler ($$) ## no critic (ProhibitExcessComplexity)
             $r->read($content, ($length < 2048) ? $length : 2048);
             # If $content is undef, then the client has closed the connection
             # on its end, and we're done (like it or not).
-            last if (! defined $content);
+            if (! defined $content)
+            {
+                $r->log_error("$me: Error reading request content");
+                return SERVER_ERROR;
+            }
 
             $length -= length $content;
             if ($do_compress)
