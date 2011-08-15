@@ -50,7 +50,7 @@ BEGIN
     %Apache::RPC::Server::SERVER_TABLE = ();
 }
 
-our $VERSION = '1.39';
+our $VERSION = '1.40';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 sub version { return $Apache::RPC::Server::VERSION }
