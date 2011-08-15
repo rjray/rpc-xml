@@ -2290,7 +2290,7 @@ XPL specifies a namespace, see L<RPC::XML::Procedure|RPC::XML::Procedure>). If
 the code element of a procedure/method is passed in as a direct code reference
 by one of the other syntaxes allowed by the constructor, the package may well
 be different. Thus, routines should strive to be as localized as possible,
-independant of specific namespaces. If a group of routines are expected to work
+independent of specific namespaces. If a group of routines are expected to work
 in close concert, each should explicitly set the namespace with a C<package>
 declaration as the first statement within the routines themselves.
 

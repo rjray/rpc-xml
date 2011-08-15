@@ -524,7 +524,7 @@ Read the help text for the method from the file specified.
 
 =item --code=FILE
 
-Read the actual code for the routine from the file specifed. If this option is
+Read the actual code for the routine from the file specified. If this option is
 not given, the code is read from the standard input file descriptor.
 
 =item --output=FILE
