@@ -91,7 +91,7 @@ WriteMakefile(
         'File::Spec'   => 0.8,
         'constant'     => 1.03,
         'Scalar::Util' => 1.19,
-        'Test::More'   => 0,
+        'Test::More'   => 0.94,
         'LWP'          => 5.834,
         'XML::Parser'  => 2.31,
     },
