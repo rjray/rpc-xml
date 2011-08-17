@@ -207,6 +207,8 @@ SKIP: {
     # it doesn't have the concept of chmod...
     skip 'Tests involving directory permissions skipped on Windows', 2
         if ($^O eq 'MSWin32' || $^O eq 'cygwin');
+    skip 'Tests involving directory permissions skipped under root', 2
+        if ($< == 0);
 
     my $baddir = File::Spec->catdir(File::Spec->tmpdir(), "baddir_$$");
     if (! mkdir $baddir)

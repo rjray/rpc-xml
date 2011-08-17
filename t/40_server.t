@@ -133,6 +133,10 @@ SKIP: {
 # Let's test that server creation properly fails if/when HTTP::Daemon fails.
 # First find a port in use, preferably under 1024:
 SKIP: {
+    if ($< == 0)
+    {
+        skip 'Negative port-based test unreliable when run as root', 2;
+    }
     $port = find_port_in_use();
     if ($port == -1)
     {
