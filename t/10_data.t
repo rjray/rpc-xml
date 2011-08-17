@@ -5,6 +5,8 @@
 use strict;
 use vars qw($val $str $fh $obj $class %val_tbl @values $datetime_avail);
 
+use Config;
+
 use Test::More tests => 250;
 use File::Spec;
 
@@ -254,8 +256,9 @@ is($values[8]->type, 'int', "smart_encode, int<3>");
 is($values[9]->type, 'double', "smart_encode, double<2>");
 is($values[10]->type, 'int', 'smart_encode, int<4>');
 is($values[11]->type, 'int', 'smart_encode, int<5>');
-TODO: {
-    local $TODO = 'Big integer issues in smart_encode';
+SKIP: {
+    skip '64-bit architecture required to test these I8 values', 2
+        if (! $Config{use64bitint});
 
     is($values[12]->type, 'i8', 'smart_encode, i8<1>');
     is($values[13]->type, 'i8', 'smart_encode, i8<2>');
