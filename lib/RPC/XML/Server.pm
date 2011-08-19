@@ -110,7 +110,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.67';
+$VERSION = '1.68';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -616,7 +616,8 @@ sub server_loop ## no critic (RequireArgUnpacking,ProhibitExcessComplexity)
 
     if ($self->{__daemon})
     {
-        my ($conn, $req, $resp, $reqxml, $respxml, $exit_now, $timeout);
+        my ($conn, $req, $resp, $reqxml, $respxml, $exit_now, $timeout,
+            $eval_return);
 
         my %args = @_;
 
@@ -652,7 +653,17 @@ sub server_loop ## no critic (RequireArgUnpacking,ProhibitExcessComplexity)
             }
             $conn->timeout($self->timeout);
             $self->process_request($conn);
-            $conn->close;
+
+            $eval_return = eval {
+                local $SIG{PIPE} = sub { die "server_loop: Caught SIGPIPE\n"; };
+                $conn->close;
+                1;
+            };
+            if ((! $eval_return) && $@)
+            {
+                warn "Cannot close conection: $@\n";
+            }
+
             undef $conn;    # Free up any lingering resources
         }
 
