@@ -14,22 +14,6 @@ use Cwd 'cwd';
 my ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir                   = File::Spec->catpath($vol, $dir, '');
 
-eval "require LWP;";
-if ($LWP::VERSION and $LWP::VERSION < 5.801)
-{
-    print STDERR <<END;
-@@@@@
-        Please note!
-
-        Due to a bug fixed in version 5.801 of LWP, using the spool-to-file
-        feature of RPC::XML::Client is broken. The relevant tests will be
-        skipped in the test suite, but unless you upgrade your LWP you
-        should not attempt to use this feature.
-@@@@@
-
-END
-}
-
 eval "require XML::LibXML;";
 if ($@)
 {
@@ -82,7 +66,7 @@ find(sub {
 
 WriteMakefile(
     NAME      => 'RPC::XML',
-    VERSION   => '0.75',
+    VERSION   => '0.76',
     AUTHOR    => 'Randy J. Ray',
     ABSTRACT  => 'Data, client and server classes for XML-RPC',
     EXE_FILES => \@scripts,
@@ -98,10 +82,12 @@ WriteMakefile(
     dist      => { COMPRESS => 'gzip -9f' },
     clean     => { FILES => $CLEAN },
     LICENSE   => 'perl',
-    MIN_PERL_VERSION => 5.006001,
+    MIN_PERL_VERSION => 5.008008,
     META_MERGE => {
         recommends => {
-            'XML::LibXML' => '1.70',
+            'XML::LibXML'               => '1.70',
+            'DateTime'                  => '0.70',
+            'DateTime::Format::ISO8601' => '0.07',
         },
         resources => {
             homepage   => 'http://search.cpan.org/dist/RPC-XML',

@@ -16,6 +16,88 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2011-08-20T18:30:00-07:00" version="0.76" sc:tag="0.76">
+    <change git:commit="6ac04c12677b0285d54213171aaf0211122c2ce5">
+      <fileset>
+        <file path="etc/make_method" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=70258">RT #70258</xhtml:a>:
+        Fixed typos in docs pointed out by Debian team.
+      </description>
+    </change>
+    <change git:commit="5fd094cbda162a5421df70228d642bff2501412f">
+      <file path="lib/Apache/RPC/Server.pm" />
+      <description>
+        Better version of the fix for infinite loops.
+        This is the patch originally suggested by the Eric Cholet, who found
+        the bug.
+      </description>
+    </change>
+    <change git:commit="b7210744ecffa57fb6f4eac51b8ed302809c0daa">
+      <file path="t/00_load.t" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=70280">RT #70280</xhtml:a>:
+        This test was still testing RPC/XML/Method.pm.
+        Rewrote to remove that but include the (forgotten) XMLLibXML.pm module.
+        That test has to be conditional on the presence of XML::LibXML.
+      </description>
+    </change>
+    <change git:commit="e63c1a71610657ec7ca7738aae6e522f961a586a">
+      <fileset>
+        <file path="Makefile.PL" />
+        <file path="t/51_client_with_host_header.t" />
+      </fileset>
+      <description>
+        Clean up test suite to work with older Test::More.
+        Also specify a minimum Test::More that supports subtest(). This is
+        also a part of
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=70280">RT #70280</xhtml:a>.
+      </description>
+    </change>
+    <change git:commit="73aa084d14a5befc1251f309ff32189a6d0aa1a8">
+      <fileset>
+        <file path="t/11_base64_fh.t" />
+        <file path="t/20_xml_parser.t" />
+        <file path="t/21_xml_libxml.t" />
+        <file path="t/40_server.t" />
+      </fileset>
+      <description>
+        These tests had failures when run as root.
+        Permissions-based negative tests were incorrectly passing.
+      </description>
+    </change>
+    <change git:commit="800899531bc13da5cbc36423662bae76de304fb5">
+      <file path="t/10_data.t" />
+      <description>
+        Moved the 64-bit "TODO" tests to a SKIP block.
+        Non-64-bit systems will skip, rather than fail, these tests.
+      </description>
+    </change>
+    <change git:commit="cc02b294421a3b343ac741fdd4ceb11349626972">
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=65616">RT #65616</xhtml:a>:
+        Fix for slow methods killing servers.
+        Applied and modified patch from person who opened the ticket.
+      </description>
+    </change>
+    <change git:commit="c2e33bcb41fd923f74581b70bca2849dbd91a679">
+      <fileset>
+        <file path="MANIFEST" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="t/10_data.t" />
+        <file path="t/14_datetime_iso8601.t" action="ADD" />
+      </fileset>
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=55628">RT #55628</xhtml:a>:
+        Improve flexibility of date parsing.
+        This adds the ability to pass any ISO 8601 string to the
+        RPC::XML::datetime_iso8601 constructor.
+      </description>
+    </change>
+  </release>
   <release date="2011-08-13T17:30:00-07:00" version="0.75" sc:tag="0.75">
     <change git:commit="69eba1c169417b60c13b9a00665f9f0a52e3b949">
       <file path="MANIFEST" />
