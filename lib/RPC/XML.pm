@@ -27,7 +27,7 @@ use strict;
 use warnings;
 use vars qw(@EXPORT_OK %EXPORT_TAGS $VERSION $ERROR
             %XMLMAP $XMLRE $ENCODING $FORCE_STRING_ENCODING $ALLOW_NIL
-            $DATETIME_REGEXP);
+            $DATETIME_REGEXP $DATETIME_ISO8601_AVAILABLE);
 use subs qw(time2iso8601 smart_encode);
 use base 'Exporter';
 
@@ -47,6 +47,11 @@ BEGIN
 
     # Allow the <nil /> extension?
     $ALLOW_NIL = 0;
+
+    # Determine if the DateTime::Format::ISO8601 module is available for
+    # RPC::XML::datetime_iso8601 to use:
+    my $retval = eval 'use DateTime::Format::ISO8601; 1;';
+    $DATETIME_ISO8601_AVAILABLE = $retval ? 1 : 0;
 }
 
 @EXPORT_OK = qw(time2iso8601 smart_encode
@@ -58,7 +63,7 @@ BEGIN
                               RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.55';
+$VERSION = '1.56';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
@@ -89,10 +94,10 @@ my $time_re =
     qr{
           ([012]\d):
           ([0-5]\d):
-          ([0-5]\d)([.]\d+)?
+          ([0-5]\d)([.,]\d+)?
           (Z|[-+]\d\d:\d\d)?
     }x;
-$DATETIME_REGEXP = qr{^${date_re}T${time_re}$};
+$DATETIME_REGEXP = qr{^${date_re}T?${time_re}$};
 
 # All of the RPC_* functions are convenience-encoders
 sub RPC_STRING ($)
@@ -203,7 +208,7 @@ sub time2iso8601
                     {
                         # Must be a DateTime object, convert to ISO8601
                         $type = RPC::XML::datetime_iso8601
-                            ->new($_->clone->set_time_zone('UTC')->iso8601);
+                            ->new($_->clone->set_time_zone('UTC'));
                     }
                 }
                 elsif (reftype($_) eq 'HASH')
@@ -575,33 +580,52 @@ sub type { return 'dateTime.iso8601'; };
 sub new
 {
     my ($class, $value) = @_;
+    my $newvalue;
 
     if (ref($value) && reftype($value) eq 'SCALAR')
     {
         $value = ${$value};
     }
 
-    if ($value && $value =~ /$RPC::XML::DATETIME_REGEXP/)
+    if (defined $value)
     {
-        # This is the WRONG way to represent this, but it's the way it is
-        # given in the spec, so assume that other implementations can only
-        # accept this form. Also, this should match the form that time2iso8601
-        # produces.
-        $value = $7 ? "$1$2$3T$4:$5:$6$7" : "$1$2$3T$4:$5:$6";
-        if ($8)
+        if ($value =~ /$RPC::XML::DATETIME_REGEXP/)
         {
-            $value .= $8;
+            # This is *not* a valid ISO 8601 format, but it's the way it is
+            # given in the spec, so assume that other implementations can only
+            # accept this form. Also, this should match the form that
+            # time2iso8601 produces.
+            $newvalue = $7 ? "$1$2$3T$4:$5:$6$7" : "$1$2$3T$4:$5:$6";
+            if ($8) {
+                $newvalue .= $8;
+            }
+        }
+        elsif ($RPC::XML::DATETIME_ISO8601_AVAILABLE)
+        {
+            $newvalue =
+                eval { DateTime::Format::ISO8601->parse_datetime($value) };
+            if ($newvalue)
+            {
+                # This both removes the dashes (*sigh*) and forces it from an
+                # object to an ordinary string:
+                $newvalue =~ s/-//g;
+            }
+        }
+
+        if (! $newvalue)
+        {
+            $RPC::XML::ERROR = "${class}::new: Malformed data ($value) " .
+                'passed as dateTime.iso8601';
+            return;
         }
     }
     else
     {
-        $RPC::XML::ERROR = "${class}::new: Malformed data (" .
-            (defined($value) ? $value : '<undef>') .
-            ') passed as dateTime.iso8601';
+        $RPC::XML::ERROR = "${class}::new: Value required in constructor";
         return;
     }
 
-    return bless \$value, $class;
+    return bless \$newvalue, $class;
 }
 
 ###############################################################################
@@ -1601,7 +1625,7 @@ This module provides a set of classes for creating values to pass to the
 constructors for requests and responses. These are lightweight objects, most of
 which are implemented as blessed scalar references so as to associate specific
 type information with the value. Classes are also provided for requests,
-responses and faults (errors) and a parsers .
+responses and faults (errors).
 
 This module does not actually provide any transport implementation or server
 basis. For these, see L<RPC::XML::Client|RPC::XML::Client> and
@@ -1617,10 +1641,12 @@ imported as part of the C<use> statement, or with a direct call to C<import>:
 =item time2iso8601([$time])
 
 Convert the integer time value in C<$time> (which defaults to calling the
-built-in C<time> if not present) to a ISO 8601 string in the UTC time
-zone. This is a convenience function for occassions when the return value
-needs to be of the B<dateTime.iso8601> type, but the value on hand is the
-return from the C<time> built-in.
+built-in C<time> if not present) to a (pseudo) ISO 8601 string in the UTC time
+zone. This is a convenience function for occassions when the return value needs
+to be of the B<dateTime.iso8601> type, but the value on hand is the return from
+the C<time> built-in. Note that the format of this string is not strictly
+compliant with ISO 8601 due to the way the B<dateTime.iso8601> data-type was
+defined in the specification. See L</"DATES AND TIMES">, below.
 
 =item smart_encode(@args)
 
@@ -1764,7 +1790,8 @@ for ISO 8601 may be found elsewhere. No processing is done to the data. Note
 that the XML-RPC specification actually got the format of an ISO 8601 date
 slightly wrong. Because this is what is in the published spec, this package
 produces dates that match the XML-RPC spec, not the the ISO 8601 spec. However,
-it will I<read> date-strings in proper ISO 8601 format.
+it will I<read> date-strings in proper ISO 8601 format. See L</"DATES AND
+TIMES">, below.
 
 =item RPC::XML::nil
 
@@ -1944,6 +1971,43 @@ provided for clarity and simplicity.
 =back
 
 =back
+
+=head1 DATES AND TIMES
+
+The XML-RPC specification refers to the date/time values as ISO 8601, but
+unfortunately got the syntax slightly wrong in the examples. However, since
+this is the published specification it is necessary to produce time-stamps that
+conform to this format. The specification implies that the only format for
+date/time values is:
+
+    YYYYMMDDThh:mm:ss
+
+(Here, the C<T> is literal, the rest represent elements of the date and time.)
+However, the ISO 8601 specification does not allow this particular format, and
+in generally is I<considerably> more flexible than this.  Yet there are
+implementations of the XML-RPC standard in other languages that rely on a
+strict interpretation of this format.
+
+To accomodate this, the B<RPC::XML> package only produces B<dateTime.iso8601>
+values in the format given in the spec, with the possible addition of timezone
+information if the string used to create a B<RPC::XML::datetime_iso8601>
+instance included a timezone offset. The string passed in to the constructor
+for that class must match:
+
+    \d\d\d\d-?\d\d-?\d\dT?\d\d:\d\d:\d\d([.,]\d+)?(Z|[-+]\d\d:\d\d)?
+
+This pattern is also used by B<smart_encode> to distinguish a date/time string
+from a regular string. Note that the C<T> is optional here, as it is in the
+ISO 8601 spec. The timezone is optional, and if it is not given then UTC is
+assumed. The XML-RPC specification says not to assume anything about the
+timezone in the absence of one, but the format of ISO 8601 declares that that
+absence of an explicit timezone dictates UTC.
+
+If you have L<DateTime::Format::ISO8601|DateTime::Format::ISO8601> installed,
+then B<RPC::XML::datetime_iso8601> will fall back on it to try and parse any
+input strings that do not match the above pattern. If the string cannot be
+parsed by the B<DateTime::Format::ISO8601> module, then the constructor returns
+B<undef> and B<$RPC::XML::ERROR> is set.
 
 =head1 DIAGNOSTICS
 

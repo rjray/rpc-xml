@@ -7,7 +7,7 @@ use vars qw($val $str $fh $obj $class %val_tbl @values $datetime_avail);
 
 use Config;
 
-use Test::More tests => 250;
+use Test::More tests => 252;
 use File::Spec;
 
 use RPC::XML ':all';
@@ -129,9 +129,9 @@ for (qw(0 1 yes no tRuE FaLsE))
 }
 # This should not
 $obj = RPC::XML::boolean->new('of course!');
-ok(! ref $obj, "RPC::XML::boolean, bad value did not yield referent");
+ok(! ref $obj, 'RPC::XML::boolean, bad value did not yield referent');
 like($RPC::XML::ERROR, qr/::new: Value must be one of/,
-   "RPC::XML::boolean, bad value correctly set \$RPC::XML::ERROR");
+     'RPC::XML::boolean, bad value correctly set $RPC::XML::ERROR');
 
 # The dateTime.iso8601 type
 $val = time2iso8601(time);
@@ -160,12 +160,16 @@ is(length($obj->as_string), $obj->length,
    "RPC::XML::datetime_iso8601, length() method test");
 is($obj->value, $val, 'RPC::XML::datetime_iso8601, value() method test');
 # Test bad date-data
-substr($val, -5, 5) = ''; # Drop the Z and the fractional
-$val .= '-07:00'; # Add a specification of a time zone that isn't UTC
 $obj = RPC::XML::datetime_iso8601->new();
-ok(! ref $obj, "RPC::XML::datetime_iso8601, bad value did not yield referent");
-like($RPC::XML::ERROR, qr/::new: Malformed data.*passed/,
-     'RPC::XML::datetime_iso8601, bad value correctly set \$RPC::XML::ERROR');
+ok(! ref $obj,
+   'RPC::XML::datetime_iso8601, empty value did not yield referent');
+like($RPC::XML::ERROR, qr/::new: Value required/,
+     'RPC::XML::datetime_iso8601, empty value correctly set $RPC::XML::ERROR');
+$obj = RPC::XML::datetime_iso8601->new('not a date');
+ok(! ref $obj,
+   'RPC::XML::datetime_iso8601, bad value did not yield referent');
+like($RPC::XML::ERROR, qr/::new: Malformed data/,
+     'RPC::XML::datetime_iso8601, empty value correctly set $RPC::XML::ERROR');
 # Test the slightly different date format
 $obj = RPC::XML::datetime_iso8601->new('2008-09-29T12:00:00-07:00');
 isa_ok($obj, 'RPC::XML::datetime_iso8601', '$obj');

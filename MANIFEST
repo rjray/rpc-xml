@@ -53,6 +53,7 @@ t/10_data.t
 t/11_base64_fh.t
 t/12_nil.t
 t/13_no_deep_recursion.t
+t/14_datetime_iso8601.t
 t/15_serialize.t
 t/20_xml_parser.t
 t/21_xml_libxml.t
