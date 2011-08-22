@@ -178,7 +178,12 @@ $faux_res->serialize($ofh);
 # Again, this means that all the triggered calls managed to not die
 ok(1, 'serialize method did not croak');
 
-is(-s $ofh, length($faux_res->as_string), 'Normal response file size OK');
+# If we're on Windows, then the re-spooling of the content of svsm_text.b64
+# introduced 32 extra bytes (due to \n\r silliness). Set $offset to 0 or 32
+# depending on the value of $^O.
+my $offset = ($^O =~ /mswin/i) ? 32 : 0;
+is(-s $ofh, length($faux_res->as_string) + $offset,
+   'Normal response file size OK');
 
 seek $ofh, 0, 0;
 $data = '';
