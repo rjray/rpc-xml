@@ -1988,7 +1988,7 @@ in generally is I<considerably> more flexible than this.  Yet there are
 implementations of the XML-RPC standard in other languages that rely on a
 strict interpretation of this format.
 
-To accomodate this, the B<RPC::XML> package only produces B<dateTime.iso8601>
+To accommodate this, the B<RPC::XML> package only produces B<dateTime.iso8601>
 values in the format given in the spec, with the possible addition of timezone
 information if the string used to create a B<RPC::XML::datetime_iso8601>
 instance included a timezone offset. The string passed in to the constructor
