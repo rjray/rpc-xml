@@ -29,27 +29,33 @@ require File::Spec->catfile($dir, 'util.pl');
 if (($port = find_port) == -1)
 {
     plan skip_all => "No usable port found between 9000 and 10000";
-    exit;
 }
 else
 {
-    plan tests => 4;
+    $srv = RPC::XML::Server->new(host => 'localhost', port => $port);
+    if (! ref $srv)
+    {
+        plan skip_all => "Creating server failed: $srv"
+    }
+    else
+    {
+        plan tests => 4;
+    }
 }
 
 $cli = RPC::XML::Client->new("http://localhost:$port");
-
-$srv = RPC::XML::Server->new(host => 'localhost', port => $port);
 $srv->add_method({
-                  name => 'test',
-                  signature => [ 'string' ],
-                  code => sub {
-                      my ($server) = @_;
+    name => 'test',
+    signature => [ 'string' ],
+    code => sub {
+        my ($server) = @_;
 
-                      sleep 3;
+        sleep 3;
 
-                      return 'foo';
-                  }
-                 });
+        return 'foo';
+    }
+});
+
 $child = start_server($srv);
 
 eval {
