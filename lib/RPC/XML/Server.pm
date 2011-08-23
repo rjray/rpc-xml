@@ -47,11 +47,11 @@
 #                   timeout
 #                   server_fault
 #
-#   Libraries:      AutoLoader
-#                   HTTP::Daemon (conditionally)
+#   Libraries:      HTTP::Daemon (conditionally)
 #                   HTTP::Response
 #                   HTTP::Status
 #                   URI
+#                   Scalar::Util
 #                   RPC::XML
 #                   RPC::XML::ParserFactory
 #                   RPC::XML::Procedure
@@ -72,6 +72,7 @@ use vars qw($VERSION $INSTALL_DIR %FAULT_TABLE  @XPL_PATH
 
 use Carp qw(carp croak);
 use File::Spec;
+use File::Temp;
 use IO::Handle;
 
 use HTTP::Status;
@@ -110,7 +111,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.68';
+$VERSION = '1.69';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
