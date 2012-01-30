@@ -354,7 +354,7 @@ sub send_request ## no critic (ProhibitExcessComplexity)
     else
     {
         # Treat the content strictly in-memory
-        utf8::downgrade($content = $req->as_string);
+        utf8::encode($content = $req->as_string);
         if ($do_compress)
         {
             $content = Compress::Zlib::compress($content);
