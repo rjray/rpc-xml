@@ -419,7 +419,7 @@ sub length ## no critic (ProhibitBuiltinHomonyms)
 {
     my $self = shift;
 
-    utf8::downgrade(my $str = $self->as_string);
+    utf8::encode(my $str = $self->as_string);
 
     return length $str;
 }
