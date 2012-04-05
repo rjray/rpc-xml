@@ -94,7 +94,8 @@ sub parse
         no_network      => 1,
         expand_xinclude => 0,
         expand_entities => 1,
-        load_ext_dtd    => 0
+        load_ext_dtd    => 0,
+        no_blanks       => 1
     );
     # I really don't need the full granularity of XML::LibXML::InputCallback
     # here, but the ext_ent_handler was not working with the version of
@@ -275,9 +276,7 @@ sub dom_request
     my ($self, $dom) = @_;
 
     my ($method_name, @args);
-    my @nodes = grep { ! ($_->isa('XML::LibXML::Text') &&
-                              ($_->textContent =~ /^\s*$/)) }
-        ($dom->childNodes);
+    my @nodes = $dom->childNodes;
 
     if (@nodes > 2)
     {
@@ -331,9 +330,8 @@ sub dom_response
 
     my $param;
     my $me = __PACKAGE__ . '::dom_response';
-    my @children = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                 ($_->textContent =~ /^\s*$/)) }
-        ($dom->childNodes);
+    my @children = $dom->childNodes;
+
     if (1 != @children)
     {
         return "$me: Illegal content within methodResponse: " .
@@ -346,9 +344,8 @@ sub dom_response
         # This is like delegating to dom_params() in the parsing of a request,
         # but it is limited to a single value (which is why it has to be
         # tested here).
-        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                  ($_->textContent =~ /^\s*$/)) }
-            ($node->childNodes);
+        @children = $node->childNodes;
+
         if (1 != @children)
         {
             return
@@ -362,9 +359,8 @@ sub dom_response
 
         # We know that $children[0] is the sole <param> tag. Look at its
         # content to see that we have exactly one <value> tag.
-        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                  ($_->textContent =~ /^\s*$/)) }
-            ($children[0]->childNodes);
+        @children = $children[0]->childNodes;
+
         if (1 != @children)
         {
             return
@@ -386,9 +382,8 @@ sub dom_response
     elsif ($node->nodeName eq 'fault')
     {
         # Make sure that we have a single <value></value> container
-        my @sub_children = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                         ($_->textContent =~ /^\s*$/)) }
-            ($node->childNodes);
+        my @sub_children = $node->childNodes;
+
         if (1 != @sub_children)
         {
             return
@@ -436,19 +431,13 @@ sub dom_params
     # which contains a single <value> block.
     for my $child ($node->childNodes)
     {
-        if ($child->isa('XML::LibXML::Text') && $child->textContent =~ /^\s*$/)
-        {
-            next;
-        }
-
         if ((my $tag = $child->nodeName) ne 'param')
         {
             return "$me: Unknown tag in params: $tag (expected 'param')";
         }
         # There should be exactly one child, named 'value'
-        my @children = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                     ($_->textContent =~ /^\s*$/)) }
-            ($child->childNodes);
+        my @children = $child->childNodes;
+
         if (1 != @children)
         {
             return "$me: Too many child-nodes for param tag";
@@ -473,9 +462,8 @@ sub dom_value ## no critic(ProhibitExcessComplexity)
     my $me = __PACKAGE__ . '::dom_value';
 
     # Make sure we have only one child-node
-    my @children = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                 ($_->textContent =~ /^\s*$/)) }
-        ($node->childNodes);
+    my @children = $node->childNodes;
+
     if (1 != @children)
     {
         return "$me: Too many child-nodes for value tag";
@@ -534,16 +522,13 @@ sub dom_value ## no critic(ProhibitExcessComplexity)
     }
     elsif ($nodename eq 'array')
     {
-        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                  ($_->textContent =~ /^\s*$/)) }
-            ($children[0]->childNodes);
+        @children = $children[0]->childNodes;
+
         if ((1 != @children) || ($children[0]->nodeName ne 'data'))
         {
             return "$me: array tag must have just one child element, 'data'";
         }
-        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                  ($_->textContent =~ /^\s*$/)) }
-            ($children[0]->childNodes);
+        @children = $children[0]->childNodes;
 
         # Make sure every child node is a <value> tag
         if (my @bad = grep { $_->nodeName() ne 'value' } @children)
@@ -573,9 +558,8 @@ sub dom_value ## no critic(ProhibitExcessComplexity)
     }
     elsif ($nodename eq 'struct')
     {
-        @children = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                  ($_->textContent =~ /^\s*$/)) }
-            ($children[0]->childNodes);
+        @children = $children[0]->childNodes;
+
         # Make sure every child node is a <member> tag
         if (my @bad = grep { $_->nodeName() ne 'member'} @children)
         {
@@ -588,9 +572,7 @@ sub dom_value ## no critic(ProhibitExcessComplexity)
         $value = {};
         for my $member (@children)
         {
-            my @mchildren = grep { ! ($_->isa('XML::LibXML::Text') &&
-                                          ($_->textContent =~ /^\s*$/)) }
-                ($member->childNodes);
+            my @mchildren = $member->childNodes;
 
             if (2 != @mchildren)
             {
