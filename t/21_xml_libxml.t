@@ -159,7 +159,10 @@ isa_ok($new_b64, 'RPC::XML::base64', 'First args value');
 is($new_b64->as_string, $base64->as_string(),
    'Push-parse value comparison');
 
-my $bad_entities = <<EOX;
+SKIP: {
+    skip "/etc/passwd is not an issue on windows.", 1 if $^O eq 'MSWin32';
+
+    my $bad_entities = <<EOX;
 <?xml version="1.0" encoding="us-ascii"?>
 <!DOCTYPE foo [
     <!ENTITY foo SYSTEM "file:///etc/passwd">
@@ -173,10 +176,11 @@ my $bad_entities = <<EOX;
   </params>
 </methodCall>
 EOX
-$pp = RPC::XML::Parser::XMLLibXML->new->parse();
-$ret = $pp->parse($bad_entities);
-my $args = $ret->args;
-is($args->[0]->value, 'Entity test: ', 'Bad entities ignored');
+    $pp = RPC::XML::Parser::XMLLibXML->new->parse();
+    $ret = $pp->parse($bad_entities);
+    my $args = $ret->args;
+    is($args->[0]->value, 'Entity test: ', 'Bad entities ignored');
+}
 
 # Now test passing of various references to the parser
 $p = RPC::XML::Parser::XMLLibXML->new();
