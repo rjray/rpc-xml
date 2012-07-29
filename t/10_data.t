@@ -262,7 +262,7 @@ is($values[10]->type, 'int', 'smart_encode, int<4>');
 is($values[11]->type, 'int', 'smart_encode, int<5>');
 SKIP: {
     skip '64-bit architecture required to test these I8 values', 2
-        if (! $Config{use64bitint});
+        if ($Config{longsize} != 8);
 
     is($values[12]->type, 'i8', 'smart_encode, i8<1>');
     is($values[13]->type, 'i8', 'smart_encode, i8<2>');
