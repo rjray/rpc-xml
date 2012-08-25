@@ -12,3 +12,4 @@ MYMETA.yml
 .DS_Store
 cover_db
 MYMETA.json
+t/net_server.pid
