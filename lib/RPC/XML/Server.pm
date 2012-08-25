@@ -67,7 +67,7 @@ package RPC::XML::Server;
 use 5.008008;
 use strict;
 use warnings;
-use vars qw($VERSION $INSTALL_DIR %FAULT_TABLE  @XPL_PATH
+use vars qw($VERSION $INSTALL_DIR %FAULT_TABLE  @XPL_PATH %CLASS_MAP
             $IO_SOCKET_SSL_HACK_NEEDED $COMPRESSION_AVAILABLE);
 
 use Carp qw(carp croak);
@@ -109,9 +109,16 @@ BEGIN
         badsignature => [ 201 => 'Method signature error: %s' ],
         execerror    => [ 300 => 'Code execution error: %s' ],
     );
+
+    # This is used by add_method to map "types" to instantiation classes
+    %CLASS_MAP = (
+        method    => 'RPC::XML::Method',
+        procedure => 'RPC::XML::Procedure',
+        function  => 'RPC::XML::Function',
+    );
 }
 
-$VERSION = '1.69';
+$VERSION = '1.70';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -139,7 +146,12 @@ sub new ## no critic (ProhibitExcessComplexity)
         $srv_name
     );
 
-    $class = ref($class) || $class;
+    # Don't accept a blessed value for $class
+    if (ref $class)
+    {
+        return __PACKAGE__ . '::new: Must be called as a static method';
+    }
+
     $self = bless {}, $class;
 
     $srv_version = delete $args{server_version} || $self->version;
@@ -204,6 +216,9 @@ sub new ## no critic (ProhibitExcessComplexity)
     $self->{__parser}       = RPC::XML::ParserFactory->new(
         $args{parser} ? @{delete $args{parser}} : ()
     );
+
+    # Add the basic paths (content of @XPL_PATH) to our local XPL path
+    push @{$self->{__xpl_path}}, @XPL_PATH;
 
     # Set up the default methods unless requested not to
     if (! delete $args{no_default})
@@ -393,6 +408,8 @@ sub xpl_path
 #                   $self     in      ref       Object to add to
 #                   $meth     in      scalar    Hash ref of data or file name
 #
+#   Globals:        %CLASS_MAP
+#
 #   Returns:        Success:    $self
 #                   Failure:    error string
 #
@@ -417,11 +434,22 @@ sub add_method
     }
     elsif (ref $meth eq 'HASH')
     {
+        # Make a copy of the contents of $meth, so we don't make permanent
+        # changes:
+        my %meth_copy = map { $_ => $meth->{$_} } (keys %{$meth});
+
         # If the type of this method is not set, default to "method". The
         # add_procedure and add_function calls should set this as needed.
-        $meth->{type} ||= 'method';
-        my $class = 'RPC::XML::' . ucfirst $meth->{type};
-        $meth = $class->new($meth);
+        my $type = delete $meth_copy{type} || 'method';
+
+        if (! (my $class = $CLASS_MAP{lc $type}))
+        {
+            return "$me: Unknown type: $type";
+        }
+        else
+        {
+            $meth = $class->new(\%meth_copy);
+        }
     }
     elsif (! (blessed $meth and $meth->isa('RPC::XML::Procedure')))
     {
@@ -464,7 +492,7 @@ sub add_procedure
 
 ###############################################################################
 #
-#   Sub Name:       add_procedure
+#   Sub Name:       add_function
 #
 #   Description:    This filters through to add_method, but if the passed-in
 #                   value is a hash reference forces the "type" to be
@@ -513,10 +541,10 @@ sub method_from_file
     if (! File::Spec->file_name_is_absolute($file))
     {
         my $path;
-        for my $dir (@{$self->xpl_path}, @XPL_PATH)
+        for my $dir (@{$self->xpl_path})
         {
             $path = File::Spec->catfile($dir, $file);
-            if (-e $path)
+            if (-f $path)
             {
                 $file = File::Spec->canonpath($path);
                 last;

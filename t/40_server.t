@@ -12,7 +12,7 @@ use Carp qw(croak);
 use Socket;
 use File::Spec;
 
-use Test::More tests => 84;
+use Test::More tests => 91;
 use LWP::UserAgent;
 use HTTP::Request;
 use Scalar::Util 'blessed';
@@ -57,6 +57,9 @@ ok(! $srv->requests, 'RPC::XML::Server::requests method (0)');
 ok($srv->response->isa('HTTP::Response'),
    'RPC::XML::Server::response method returns HTTP::Response');
 # Some negative tests:
+$res = $srv->new();
+like($res, qr/Must be called as a static method/,
+     'Calling new() as an instance method fails');
 $meth = $srv->method_from_file('does_not_exist.xpl');
 ok(! ref $meth, 'Bad file did not result in method reference');
 like($meth, qr/Error opening.*does_not_exist/, 'Correct error message');
@@ -181,10 +184,30 @@ $res = $srv->get_method('perl.test.suite.test1');
 isa_ok($res, 'RPC::XML::Method', 'get_method return value');
 $res = $srv->get_method('perl.test.suite.not.added.yet');
 ok(! ref($res), 'get_method for non-existent method');
-# Throw junk at add_method
+
+# Throw junk at add_method/add_procedure/add_function
 $res = $srv->add_method([]);
 like($res, qr/file name, a hash reference or an object/,
      'add_method() fails on bad data');
+$res = $srv->add_method('file does not exist');
+like($res, qr/Error loading from file/,
+     'add_method() fails on non-existent file');
+$res = $srv->add_procedure({ name      => 'procedure1',
+                             signature => [ 'int' ],
+                             code      => sub { return 1; } });
+ok($res eq $srv, 'add_procedure return value test');
+$res = $srv->get_procedure('procedure1');
+is(ref($res), 'RPC::XML::Procedure', 'get_procedure(procedure1) return value');
+$res = $srv->add_function({ name => 'function1',
+                            code => sub { return 1; } });
+ok($res eq $srv, 'add_function return value test');
+$res = $srv->get_function('function1');
+is(ref($res), 'RPC::XML::Function', 'get_function(function1) return value');
+$res = $srv->add_method({ name      => 'method1',
+                          type      => 'bad',
+                          signature => [ 'int' ],
+                          code      => sub { return 1; } });
+like($res, qr/Unknown type: bad/, 'add_method, bad type param');
 
 # Here goes...
 $parser = RPC::XML::ParserFactory->new;
