@@ -9,10 +9,10 @@ use vars qw($obj $obj2 $flag $dir $vol $tmp $tmpfile $fh);
 use File::Spec;
 use Test::More;
 
-use RPC::XML qw($ALLOW_NIL RPC_INT);
+use RPC::XML qw($ALLOW_NIL RPC_INT RPC_DATETIME_ISO8601 time2iso8601);
 use RPC::XML::Procedure;
 
-plan tests => 81;
+plan tests => 87;
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, '');
@@ -425,6 +425,51 @@ END
     unlink $tmpfile;
     $val = $obj->reload();
     like($val, qr/Error loading/, 'Correct error from reload() after unlink');
+}
+
+# Per RT#71452, I learned that I never tested dateTime.iso8601 in any of the
+# signatures/calls, and that as of release 0.76, I may have bugs...
+
+undef $obj;
+$obj = RPC::XML::Procedure->new(
+    name      => 'test.iso8601',
+    signature => 'string dateTime.iso8601',
+    code      => sub {
+        my $date = shift;
+        return substr($date, 0, 4);
+    },
+);
+isa_ok($obj, 'RPC::XML::Procedure', '$obj');
+SKIP: {
+    skip 'Cannot test without object', 2
+        unless (ref($obj) eq 'RPC::XML::Procedure');
+
+    is($obj->match_signature('dateTime.iso8601'), 'string',
+       'Test match_signature() with a dateTime.iso8601 input');
+    my $time = time2iso8601;
+    my $year = substr $time, 0, 4;
+    is($obj->call({}, RPC_DATETIME_ISO8601 $time)->value, $year,
+       'Test a call with a dateTime.iso8601 argument');
+}
+
+$obj = RPC::XML::Procedure->new(
+    name      => 'test.iso8601',
+    signature => 'dateTime.iso8601 int',
+    code      => sub {
+        my $time = shift;
+        return time2iso8601($time);
+    },
+);
+isa_ok($obj, 'RPC::XML::Procedure', '$obj');
+SKIP: {
+    skip 'Cannot test without object', 2
+        unless (ref($obj) eq 'RPC::XML::Procedure');
+
+    is($obj->match_signature('int'), 'dateTime.iso8601',
+       'Test match_signature() with a dateTime.iso8601 output');
+    my $time = time;
+    is($obj->call({}, RPC_INT $time)->value, time2iso8601($time),
+       'Test a call with a dateTime.iso8601 return value');
 }
 
 END

@@ -71,7 +71,7 @@ $VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
 # we use "datetime_iso8601" instead of "dateTime.iso8601", because that is how
 # it has to be in the signature.
 %VALID_TYPES = map { $_ => 1 }
-    (qw(int i4 i8 double string boolean datetime_iso8601 nil array struct
+    (qw(int i4 i8 double string boolean dateTime.iso8601 nil array struct
         base64));
 
 ###############################################################################
@@ -224,7 +224,7 @@ sub make_sig_table
             return "$me: Unknown return type '$return'";
         }
         # Not going to add List::MoreUtils to my dependencies list, so suppress
-        # this ciritic flag:
+        # this critic flag:
         ## no critic (ProhibitBooleanGrep)
         if (grep { ! $VALID_TYPES{$_} } @rest)
         {
@@ -666,6 +666,10 @@ sub call
             "[$signature]"
         );
     }
+    elsif ($resptype eq 'dateTime.iso8601')
+    {
+        $resptype = 'datetime_iso8601';
+    }
 
     # Set these in case the server object is part of the param list
     local $srv->{signature} =          ## no critic (ProhibitLocalVars)
@@ -882,7 +886,7 @@ when methods were implemented simply as hash references.
 
 If there is more than one argument in the list, then the list is assumed to be
 a sort of "ersatz" hash construct, in that one of the keys (C<signature>) is
-allowed to "stack" if it occur multiple times. Otherwise, any keys that occur
+allowed to "stack" if it occurs multiple times. Otherwise, any keys that occur
 multiple times overwrite the previous value:
 
 =over 12
@@ -1087,20 +1091,20 @@ other packages than this one, or useful in other contexts than this one.
 
 The lightweight DTD for the layout can be summarized as:
 
-        <!ELEMENT  proceduredef  (name, namespace?, version?, hidden?,
-                                  signature+, help?, code)>
-        <!ELEMENT  methoddef     (name, namespace?, version?, hidden?,
-                                  signature+, help?, code)>
-        <!ELEMENT  functiondef   (name, namespace?, version?, hidden?,
-                                  signature+, help?, code)>
-        <!ELEMENT  name       (#PCDATA)>
-        <!ELEMENT  namespace  (#PCDATA)>
-        <!ELEMENT  version    (#PCDATA)>
-        <!ELEMENT  hidden     EMPTY>
-        <!ELEMENT  signature  (#PCDATA)>
-        <!ELEMENT  help       (#PCDATA)>
-        <!ELEMENT  code       (#PCDATA)>
-        <!ATTLIST  code       language (#PCDATA)>
+    <!ELEMENT  proceduredef  (name, namespace?, version?, hidden?,
+                              signature+, help?, code)>
+    <!ELEMENT  methoddef     (name, namespace?, version?, hidden?,
+                              signature+, help?, code)>
+    <!ELEMENT  functiondef   (name, namespace?, version?, hidden?,
+                              signature+, help?, code)>
+    <!ELEMENT  name       (#PCDATA)>
+    <!ELEMENT  namespace  (#PCDATA)>
+    <!ELEMENT  version    (#PCDATA)>
+    <!ELEMENT  hidden     EMPTY>
+    <!ELEMENT  signature  (#PCDATA)>
+    <!ELEMENT  help       (#PCDATA)>
+    <!ELEMENT  code       (#PCDATA)>
+    <!ATTLIST  code       language (#PCDATA)>
 
 The containing tag is always one of C<< <methoddef> >>, C<< <proceduredef> >>
 or C<< <functiondef> >>. The tags that specify name, signatures and the code
