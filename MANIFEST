@@ -59,7 +59,7 @@ t/20_xml_parser.t
 t/21_xml_libxml.t
 t/25_parser_negative.t
 t/29_parserfactory.t
-t/30_method.t
+t/30_procedure.t
 t/35_namespaces.t
 t/40_server.t
 t/40_server_xmllibxml.t
