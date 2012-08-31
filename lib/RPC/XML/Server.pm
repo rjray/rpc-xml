@@ -827,9 +827,14 @@ sub process_request ## no critic (ProhibitExcessComplexity)
     );
 
     my $me = ref($self) . '::process_request';
-    if (! ($conn && ref $conn))
+    if (! $conn)
     {
+        # Maintain compatibility with Net::Server 0.99, which does not pass
+        # the connection object at all:
         $conn = $self->{server}->{client};
+    }
+    if (ref($conn) =~ /^Net::Server::Proto/)
+    {
         bless $conn, 'HTTP::Daemon::ClientConn';
         ${*{$conn}}{'httpd_daemon'} = $self;
 
