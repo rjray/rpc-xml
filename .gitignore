@@ -13,3 +13,4 @@ MYMETA.yml
 cover_db
 MYMETA.json
 t/net_server.pid
+Makefile.old
