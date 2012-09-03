@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.76
+Version: 0.77
 
 WHAT IS IT
 
@@ -66,45 +66,55 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* etc/make_method
+* t/15_serialize.t
+Fix a test failure on Windows.
+
+* lib/RPC/XML.pm
+RT #70408: Fix spelling error in man page, reported by Debian
+group.
+
+* t/90_rt54183_sigpipe.t
+Fix to handle cases where server creation fails. Now skips the
+tests rather than dying.
+
+* lib/RPC/XML/Client.pm
+RT #67486: Add port to Host header in client requests.
+
 * lib/RPC/XML/Server.pm
-RT #70258: Fixed typos in docs pointed out by Debian team.
-
-* lib/Apache/RPC/Server.pm
-Better version of the fix for infinite loops. This is the patch
-originally suggested by the Eric Cholet, who found the bug.
-
-* t/00_load.t
-RT #70280: This test was still testing RPC/XML/Method.pm.
-Rewrote to remove that but include the (forgotten) XMLLibXML.pm
-module. That test has to be conditional on the presence of
-XML::LibXML.
-
-* Makefile.PL
-* t/51_client_with_host_header.t
-Clean up test suite to work with older Test::More. Also specify
-a minimum Test::More that supports subtest(). This is also a
-part of RT #70280.
-
-* t/11_base64_fh.t
-* t/20_xml_parser.t
-* t/21_xml_libxml.t
-* t/40_server.t
-These tests had failures when run as root. Permissions-based
-negative tests were incorrectly passing.
+RT #65341: Added "use" of forgotten library File::Temp. This
+was causing failure when "message_file_thresh" kicked in.
 
 * t/10_data.t
-Moved the 64-bit "TODO" tests to a SKIP block. Non-64-bit
-systems will skip, rather than fail, these tests.
+RT #78602: Changed 64-bit test from use64bitint to longsize. On
+some systems (such as OS X), use64bitint can be true even when
+in 32-bit mode.
+
+* t/21_xml_libxml.t
+Fix from Christian Walde, skip passed test on Windows.
 
 * lib/RPC/XML/Server.pm
-RT #65616: Fix for slow methods killing servers. Applied and
-modified patch from person who opened the ticket.
+* t/40_server.t
+Checkpoint refactoring and additional tests. Work is not
+complete here, but the Net::Server changes demand immediate
+attention
+
+* t/20_xml_parser.t
+RT #72780: Check for a possible parser failure. One instance of
+XML::Parser failing to parse the extern entities test. Cannot
+reproduce, so wrap it in a "skip" block for now.
+
+* lib/RPC/XML/Procedure.pm
+* t/30_method.t
+RT #71452: Correct handling of dateTime parameters. Existing
+code in lib/RPC/XML/Procedure.pm did not properly handle
+parameters of the dateTime.iso8601 type. Also, there were no
+tests for these.
 
 * MANIFEST
-* lib/RPC/XML.pm
-* t/10_data.t
-* t/14_datetime_iso8601.t (added)
-RT #55628: Improve flexibility of date parsing. This adds the
-ability to pass any ISO 8601 string to the
-RPC::XML::datetime_iso8601 constructor.
+* t/30_method.t (deleted)
+* t/30_proceudre.t (added)
+Renamed t/30_method.t to t/30_procedure.t.
+
+* lib/RPC/XML/Server.pm
+RT #77992: Make RPC::XML::Server work with Net::Server again,
+after the API changes of Net::Server 2.x.

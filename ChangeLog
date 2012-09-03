@@ -9,6 +9,61 @@
 		allowing choice of character-set encodings for
 		XML messages.
 
+0.77	Monday September  3, 2012, 12:00:00 PM -0700
+
+	* t/15_serialize.t
+	Fix a test failure on Windows.
+
+	* lib/RPC/XML.pm
+	RT #70408: Fix spelling error in man page, reported by Debian
+	group.
+
+	* t/90_rt54183_sigpipe.t
+	Fix to handle cases where server creation fails. Now skips the
+	tests rather than dying.
+
+	* lib/RPC/XML/Client.pm
+	RT #67486: Add port to Host header in client requests.
+
+	* lib/RPC/XML/Server.pm
+	RT #65341: Added "use" of forgotten library File::Temp. This
+	was causing failure when "message_file_thresh" kicked in.
+
+	* t/10_data.t
+	RT #78602: Changed 64-bit test from use64bitint to longsize. On
+	some systems (such as OS X), use64bitint can be true even when
+	in 32-bit mode.
+
+	* t/21_xml_libxml.t
+	Fix from Christian Walde, skip passed test on Windows.
+
+	* lib/RPC/XML/Server.pm
+	* t/40_server.t
+	Checkpoint refactoring and additional tests. Work is not
+	complete here, but the Net::Server changes demand immediate
+	attention
+
+	* t/20_xml_parser.t
+	RT #72780: Check for a possible parser failure. One instance of
+	XML::Parser failing to parse the extern entities test. Cannot
+	reproduce, so wrap it in a "skip" block for now.
+
+	* lib/RPC/XML/Procedure.pm
+	* t/30_method.t
+	RT #71452: Correct handling of dateTime parameters. Existing
+	code in lib/RPC/XML/Procedure.pm did not properly handle
+	parameters of the dateTime.iso8601 type. Also, there were no
+	tests for these.
+
+	* MANIFEST
+	* t/30_method.t (deleted)
+	* t/30_proceudre.t (added)
+	Renamed t/30_method.t to t/30_procedure.t.
+
+	* lib/RPC/XML/Server.pm
+	RT #77992: Make RPC::XML::Server work with Net::Server again,
+	after the API changes of Net::Server 2.x.
+
 0.76	Saturday August 20, 2011, 06:30:00 PM -0700
 
 	* etc/make_method
@@ -17,7 +72,7 @@
 
 	* lib/Apache/RPC/Server.pm
 	Better version of the fix for infinite loops. This is the patch
-	originally suggested by the Eric Cholet, who found the bug.
+	originally suggested by Eric Cholet, who found the bug.
 
 	* t/00_load.t
 	RT #70280: This test was still testing RPC/XML/Method.pm.
@@ -1686,9 +1741,9 @@
 	* *
 	All files are tracked from this point forward.
 
-# Generated on Sunday August 21, 2011, 12:31:39 PM -0700
-# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/1.84,
-# XML::LibXSLT/1.70, libxml/2.7.3, libxslt/1.1.24 (with exslt)
+# Generated on Monday September  3, 2012, 11:48:20 AM -0700
+# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/2.0004,
+# XML::LibXSLT/1.77, libxml/2.7.3, libxslt/1.1.24 (with exslt)
 # XSLT sources:
 #     $Id: changelog2text.xslt 8 2009-01-19 06:46:50Z rjray $
 #     $Id: common-text.xslt 8 2009-01-19 06:46:50Z rjray $

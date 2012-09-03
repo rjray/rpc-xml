@@ -16,6 +16,109 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2012-09-03T12:00:00-07:00" version="0.77" sc:tag="0.77">
+    <change git:commit="23ea1e487cf203e826ddf8a09d450986dfa29599">
+      <file path="t/15_serialize.t" />
+      <description>
+        Fix a test failure on Windows.
+      </description>
+    </change>
+    <change git:commit="4f2493aa66fd4311f981e0424c38edfa88352450">
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=70408">RT #70408</xhtml:a>:
+        Fix spelling error in man page, reported by Debian group.
+      </description>
+    </change>
+    <change git:commit="978c9263f04683aa360fdc525ecb2518018dd68a">
+      <file path="t/90_rt54183_sigpipe.t" />
+      <description>
+        Fix to handle cases where server creation fails. Now skips the
+        tests rather than dying.
+      </description>
+    </change>
+    <change git:commit="d5a10436f0efebdae39aba7865c2e3a94d4d046a">
+      <file path="lib/RPC/XML/Client.pm" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=67486">RT #67486</xhtml:a>:
+        Add port to Host header in client requests.
+      </description>
+    </change>
+    <change git:commit="eae9b4438c4345d2d6ca82fee27ffca3360a86f9">
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=65341">RT #65341</xhtml:a>:
+        Added "use" of forgotten library File::Temp. This was causing failure
+        when "message_file_thresh" kicked in.
+      </description>
+    </change>
+    <change git:commit="20994f8b09dc1c136a74352caba7a8f20a94f9ca">
+      <file path="t/10_data.t" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=78602">RT #78602</xhtml:a>:
+        Changed 64-bit test from use64bitint to longsize.
+        On some systems (such as OS X), use64bitint can be true even when in
+        32-bit mode.
+      </description>
+    </change>
+    <change git:commit="e0362fccbd78d834b6709caf9cb912f0eb77a1f3">
+      <file path="t/21_xml_libxml.t" />
+      <description>
+        Fix from Christian Walde, skip passed test on Windows.
+      </description>
+    </change>
+    <change git:commit="865cf9a319d12b950c148289ee5577de7d63642f">
+      <fileset>
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/40_server.t" />
+      </fileset>
+      <description>
+        Checkpoint refactoring and additional tests.
+        Work is not complete here, but the Net::Server changes demand
+        immediate attention
+      </description>
+    </change>
+    <change git:commit="427bddcc18504b2af1afb0e8728b6a028414d441">
+      <file path="t/20_xml_parser.t" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=72780">RT #72780</xhtml:a>:
+        Check for a possible parser failure. One instance of XML::Parser
+        failing to parse the extern entities test. Cannot reproduce, so wrap it
+        in a "skip" block for now.
+      </description>
+    </change>
+    <change git:commit="b1680acfcbdb1b991001888e6e5fd64f28341135">
+      <fileset>
+        <file path="lib/RPC/XML/Procedure.pm" />
+        <file path="t/30_method.t" />
+      </fileset>
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=71452">RT #71452</xhtml:a>:
+        Correct handling of dateTime parameters. Existing code in
+        <xhtml:tt>lib/RPC/XML/Procedure.pm</xhtml:tt> did not properly handle
+        parameters of the dateTime.iso8601 type. Also, there were no tests for
+        these.
+      </description>
+    </change>
+    <change git:commit="8dcd49066c06be3c588a0fe135efabb7af96c4bd">
+      <fileset>
+        <file path="MANIFEST" />
+        <file path="t/30_method.t" action="DELETE" />
+        <file path="t/30_proceudre.t" action="ADD" />
+      </fileset>
+      <description>
+        Renamed t/30_method.t to t/30_procedure.t.
+      </description>
+    </change>
+    <change git:commit="de7c117392aff2a524a8cf02ef622879788c26f5">
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=77992">RT #77992</xhtml:a>:
+        Make RPC::XML::Server work with Net::Server again, after the API
+        changes of Net::Server 2.x.
+      </description>
+    </change>
+  </release>
   <release date="2011-08-20T18:30:00-07:00" version="0.76" sc:tag="0.76">
     <change git:commit="6ac04c12677b0285d54213171aaf0211122c2ce5">
       <fileset>
@@ -31,7 +134,7 @@
       <file path="lib/Apache/RPC/Server.pm" />
       <description>
         Better version of the fix for infinite loops.
-        This is the patch originally suggested by the Eric Cholet, who found
+        This is the patch originally suggested by Eric Cholet, who found
         the bug.
       </description>
     </change>

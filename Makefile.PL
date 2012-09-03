@@ -30,7 +30,7 @@ END
 }
 
 $CLEAN = 'pod2html-* *.html *.spec *.rpm rpmrc rpmmacro *.log t/*.log ' .
-    'META.yml META.json MYMETA.yml MYMETA.json *.ppd cover_db ';
+    't/*.pid META.yml META.json MYMETA.yml MYMETA.json *.ppd cover_db ';
 
 @scripts = (File::Spec->catfile(qw(etc make_method)));
 $CLEAN  .= File::Spec->catfile(qw(methods *.xpl));
@@ -66,7 +66,7 @@ find(sub {
 
 WriteMakefile(
     NAME      => 'RPC::XML',
-    VERSION   => '0.76',
+    VERSION   => '0.77',
     AUTHOR    => 'Randy J. Ray',
     ABSTRACT  => 'Data, client and server classes for XML-RPC',
     EXE_FILES => \@scripts,
@@ -85,7 +85,7 @@ WriteMakefile(
     MIN_PERL_VERSION => 5.008008,
     META_MERGE => {
         recommends => {
-            'XML::LibXML'               => '1.70',
+            'XML::LibXML'               => '1.85',
             'DateTime'                  => '0.70',
             'DateTime::Format::ISO8601' => '0.07',
         },
