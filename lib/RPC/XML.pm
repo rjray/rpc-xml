@@ -48,6 +48,7 @@ BEGIN
     # Allow the <nil /> extension?
     $ALLOW_NIL = 0;
 
+    ## no critic(ProhibitStringyEval)
     # Determine if the DateTime::Format::ISO8601 module is available for
     # RPC::XML::datetime_iso8601 to use:
     my $retval = eval 'use DateTime::Format::ISO8601; 1;';
@@ -63,7 +64,7 @@ BEGIN
                               RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.56';
+$VERSION = '1.57';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
@@ -258,6 +259,7 @@ sub time2iso8601
                     $type = reftype $_;
                     die "Un-convertable reference: $type, cannot use\n";
                 }
+                $seenrefs->{$_}--;
             }
             # You have to check ints first, because they match the
             # next pattern (for doubles) too
@@ -399,7 +401,7 @@ sub as_string
         substr $class, 0, 8, 'dateTime';
     }
 
-    return "<$class>$$self</$class>";
+    return "<$class>${$self}</$class>";
 }
 
 # Serialization for simple types is just a matter of sending as_string over
