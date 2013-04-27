@@ -51,24 +51,20 @@ use 5.008008;
 use strict;
 use warnings;
 use vars qw($VERSION %VALID_TYPES);
-use subs qw(
-    new name code signature help version hidden add_signature
-    delete_signature make_sig_table match_signature reload load_xpl_file
-);
 
 use File::Spec;
 use Scalar::Util 'blessed';
 
 use RPC::XML 'smart_encode';
 
-# This module also provides RPC::XML::Method
+# This module also provides RPC::XML::Method and RPC::XML::Function
 ## no critic (ProhibitMultiplePackages)
 
-$VERSION = '1.29';
+$VERSION = '1.30';
 $VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
 
 # This should match the set of type-classes defined in RPC::XML.pm. Note that
-# we use "datetime_iso8601" instead of "dateTime.iso8601", because that is how
+# we use "dateTime.iso8601" instead of "datetime_iso8601", because that is how
 # it has to be in the signature.
 %VALID_TYPES = map { $_ => 1 }
     (qw(int i4 i8 double string boolean dateTime.iso8601 nil array struct
@@ -941,7 +937,7 @@ clone will not impact the original.
 
 Returns the name by which the server is advertising the method. Unlike the
 next few accessors, this cannot be changed on an object. In order to
-streamline the managment of methods within the server classes, this must
+streamline the management of methods within the server classes, this must
 persist. However, the other elements may be used in the creation of a new
 object, which may then be added to the server, if the name absolutely must
 change.
