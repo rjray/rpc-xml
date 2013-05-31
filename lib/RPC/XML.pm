@@ -844,7 +844,7 @@ sub as_string
                     ("<member><name>$_</name><value>",
                      $clean{$_},
                      '</value></member>')
-                } (keys %clean)),
+                } (sort keys %clean)),
                 '</struct>';
 }
 
@@ -856,7 +856,7 @@ sub serialize
     my $key;
 
     print {$fh} '<struct>';
-    for (keys %{$self})
+    for (sort keys %{$self})
     {
         ($key = $_) =~ s/$RPC::XML::XMLRE/$RPC::XML::XMLMAP{$1}/ge;
         utf8::downgrade($key);
@@ -1096,7 +1096,7 @@ sub length ## no critic (ProhibitBuiltinHomonyms)
             my $cnt = 0;
 
             $self->{fh_pos} = tell $self->{value_fh};
-            seek$self->{value_fh}, 0, 0;
+            seek $self->{value_fh}, 0, 0;
             while ($cnt = read $self->{value_fh}, $buf, 60*57)
             {
                 $len += length(MIME::Base64::encode_base64($buf, q{}));
