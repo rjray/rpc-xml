@@ -96,7 +96,22 @@ seek $ofh, 0, 0;
 $data = '';
 read $ofh, $data, -s $ofh;
 
-is($data, $faux_res->as_string, 'Fault-response content is correct');
+# There have been some changes to how Perl handles iteration of hash keys.
+# As a result, this test has started failing a lot because of the order of
+# keys when serialized doesn't match the order of keys from as_string(). So
+# to get around this, just compare it to both variations that can occur.
+my $variant1 = '<?xml version="1.0" encoding="us-ascii"?><methodResponse>' .
+    '<fault><value><struct><member><name>faultString</name><value><string>' .
+    'test</string></value></member><member><name>faultCode</name><value>' .
+    '<int>1</int></value></member></struct></value></fault></methodResponse>';
+my $variant2 = '<?xml version="1.0" encoding="us-ascii"?><methodResponse>' .
+    '<fault><value><struct><member><name>faultCode</name><value><int>1</int>' .
+    '</value></member><member><name>faultString</name><value><string>test' .
+    '</string></value></member></struct></value></fault></methodResponse>';
+ok(
+    ($data eq $variant1) || ($data eq $variant2),
+    'Fault-response content is correct'
+);
 
 close $ofh;
 unlink $tmpfile;

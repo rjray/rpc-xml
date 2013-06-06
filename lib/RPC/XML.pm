@@ -844,7 +844,7 @@ sub as_string
                     ("<member><name>$_</name><value>",
                      $clean{$_},
                      '</value></member>')
-                } (sort keys %clean)),
+                } (keys %clean)),
                 '</struct>';
 }
 
@@ -856,7 +856,7 @@ sub serialize
     my $key;
 
     print {$fh} '<struct>';
-    for (sort keys %{$self})
+    for (keys %{$self})
     {
         ($key = $_) =~ s/$RPC::XML::XMLRE/$RPC::XML::XMLMAP{$1}/ge;
         utf8::downgrade($key);
