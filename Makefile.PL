@@ -78,6 +78,7 @@ WriteMakefile(
         'Test::More'   => 0.94,
         'LWP'          => 5.834,
         'XML::Parser'  => 2.31,
+        'Module::Load' => 0.24,
     },
     dist      => { COMPRESS => 'gzip -9f' },
     clean     => { FILES => $CLEAN },
@@ -88,6 +89,7 @@ WriteMakefile(
             'XML::LibXML'               => '1.85',
             'DateTime'                  => '0.70',
             'DateTime::Format::ISO8601' => '0.07',
+            'Compress::Raw::Zlib'       => '2.063',
         },
         resources => {
             homepage   => 'http://search.cpan.org/dist/RPC-XML',

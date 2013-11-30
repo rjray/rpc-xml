@@ -55,6 +55,7 @@
 #                   RPC::XML
 #                   RPC::XML::ParserFactory
 #                   RPC::XML::Procedure
+#                   Compress::Raw::Zlib is used if available
 #
 #   Global Consts:  $VERSION
 #                   $INSTALL_DIR
@@ -74,11 +75,12 @@ use Carp qw(carp croak);
 use File::Spec;
 use File::Temp;
 use IO::Handle;
+use Module::Load;
+use Scalar::Util 'blessed';
 
 use HTTP::Status;
 use HTTP::Response;
 use URI;
-use Scalar::Util 'blessed';
 
 use RPC::XML;
 use RPC::XML::ParserFactory;
@@ -97,10 +99,8 @@ BEGIN
     $IO_SOCKET_SSL_HACK_NEEDED = 1;
 
     # Check for compression support
-    if (! eval { require Compress::Zlib; $COMPRESSION_AVAILABLE = 'deflate'; })
-    {
-        $COMPRESSION_AVAILABLE = q{};
-    }
+    $COMPRESSION_AVAILABLE =
+        (eval { load Compress::Zlib; 1; }) ? 'deflate' : q{};
 
     # Set up the initial table of fault-types and their codes/messages
     %FAULT_TABLE = (
@@ -118,7 +118,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.70';
+$VERSION = '1.71';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################

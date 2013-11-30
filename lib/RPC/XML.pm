@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2013 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -15,6 +15,7 @@
 #                   examine them individually.
 #
 #   Libraries:      RPC::XML::base64 uses MIME::Base64
+#                   DateTime::Format::ISO8601 is used if available
 #
 #   Global Consts:  $VERSION
 #
@@ -31,10 +32,14 @@ use vars qw(@EXPORT_OK %EXPORT_TAGS $VERSION $ERROR
 use subs qw(time2iso8601 smart_encode);
 use base 'Exporter';
 
+use Module::Load;
 use Scalar::Util qw(blessed reftype);
 
+# The RPC_* convenience-encoders need prototypes:
 ## no critic (ProhibitSubroutinePrototypes)
+# This module declares all the data-type packages:
 ## no critic (ProhibitMultiplePackages)
+# The data-type package names trigger this one:
 ## no critic (Capitalization)
 
 BEGIN
@@ -48,11 +53,9 @@ BEGIN
     # Allow the <nil /> extension?
     $ALLOW_NIL = 0;
 
-    ## no critic(ProhibitStringyEval)
     # Determine if the DateTime::Format::ISO8601 module is available for
     # RPC::XML::datetime_iso8601 to use:
-    my $retval = eval 'use DateTime::Format::ISO8601; 1;';
-    $DATETIME_ISO8601_AVAILABLE = $retval ? 1 : 0;
+    $DATETIME_ISO8601_AVAILABLE = eval { load DateTime::Format::ISO8601; 1; };
 }
 
 @EXPORT_OK = qw(time2iso8601 smart_encode
@@ -64,7 +67,7 @@ BEGIN
                               RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.57';
+$VERSION = '1.58';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string

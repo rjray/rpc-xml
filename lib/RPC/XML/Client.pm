@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2013 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -23,6 +23,8 @@
 #                   HTTP::Request
 #                   URI
 #                   RPC::XML
+#                   RPC::XML::ParserFactory
+#                   Compress::Raw::Zlib is used if available
 #
 #   Global Consts:  $VERSION
 #
@@ -37,30 +39,26 @@ use vars qw($VERSION $COMPRESSION_AVAILABLE);
 use subs qw(new simple_request send_request uri useragent request
             fault_handler error_handler combined_handler timeout);
 
-use LWP::UserAgent;
-use HTTP::Request;
-use URI;
 use Scalar::Util 'blessed';
 use File::Temp;
 use IO::Handle;
+use Module::Load;
+
+use LWP::UserAgent;
+use HTTP::Request;
+use URI;
 
 use RPC::XML;
-require RPC::XML::ParserFactory;
+use RPC::XML::ParserFactory;
 
 BEGIN
 {
     # Check for compression support
-    if (eval { require Compress::Zlib; 1; })
-    {
-        $COMPRESSION_AVAILABLE = ($@) ? q{} : 'deflate';
-    }
-    else
-    {
-        $COMPRESSION_AVAILABLE = q{};
-    }
+    $COMPRESSION_AVAILABLE =
+        (eval { load Compress::Zlib; 1; }) ? 'deflate' : q{};
 }
 
-$VERSION = '1.40';
+$VERSION = '1.41';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
