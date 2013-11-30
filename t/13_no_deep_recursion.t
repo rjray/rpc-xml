@@ -45,7 +45,7 @@ $newval = $obj->value;
 is(scalar(keys %$newval), 3, 'Cyclical struct <2> has correct num of keys');
 is(scalar(@{$newval->{b}}), 3, 'Cyclical struct <2> array elem is correct');
 is($newval->{a}, 'a', 'Cyclical struct <2> other key no. 1 correct');
-is($newval->{c}, 1, 'Cyclical struct <2> other key  no. 2 correct');
+is($newval->{c}, 1, 'Cyclical struct <2> other key no. 2 correct');
 is(scalar(keys %{$newval->{b}->[1]}), 2,
    'Cyclical struct <2> nested hash has correct keys');
 
