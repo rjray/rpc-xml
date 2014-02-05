@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2011 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2014 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -118,7 +118,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.71';
+$VERSION = '1.72';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -1114,7 +1114,7 @@ sub process_request ## no critic (ProhibitExcessComplexity)
             else
             {
                 # Treat the content strictly in-memory
-                utf8::downgrade($buf = $respxml->as_string);
+                utf8::encode($buf = $respxml->as_string);
                 if ($do_compress)
                 {
                     $buf = Compress::Zlib::compress($buf);

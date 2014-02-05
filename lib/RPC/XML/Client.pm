@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2013 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2014 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -58,7 +58,7 @@ BEGIN
         (eval { load Compress::Zlib; 1; }) ? 'deflate' : q{};
 }
 
-$VERSION = '1.41';
+$VERSION = '1.42';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################

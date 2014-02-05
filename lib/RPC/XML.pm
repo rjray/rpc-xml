@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# This file copyright (c) 2001-2013 Randy J. Ray, all rights reserved
+# This file copyright (c) 2001-2014 Randy J. Ray, all rights reserved
 #
 # Copying and distribution are permitted under the terms of the Artistic
 # License 2.0 (http://www.opensource.org/licenses/artistic-license-2.0.php) or
@@ -67,7 +67,7 @@ BEGIN
                               RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.58';
+$VERSION = '1.59';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
@@ -412,7 +412,7 @@ sub serialize
 {
     my ($self, $fh) = @_;
 
-    utf8::downgrade(my $str = $self->as_string);
+    utf8::encode(my $str = $self->as_string);
     print {$fh} $str;
 
     return;
@@ -862,7 +862,7 @@ sub serialize
     for (keys %{$self})
     {
         ($key = $_) =~ s/$RPC::XML::XMLRE/$RPC::XML::XMLMAP{$1}/ge;
-        utf8::downgrade($key);
+        utf8::encode($key);
         print {$fh} "<member><name>$key</name><value>";
         $self->{$_}->serialize($fh);
         print {$fh} '</value></member>';
@@ -882,7 +882,7 @@ sub length ## no critic (ProhibitBuiltinHomonyms)
     {
         $len += 45; # For all the constant XML presence
         $len += $self->{$key}->length;
-        utf8::downgrade($key);
+        utf8::encode($key);
         $len += length $key;
     }
 
@@ -1413,7 +1413,7 @@ sub as_string
 sub serialize
 {
     my ($self, $fh) = @_;
-    utf8::downgrade(my $name = $self->{name});
+    utf8::encode(my $name = $self->{name});
 
     print {$fh} qq(<?xml version="1.0" encoding="$RPC::XML::ENCODING"?>);
 
@@ -1435,7 +1435,7 @@ sub length ## no critic (ProhibitBuiltinHomonyms)
     my $self = shift;
 
     my $len = 100 + length $RPC::XML::ENCODING; # All the constant XML present
-    utf8::downgrade(my $name = $self->{name});
+    utf8::encode(my $name = $self->{name});
     $len += length $name;
 
     for (@{$self->{args}})
