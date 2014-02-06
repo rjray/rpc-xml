@@ -874,6 +874,7 @@ sub process_request ## no critic (ProhibitExcessComplexity)
             # Get a XML::Parser::ExpatNB object
             $parser = $self->parser->parse();
 
+            $do_compress = 0; # in case it was set for a previous response
             if (($req->content_encoding || q{}) =~ $self->compress_re)
             {
                 if (! $self->compress)
