@@ -67,7 +67,7 @@ BEGIN
                               RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.59';
+$VERSION = '1.60';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string

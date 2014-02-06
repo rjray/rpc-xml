@@ -42,7 +42,7 @@ use base 'RPC::XML::Parser';
 use Scalar::Util 'reftype';
 use XML::LibXML;
 
-$VERSION = '1.20';
+$VERSION = '1.21';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # This is to identify valid types that don't already have special handling
