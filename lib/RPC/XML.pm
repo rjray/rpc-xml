@@ -81,6 +81,7 @@ $ERROR = q{};
     q{&} => '&amp;',
     q{"} => '&quot;',
     q{'} => '&apos;',
+    "\x0d" => '&#xd;'
 );
 $XMLRE = join q{} => keys %XMLMAP; $XMLRE = qr/([$XMLRE])/;
 
