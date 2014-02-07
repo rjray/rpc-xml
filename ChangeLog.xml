@@ -16,6 +16,105 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2014-02-06T20:00:00-08:00" version="0.78" sc:tag="0.78">
+    <change git:commit="4c9208b3309cd332cd9b19f7553ab29ce4b90491">
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        A patch to loop detection in smart_encode from Dag-Erling Smørgrav.
+        Some other minor bits.
+      </description>
+    </change>
+    <change git:commit="ae9a69e1176bef9211da57e480ca3e06b4d35c61">
+      <file path="lib/RPC/XML/Procedure.pm" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=83108">RT #83108</xhtml:a>:
+        Fixed a spelling error. Some other fixes, too.
+      </description>
+    </change>
+    <change git:commit="f6cee931344ffa6a757eb526b02de33c30b672f8">
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=86187">RT #86187</xhtml:a>:
+        Force key-ordering in struct as_string and serialize.
+        Was getting some intermittent bug reports of failures in
+        t/15_serialize.t that amounted to the keys in a fault struct not being
+        in consistent order.
+      </description>
+    </change>
+    <change git:commit="33617691326a0bc01efea624e05c65047f1c6154">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="t/15_serialize.t" />
+      </fileset>
+      <description>
+        Undo the previous change and fix the test. The previous change didn't
+        feel right, so this rolls it back and fixes the problem at the level of
+        the test, instead.
+      </description>
+    </change>
+    <change git:commit="e340f5f43c386f918216ff9c445239d4c7d90b4c">
+      <fileset>
+        <file path="Makefile.PL" />
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Replace direct evals for loading optional modules with Module::Load.
+        Required adding this to Makefile.PL because Module::Load is not core
+        in 5.8.8. Also did some slight doc tweaking.
+      </description>
+    </change>
+    <change git:commit="c00cd567fd32e4e6e35622434246bce14df58b93">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+      </fileset>
+      <description>
+        Merge pull request #5 from alexrj/utf8-encode. Use utf8::encode()
+        instead of utf8::downgrade().
+      </description>
+    </change>
+    <change git:commit="e63f767f7d40f4629157f7fc67ea172bdc9f6e8c">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Client.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Finish the uft8 encode vs. downgrade change from the previous commit.
+        Changed in places that were overlooked, and adjusted the version
+        number in all three modules.
+      </description>
+    </change>
+    <change git:commit="fd84f87624cffe3667212fb9c2a8d32a6bdc7fbe">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+      </fileset>
+      <description>
+        Merge pull request #6 from dctabuyz/master. Added 'no_blanks' libxml
+        option to skip blank XML::LibXML::Text nodes.
+      </description>
+    </change>
+    <change git:commit="856da319f0ff661c81dab46c6b857fc058d72cea">
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        Merge pull request #7 from kvar/master. Initialize $do_compress in
+        RPC::XML::Server between requests.
+      </description>
+    </change>
+    <change git:commit="c22977c83bc411c95443f7056c9f7776371fe9df">
+      <fileset>
+        <file path="lib/RPC/XML.pm" />
+        <file path="lib/RPC/XML/Parser/XMLLibXML.pm" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Bump version numbers on modules changed in github pulls.
+      </description>
+    </change>
+  </release>
   <release date="2012-09-03T12:00:00-07:00" version="0.77" sc:tag="0.77">
     <change git:commit="23ea1e487cf203e826ddf8a09d450986dfa29599">
       <file path="t/15_serialize.t" />

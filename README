@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.77
+Version: 0.78
 
 WHAT IS IT
 
@@ -66,55 +66,56 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* t/15_serialize.t
-Fix a test failure on Windows.
-
 * lib/RPC/XML.pm
-RT #70408: Fix spelling error in man page, reported by Debian
-group.
-
-* t/90_rt54183_sigpipe.t
-Fix to handle cases where server creation fails. Now skips the
-tests rather than dying.
-
-* lib/RPC/XML/Client.pm
-RT #67486: Add port to Host header in client requests.
-
-* lib/RPC/XML/Server.pm
-RT #65341: Added "use" of forgotten library File::Temp. This
-was causing failure when "message_file_thresh" kicked in.
-
-* t/10_data.t
-RT #78602: Changed 64-bit test from use64bitint to longsize. On
-some systems (such as OS X), use64bitint can be true even when
-in 32-bit mode.
-
-* t/21_xml_libxml.t
-Fix from Christian Walde, skip passed test on Windows.
-
-* lib/RPC/XML/Server.pm
-* t/40_server.t
-Checkpoint refactoring and additional tests. Work is not
-complete here, but the Net::Server changes demand immediate
-attention
-
-* t/20_xml_parser.t
-RT #72780: Check for a possible parser failure. One instance of
-XML::Parser failing to parse the extern entities test. Cannot
-reproduce, so wrap it in a "skip" block for now.
+A patch to loop detection in smart_encode from Dag-Erling
+Smørgrav. Some other minor bits.
 
 * lib/RPC/XML/Procedure.pm
-* t/30_method.t
-RT #71452: Correct handling of dateTime parameters. Existing
-code in lib/RPC/XML/Procedure.pm did not properly handle
-parameters of the dateTime.iso8601 type. Also, there were no
-tests for these.
+RT #83108: Fixed a spelling error. Some other fixes, too.
 
-* MANIFEST
-* t/30_method.t (deleted)
-* t/30_proceudre.t (added)
-Renamed t/30_method.t to t/30_procedure.t.
+* lib/RPC/XML.pm
+RT #86187: Force key-ordering in struct as_string and
+serialize. Was getting some intermittent bug reports of
+failures in t/15_serialize.t that amounted to the keys in a
+fault struct not being in consistent order.
+
+* lib/RPC/XML.pm
+* t/15_serialize.t
+Undo the previous change and fix the test. The previous change
+didn't feel right, so this rolls it back and fixes the problem
+at the level of the test, instead.
+
+* Makefile.PL
+* lib/RPC/XML.pm
+* lib/RPC/XML/Client.pm
+* lib/RPC/XML/Server.pm
+Replace direct evals for loading optional modules with
+Module::Load. Required adding this to Makefile.PL because
+Module::Load is not core in 5.8.8. Also did some slight doc
+tweaking.
+
+* lib/RPC/XML.pm
+* lib/RPC/XML/Client.pm
+Merge pull request #5 from alexrj/utf8-encode. Use
+utf8::encode() instead of utf8::downgrade().
+
+* lib/RPC/XML.pm
+* lib/RPC/XML/Client.pm
+* lib/RPC/XML/Server.pm
+Finish the uft8 encode vs. downgrade change from the previous
+commit. Changed in places that were overlooked, and adjusted
+the version number in all three modules.
+
+* lib/RPC/XML.pm
+* lib/RPC/XML/Parser/XMLLibXML.pm
+Merge pull request #6 from dctabuyz/master. Added 'no_blanks'
+libxml option to skip blank XML::LibXML::Text nodes.
 
 * lib/RPC/XML/Server.pm
-RT #77992: Make RPC::XML::Server work with Net::Server again,
-after the API changes of Net::Server 2.x.
+Merge pull request #7 from kvar/master. Initialize $do_compress
+in RPC::XML::Server between requests.
+
+* lib/RPC/XML.pm
+* lib/RPC/XML/Parser/XMLLibXML.pm
+* lib/RPC/XML/Server.pm
+Bump version numbers on modules changed in github pulls.

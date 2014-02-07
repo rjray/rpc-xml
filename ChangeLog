@@ -9,6 +9,62 @@
 		allowing choice of character-set encodings for
 		XML messages.
 
+0.78	Thursday February  6, 2014, 08:00:00 PM -0800
+
+	* lib/RPC/XML.pm
+	A patch to loop detection in smart_encode from Dag-Erling
+	Smørgrav. Some other minor bits.
+
+	* lib/RPC/XML/Procedure.pm
+	RT #83108: Fixed a spelling error. Some other fixes, too.
+
+	* lib/RPC/XML.pm
+	RT #86187: Force key-ordering in struct as_string and
+	serialize. Was getting some intermittent bug reports of
+	failures in t/15_serialize.t that amounted to the keys in a
+	fault struct not being in consistent order.
+
+	* lib/RPC/XML.pm
+	* t/15_serialize.t
+	Undo the previous change and fix the test. The previous change
+	didn't feel right, so this rolls it back and fixes the problem
+	at the level of the test, instead.
+
+	* Makefile.PL
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Server.pm
+	Replace direct evals for loading optional modules with
+	Module::Load. Required adding this to Makefile.PL because
+	Module::Load is not core in 5.8.8. Also did some slight doc
+	tweaking.
+
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Client.pm
+	Merge pull request #5 from alexrj/utf8-encode. Use
+	utf8::encode() instead of utf8::downgrade().
+
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Client.pm
+	* lib/RPC/XML/Server.pm
+	Finish the uft8 encode vs. downgrade change from the previous
+	commit. Changed in places that were overlooked, and adjusted
+	the version number in all three modules.
+
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	Merge pull request #6 from dctabuyz/master. Added 'no_blanks'
+	libxml option to skip blank XML::LibXML::Text nodes.
+
+	* lib/RPC/XML/Server.pm
+	Merge pull request #7 from kvar/master. Initialize $do_compress
+	in RPC::XML::Server between requests.
+
+	* lib/RPC/XML.pm
+	* lib/RPC/XML/Parser/XMLLibXML.pm
+	* lib/RPC/XML/Server.pm
+	Bump version numbers on modules changed in github pulls.
+
 0.77	Monday September  3, 2012, 12:00:00 PM -0700
 
 	* t/15_serialize.t
@@ -1741,9 +1797,9 @@
 	* *
 	All files are tracked from this point forward.
 
-# Generated on Monday September  3, 2012, 11:48:20 AM -0700
-# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/2.0004,
-# XML::LibXSLT/1.77, libxml/2.7.3, libxslt/1.1.24 (with exslt)
+# Generated on Thursday February  6, 2014, 07:59:57 PM -0800
+# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/2.0108,
+# XML::LibXSLT/1.80, libxml/2.7.8, libxslt/1.1.24 (with exslt)
 # XSLT sources:
 #     $Id: changelog2text.xslt 8 2009-01-19 06:46:50Z rjray $
 #     $Id: common-text.xslt 8 2009-01-19 06:46:50Z rjray $

@@ -9,7 +9,6 @@
 use ExtUtils::MakeMaker;
 use File::Spec;
 use File::Find;
-use Cwd 'cwd';
 
 my ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir                   = File::Spec->catpath($vol, $dir, '');
@@ -66,7 +65,7 @@ find(sub {
 
 WriteMakefile(
     NAME      => 'RPC::XML',
-    VERSION   => '0.77',
+    VERSION   => '0.78',
     AUTHOR    => 'Randy J. Ray',
     ABSTRACT  => 'Data, client and server classes for XML-RPC',
     EXE_FILES => \@scripts,
