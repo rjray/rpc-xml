@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # http://rt.cpan.org/Ticket/Display.html?id=54183
 #
@@ -6,41 +6,35 @@
 
 use strict;
 use vars qw($dir $vol $srv $child $port $cli $res);
-use subs qw(start_server stop_server find_port);
+use subs qw(start_server stop_server);
 
 use Test::More;
 
-require File::Spec;
+use File::Spec;
 
-require RPC::XML::Server;
-require RPC::XML::Client;
+use RPC::XML::Server;
+use RPC::XML::Client;
 
 # This suite doesn't run on Windows, since it's based on *NIX signals
 if ($^O eq 'MSWin32' || $^O eq 'cygwin')
 {
-	plan skip_all => 'Skipping *NIX signals-based test on Windows platform';
-	exit;
+    plan skip_all => 'Skipping *NIX signals-based test on Windows platform';
+    exit;
 }
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, '');
 require File::Spec->catfile($dir, 'util.pl');
 
-if (($port = find_port) == -1)
+$srv = RPC::XML::Server->new(host => 'localhost', port => $port);
+if (! ref $srv)
 {
-    plan skip_all => "No usable port found between 9000 and 10000";
+    plan skip_all => "Creating server failed: $srv"
 }
 else
 {
-    $srv = RPC::XML::Server->new(host => 'localhost', port => $port);
-    if (! ref $srv)
-    {
-        plan skip_all => "Creating server failed: $srv"
-    }
-    else
-    {
-        plan tests => 4;
-    }
+    plan tests => 4;
+    $port = $srv->port;
 }
 
 $cli = RPC::XML::Client->new("http://localhost:$port");
@@ -82,9 +76,8 @@ eval {
     $res = $cli->send_request('system.status');
     alarm(0);
 };
-ok(ref($res) && ref($res->value) eq 'HASH',
-   'Good system.status return');
+ok(ref($res) && ref($res->value) eq 'HASH', 'Good system.status return');
 
-stop_server($child);
+stop_server $child;
 
 exit;

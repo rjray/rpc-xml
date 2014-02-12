@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the RPC::XML::Server class with Net::Server rather than HTTP::Daemon
 
@@ -10,8 +10,12 @@ use vars qw($dir $srv $pid_file $log_file $port $client $res @keys $meth $list
             $bucket %seen);
 use subs qw(start_server find_port);
 
+use Carp qw(croak);
 use File::Spec;
 use Test::More;
+
+use RPC::XML::Server;
+use RPC::XML::Client;
 
 eval "use Net::Server";
 # If they do not have Net::Server, quietly skip
@@ -22,15 +26,12 @@ plan skip_all => 'Net::Server tests not reliable on Windows platform'
 # otherwise...
 plan tests => 30;
 
-require RPC::XML::Server;
-require RPC::XML::Client;
-
 (undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 require File::Spec->catfile($dir, 'util.pl');
 
 $pid_file  = File::Spec->catfile($dir, 'net_server.pid');
 $log_file  = File::Spec->catfile($dir, 'net_server.log');
-die "No usable port found between 9000 and 10000, skipping"
+die "No usable port found between 9000 and 11000, skipping"
     if (($port = find_port) == -1);
 
 unlink $log_file if (-e $log_file);
@@ -41,6 +42,8 @@ unlink $pid_file if (-e $pid_file);
 $srv = RPC::XML::Server->new(no_http => 1);
 # Technically, this is overkill. But if it fails everything else blows up:
 isa_ok($srv, 'RPC::XML::Server');
+croak "Server allocation failed, cannot continue. Message was: $srv"
+    unless (ref $srv);
 
 # All of these parameters are passed to the run() method of
 # Net::Server::MultiType

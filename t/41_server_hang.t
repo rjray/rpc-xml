@@ -1,21 +1,21 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the RPC::XML::Server bug that causes a hang when a client terminates in
 # mid-message. Unlike 40_server.t, this isn't trying to fully exercise the
 # server class, just looking for and (trying to) tickle a specific bug.
 
 use strict;
-use subs qw(start_server find_port);
+use subs qw(start_server);
 use vars qw($dir $vol $srv $bucket $child $req $port $socket $body);
 
 use File::Spec;
+use IO::Socket;
 use Test::More tests => 2;
 
 use LWP::UserAgent;
 use HTTP::Request;
 
-require RPC::XML::Server;
-require IO::Socket;
+use RPC::XML::Server;
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, '');
@@ -56,7 +56,7 @@ SKIP: {
     $req = $req->as_string;
     substr($req, -32) = '';
 
-    $child = start_server($srv);
+    $child = start_server $srv;
     $bucket = 0;
     $SIG{CHLD} = sub {
         my $dead = wait;
@@ -79,7 +79,7 @@ SKIP: {
     print $socket "$req";
     # This *should* force the server to drop the request. The bug relates to
     # the fact that (previously) the server just hangs:
-    close($socket);
+    close $socket;
 
     # Give the server time to crap out:
     sleep 95 unless $bucket;

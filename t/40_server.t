@@ -1,10 +1,10 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the RPC::XML::Server class
 
 use strict;
 use warnings;
-use subs qw(start_server find_port);
+use subs qw(start_server stop_server);
 use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
             $list $meth @keys %seen $dir $vol $oldtable $newtable $value);
 
@@ -18,8 +18,8 @@ use HTTP::Request;
 use Scalar::Util 'blessed';
 
 use RPC::XML 'RPC_BASE64';
-require RPC::XML::Server;
-require RPC::XML::ParserFactory;
+use RPC::XML::Server;
+use RPC::XML::ParserFactory;
 
 @API_METHODS = qw(system.identity system.introspection system.listMethods
                   system.methodHelp system.methodSignature system.multicall
@@ -152,13 +152,11 @@ SKIP: {
 }
 
 # This one will have a HTTP::Daemon server, but still no default methods
-if (($port = find_port) == -1)
-{
-    croak 'No usable port found between 9000 and 11000, skipping';
-}
-$srv = RPC::XML::Server->new(no_default => 1,
-                             host => 'localhost', port => $port);
+$srv = RPC::XML::Server->new(no_default => 1, host => 'localhost');
 isa_ok($srv, 'RPC::XML::Server', '$srv<2>');
+croak "Server allocation failed, cannot continue. Message was: $srv"
+    unless (ref $srv);
+$port = $srv->port;
 # Test the URL the server uses. Allow for "localhost", "localhost.localdomain"
 # or the local-net IP address of this host (not always 127.0.0.1).
 # 22/09/2008 - Just allow for anything the user has attached to this address.
@@ -213,7 +211,7 @@ like($res, qr/Unknown type: bad/, 'add_method, bad type param');
 $parser = RPC::XML::ParserFactory->new;
 $UA = LWP::UserAgent->new;
 $req = HTTP::Request->new(POST => "http://localhost:$port/");
-$child = start_server($srv);
+$child = start_server $srv;
 
 $req->header(Content_Type => 'text/xml');
 $req->content(RPC::XML::request->new('perl.test.suite.test1')->as_string);
@@ -238,7 +236,7 @@ SKIP: {
         is($res->value->value, 1, 'First live req: $res value test');
     }
 }
-stop_server($child);
+stop_server $child;
 
 # Try deleting the method
 ok(ref $srv->delete_method('perl.test.suite.test1'),
@@ -260,7 +258,7 @@ $res = $srv->add_method({ name      => 'perl.test.suite.peeraddr',
                               [ $peeraddr, $packet,
                                 $srv->{peerhost}, $srv->{peerport} ];
                           } });
-$child = start_server($srv);
+$child = start_server $srv;
 $bucket = 0;
 $SIG{ALRM} = sub { $bucket++ };
 alarm(120);
@@ -281,10 +279,10 @@ SKIP: {
              'Second live request: correct faultString');
     }
 }
-stop_server($child);
+stop_server $child;
 
 # Start the server again
-$child = start_server($srv);
+$child = start_server $srv;
 $bucket = 0;
 $req->content(RPC::XML::request->new('perl.test.suite.peeraddr')->as_string);
 $SIG{ALRM} = sub { $bucket++ };
@@ -310,7 +308,7 @@ SKIP: {
            'Third request: pack_sockaddr_in validates all');
     }
 }
-stop_server($child);
+stop_server $child;
 
 # Start the server again
 # Add a method that echoes back info from the HTTP request object
@@ -323,7 +321,7 @@ $res = $srv->add_method({ name      => 'perl.test.suite.http_request',
                               [ $srv->{request}->content_type,
                                 $srv->{request}->header('X-Foobar') ]
                           } });
-$child = start_server($srv);
+$child = start_server $srv;
 $bucket = 0;
 $req->content(RPC::XML::request->new('perl.test.suite.http_request')->as_string);
 $req->header('X-Foobar', 'Wibble');
@@ -339,7 +337,7 @@ SKIP: {
     $res = $parser->parse($res->content);
     isa_ok($res, 'RPC::XML::response', 'Fourth live req: parsed $res');
   SKIP: {
-        skip "Response content did not parse, cannot test", 3
+        skip "Response content did not parse, cannot test", 2
             unless (ref $res and $res->isa('RPC::XML::response'));
         $res = $res->value->value;
         is($res->[0], 'text/xml',
@@ -350,10 +348,10 @@ SKIP: {
 }
 # Clean up after ourselves.
 $req->remove_header('X-Foobar');
-stop_server($child);
+stop_server $child;
 
 # Start the server again
-$child = start_server($srv);
+$child = start_server $srv;
 
 # Test the error-message-mixup problem reported in RT# 29351
 # (http://rt.cpan.org/Ticket/Display.html?id=29351)
@@ -391,7 +389,7 @@ SKIP: {
         );
     }
 }
-stop_server($child);
+stop_server $child;
 
 # OK-- At this point, basic server creation and accessors have been validated.
 # We've run a remote method and we've correctly failed to run an unknown remote
@@ -399,57 +397,50 @@ stop_server($child);
 # the provided introspection API.
 undef $srv;
 undef $req;
-die "No usable port found between 9000 and 10000, skipping"
-    if (($port = find_port) == -1);
-$srv = RPC::XML::Server->new(host => 'localhost', port => $port);
+$srv = RPC::XML::Server->new(host => 'localhost');
 
 # Did it create OK, with the requirement of loading the XPL code?
 isa_ok($srv, 'RPC::XML::Server', '$srv<3> (with default methods)');
+# Assume $srv is defined for the rest of the tests
+croak "Server allocation failed, cannot continue. Message was: $srv"
+    unless (ref $srv);
+$port = $srv->port;
+
+# Did it get all of them?
+is($srv->list_methods(), scalar(@API_METHODS),
+   'Correct number of methods (defaults)');
+$req = HTTP::Request->new(POST => "http://localhost:$port/");
+
+$child = start_server $srv;
+
+$req->header(Content_Type => 'text/xml');
+$req->content(RPC::XML::request->new('system.listMethods')->as_string);
+# Use alarm() to manage a reasonable time-out on the request
+$bucket = 0;
+undef $res;
+$SIG{ALRM} = sub { $bucket++ };
+alarm(120);
+$res = $UA->request($req);
+alarm(0);
 SKIP: {
-    skip "Failed to create RPC::XML::Server object with default methods", 3
-        unless ref($srv);
+    skip "Server failed to respond within 120 seconds!", 2 if $bucket;
 
-    # Did it get all of them?
-    is($srv->list_methods(), scalar(@API_METHODS),
-       'Correct number of methods (defaults)');
-    $req = HTTP::Request->new(POST => "http://localhost:$port/");
-
-    $child = start_server($srv);
-
-    $req->header(Content_Type => 'text/xml');
-    $req->content(RPC::XML::request->new('system.listMethods')->as_string);
-    # Use alarm() to manage a reasonable time-out on the request
-    $bucket = 0;
-    undef $res;
-    $SIG{ALRM} = sub { $bucket++ };
-    alarm(120);
-    $res = $UA->request($req);
-    alarm(0);
+    $res = ($res->is_error) ? '' : $parser->parse($res->content);
+    isa_ok($res, 'RPC::XML::response', 'system.listMethods response');
   SKIP: {
-        skip "Server failed to respond within 120 seconds!", 2 if $bucket;
-
-        $res = ($res->is_error) ? '' : $parser->parse($res->content);
-        isa_ok($res, 'RPC::XML::response', 'system.listMethods response');
-      SKIP: {
-            skip "Response content did not parse, cannot test", 1
-                unless (ref $res and $res->isa('RPC::XML::response'));
-            $list = (ref $res) ? $res->value->value : [];
-            ok((ref($list) eq 'ARRAY') &&
+        skip "Response content did not parse, cannot test", 1
+            unless (ref $res and $res->isa('RPC::XML::response'));
+        $list = (ref $res) ? $res->value->value : [];
+        ok((ref($list) eq 'ARRAY') &&
                (join('', sort @$list) eq join('', sort @API_METHODS)),
-               'system.listMethods return list correct');
-        }
+           'system.listMethods return list correct');
     }
 }
 
-# Assume $srv is defined, for the rest of the tests (so as to avoid the
-# annoying 'ok(0)' streams like above).
-die "Server allocation failed, cannot continue. Message was: $srv"
-    unless (ref $srv);
-
-stop_server($child);
+stop_server $child;
 
 # Start the server again
-$child = start_server($srv);
+$child = start_server $srv;
 
 # Set the ALRM handler to something more serious, since we have passed that
 # hurdle already.
@@ -481,10 +472,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # Run again, with a pattern that will produce no matches
@@ -512,10 +503,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.identity
@@ -533,10 +524,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.status
@@ -560,10 +551,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # Test again, with a 'true' value passed to the method, which should prevent
@@ -585,10 +576,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.methodHelp
@@ -616,10 +607,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.methodHelp with multiple arguments
@@ -649,10 +640,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.methodHelp with an invalid argument
@@ -674,10 +665,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.methodSignature
@@ -708,10 +699,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.methodSignature, with an invalid request
@@ -733,10 +724,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.introspection
@@ -788,10 +779,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.multicall
@@ -826,10 +817,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.multicall, with an attempt at illegal recursion
@@ -855,10 +846,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.multicall, with bad data on one of the call specifications
@@ -884,10 +875,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.multicall, with bad data in the request itself
@@ -911,10 +902,10 @@ SKIP: {
 # HTTP::Message::content might have killed it already via croak().
 unless ($res) # $res was made null above if it was an error
 {
-    stop_server($child);
+    stop_server $child;
 
     # Start the server again
-    $child = start_server($srv);
+    $child = start_server $srv;
 }
 
 # system.status, once more, to check the total_requests value
@@ -932,7 +923,7 @@ SKIP: {
 # This time we have to stop the server regardless of whether the response was
 # an error. We're going to add some more methods to test some of the error code
 # and other bits in RPC::XML::Procedure.
-stop_server($child);
+stop_server $child;
 $srv->add_method({
     type      => 'procedure',
     name      => 'argcount.p',
@@ -961,7 +952,7 @@ $srv->add_method({
 });
 
 # Start the server again, with the new methods
-$child = start_server($srv);
+$child = start_server $srv;
 
 # First, call the argcount.? routines, to see that we are getting the correct
 # number of args passed in. Up to now, everything running on $srv has been in
@@ -1098,6 +1089,6 @@ for my $test (sort keys %die_tests)
 }
 
 # Don't leave any children laying around
-stop_server($child);
+stop_server $child;
 
 exit;
