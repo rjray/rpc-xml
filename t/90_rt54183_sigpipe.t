@@ -4,8 +4,12 @@
 #
 # Test that the RPC::XML::Server class can handle SIGPIPE issues
 
+# Here, we don't care about the return value of eval's, because of the ALRM
+# signal handlers:
+## no critic(RequireCheckingReturnValueOfEval)
+
 use strict;
-use vars qw($dir $vol $srv $child $port $cli $res);
+use warnings;
 use subs qw(start_server stop_server);
 
 use Test::More;
@@ -15,6 +19,8 @@ use File::Spec;
 use RPC::XML::Server;
 use RPC::XML::Client;
 
+my ($dir, $vol, $srv, $child, $port, $cli, $res);
+
 # This suite doesn't run on Windows, since it's based on *NIX signals
 if ($^O eq 'MSWin32' || $^O eq 'cygwin')
 {
@@ -23,10 +29,10 @@ if ($^O eq 'MSWin32' || $^O eq 'cygwin')
 }
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
-$dir = File::Spec->catpath($vol, $dir, '');
+$dir = File::Spec->catpath($vol, $dir, q{});
 require File::Spec->catfile($dir, 'util.pl');
 
-$srv = RPC::XML::Server->new(host => 'localhost', port => $port);
+$srv = RPC::XML::Server->new(host => 'localhost');
 if (! ref $srv)
 {
     plan skip_all => "Creating server failed: $srv"
@@ -50,21 +56,21 @@ $srv->add_method({
     }
 });
 
-$child = start_server($srv);
+$child = start_server $srv;
 
 eval {
     local $SIG{ALRM} = sub { die "alarm\n" };
-    alarm(1);
+    alarm 1;
     $res = $cli->send_request('test');
-    alarm(0); # Shouldn't reach here
+    alarm 0; # Shouldn't reach here
 };
 like($res, qr/alarm/, 'Initial request alarmed-out correctly');
 
 eval {
     local $SIG{ALRM} = sub { die "alarm\n" };
-    alarm(6);
+    alarm 6;
     $res = $cli->send_request('test');
-    alarm(0); # Shouldn't reach here
+    alarm 0; # Shouldn't reach here
 };
 unlike($res, qr/alarm/, 'Second request did not alarm-out');
 
@@ -72,12 +78,12 @@ ok(ref($res) && $res->value eq 'foo', 'Second request correct value');
 
 eval {
     local $SIG{ALRM} = sub { die "alarm\n" };
-    alarm(2);
+    alarm 2;
     $res = $cli->send_request('system.status');
-    alarm(0);
+    alarm 0;
 };
 ok(ref($res) && ref($res->value) eq 'HASH', 'Good system.status return');
 
-stop_server $child;
+stop_server $child, 'final';
 
 exit;

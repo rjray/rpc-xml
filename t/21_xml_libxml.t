@@ -1,32 +1,37 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the RPC::XML::Parser::XMLLibXML class
 
+## no critic(Bangs::ProhibitNumberedNames)
+## no critic(Bangs::ProhibitVagueNames)
+## no critic(RequireInterpolationOfMetachars)
+## no critic(RequireBriefOpen)
+## no critic(RequireCheckedClose)
+
 use strict;
-use vars qw($p $req $res $str $badstr $ret $dir $vol $file $fh);
+use warnings;
 
-BEGIN
-{
-    use Test::More;
-
-    eval "use XML::LibXML";
-    if ($@)
-    {
-        plan skip_all => "XML::LibXML not installed";
-    }
-    else
-    {
-        plan tests => 110;
-    }
-}
-
-require File::Spec;
+use Carp qw(carp croak);
+use Module::Load;
+use Test::More;
+use File::Spec;
 
 use RPC::XML ':all';
-use RPC::XML::Parser::XMLLibXML;
+
+my ($p, $req, $res, $str, $badstr, $ret, $dir, $vol, $file, $fh);
+
+if (! eval { load XML::LibXML; 1; })
+{
+    plan skip_all => 'XML::LibXML not installed';
+}
+else
+{
+    load RPC::XML::Parser::XMLLibXML;
+    plan tests => 110;
+}
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
-$dir = File::Spec->catpath($vol, $dir, '');
+$dir = File::Spec->catpath($vol, $dir, q{});
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
 
 # The organization of the test suites is such that we assume anything that
@@ -80,12 +85,14 @@ $req = RPC::XML::request->new(
 $ret = $p->parse($req->as_string);
 isa_ok($ret, 'RPC::XML::request', 'Parse of RPC::XML::request block');
 SKIP: {
-    skip "RPC::XML::request object not properly parsed, cannot test it.", 20
-        unless (ref($ret) eq 'RPC::XML::request');
+    if (ref($ret) ne 'RPC::XML::request')
+    {
+        skip 'RPC::XML::request object not properly parsed, cannot test.', 20;
+    }
 
     is($ret->name, 'parserTest', 'Properly parsed /methodCall/methodName');
     my $args = $ret->args;
-    is(scalar @$args, 9, 'Parser created correct-length args list');
+    is(scalar @{$args}, 9, 'Parser created correct-length args list');
     # I could (and should) probably turn this into a loop with a table of
     # data, but I'm lazy right this moment.
     isa_ok($args->[0], 'RPC::XML::i4', 'Parse of <i4> argument');
@@ -114,10 +121,11 @@ SKIP: {
 # Prior to this, we've confirmed that spooling base64 data to files works.
 # Here, we test whether the parser (when configured to do so) can create
 # filehandles as well.
-undef $p;
 $p = RPC::XML::Parser::XMLLibXML->new(base64_to_fh => 1);
-open $fh, '<', $file;
-die "Error opening $file: $!" unless $fh;
+if (! open $fh, '<', $file)
+{
+    croak "Error opening $file: $!";
+}
 my $base64 = RPC::XML::base64->new($fh);
 $req = RPC::XML::request->new('method', $base64);
 
@@ -148,8 +156,8 @@ is($ret->value->value, $tmp, 'RPC::XML::Parser handles core entities');
 my $pp = RPC::XML::Parser::XMLLibXML->new->parse();
 isa_ok($pp, 'RPC::XML::Parser::XMLLibXML', 'Push-parser instance');
 my $string = $req->as_string;
-my $string1 = substr($string, 0, int(length($string)/2));
-my $string2 = substr($string, int(length($string)/2));
+my $string1 = substr $string, 0, int(length($string)/2);
+my $string2 = substr $string, int(length($string)/2);
 $pp->parse_more($string1);
 $pp->parse_more($string2);
 $res = $pp->parse_done();
@@ -160,9 +168,12 @@ is($new_b64->as_string, $base64->as_string(),
    'Push-parse value comparison');
 
 SKIP: {
-    skip "/etc/passwd is not an issue on windows.", 1 if $^O eq 'MSWin32';
+    if ($^O eq 'MSWin32')
+    {
+        skip '/etc/passwd is not present on windows.', 1;
+    }
 
-    my $bad_entities = <<EOX;
+    my $bad_entities = <<'EOX';
 <?xml version="1.0" encoding="us-ascii"?>
 <!DOCTYPE foo [
     <!ENTITY foo SYSTEM "file:///etc/passwd">
@@ -189,17 +200,18 @@ $ret = $p->parse(\$str);
 isa_ok($ret, 'RPC::XML::request', '$ret from scalar reference');
 ok(ref($ret) && ($ret->name eq 'test.method'), 'Correct request method name');
 my $tmpfile = File::Spec->catfile($dir, "tmp_$$.xml");
-open $fh, '+>', $tmpfile;
 SKIP: {
-    skip "Open of $tmpfile failed, cannot test on it ($!)", 2
-        if (! $fh);
+    if (! open $fh, '+>', $tmpfile)
+    {
+        skip "Open of $tmpfile failed, cannot test on it ($!)", 2;
+    }
 
     print {$fh} $str;
     seek $fh, 0, 0;
 
     $ret = $p->parse($fh);
     isa_ok($ret, 'RPC::XML::request', '$ret from glob reference');
-    ok((ref($ret) and ($ret->name eq 'test.method')),
+    ok((ref $ret and ($ret->name eq 'test.method')),
        'Correct request method name');
 
     close $fh;
@@ -210,10 +222,11 @@ $str =~ s{</methodCall>}{};
 $ret = $p->parse(\$str);
 ok(! ref $ret, '$ret error from scalar reference');
 like($ret, qr/parser error/, 'Correct error message');
-open $fh, '+>', $tmpfile;
 SKIP: {
-    skip "Open of $tmpfile failed, cannot test on it ($!)", 2
-        if (! $fh);
+    if (! open $fh, '+>', $tmpfile)
+    {
+        skip "Open of $tmpfile failed, cannot test on it ($!)", 2;
+    }
 
     print {$fh} $str;
     seek $fh, 0, 0;
@@ -291,7 +304,7 @@ ok(! ref $ret, 'Bad XML <13>');
 like($ret, qr/Unknown tag "valuee"/, 'Correct error message');
 # These are a little more hairy, trying to pass an invalid fault structure.
 # Gonna hard-code the strings rather than trying to transform $str.
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <fault>
@@ -314,7 +327,7 @@ EO_BADSTR
 $ret = $p->parse($badstr);
 ok(! ref $ret, 'Bad XML <14>');
 like($ret, qr/Bad tag within struct/, 'Correct error message');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <fault>
@@ -410,10 +423,15 @@ like($ret, qr/Unknown tag "structt"/, 'Correct error message');
 # an un-writable directory (and Windows doesn't have the same chmod concept we
 # have in other places).
 SKIP: {
-    skip 'Tests involving directory permissions skipped on Windows', 1
-        if ($^O eq 'MSWin32' || $^O eq 'cygwin');
-    skip 'Tests involving directory permissions skipped under root', 1
-        if ($< == 0);
+    if ($^O eq 'MSWin32' || $^O eq 'cygwin')
+    {
+        skip 'Tests involving directory permissions skipped on Windows', 1;
+    }
+    # Also cannot be reliably run under root:
+    if ($< == 0)
+    {
+        skip 'Tests involving directory permissions skipped under root', 1;
+    }
 
     my $baddir = File::Spec->catdir(File::Spec->tmpdir(), "baddir_$$");
     if (! mkdir $baddir)
@@ -425,15 +443,16 @@ SKIP: {
         skip "Skipping, failed to chmod dir $baddir: $!", 1;
     }
 
-    undef $p;
     $p = RPC::XML::Parser::XMLLibXML->new(
         base64_to_fh    => 1,
         base64_temp_dir => $baddir
     );
-    open $fh, '<', $file;
-    die "Error opening $file: $!" unless $fh;
-    my $base64 = RPC::XML::base64->new($fh);
-    $req = RPC::XML::request->new('method', $base64);
+    if (! open $fh, '<', $file)
+    {
+        croak "Error opening $file: $!";
+    }
+    my $base64fail = RPC::XML::base64->new($fh);
+    $req = RPC::XML::request->new('method', $base64fail);
     $ret = $p->parse($req->as_string);
 
     like($ret, qr/Error opening temp file for base64/,
@@ -441,7 +460,7 @@ SKIP: {
 
     if (! rmdir $baddir)
     {
-        warn "Failed to remove temp-dir $baddir: $!";
+        carp "Failed to remove temp-dir $baddir: $!";
     }
 }
 

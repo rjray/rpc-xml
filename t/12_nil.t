@@ -1,12 +1,20 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the data-manipulation routines in RPC::XML
 
-use strict;
-use vars qw($val $obj);
+## no critic(Bangs::ProhibitVagueNames)
+## no critic(RequireInterpolationOfMetachars)
 
-use Test::More tests => 11;
+use strict;
+use warnings;
+
+use Test::More;
+
 use RPC::XML 'smart_encode';
+
+my $obj;
+
+plan tests => 11;
 
 # First ensure that we can't actually create these objects unless we explicitly
 # enable the extension:

@@ -1,12 +1,18 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the RPC::XML::Parser class negative conditions
 
+## no critic(RequireInterpolationOfMetachars)
+## no critic(ProhibitMultiplePackages)
+
 use strict;
 use warnings;
-use vars qw($p $retval);
 
-use Test::More tests => 14;
+use Test::More;
+
+my ($p, $error, $retval);
+
+plan tests => 14;
 
 # Create a dummy class to use for attempts to call methods within the
 # RPC::XML::Parser class:
@@ -20,9 +26,12 @@ package main;
 my $errtext = qr/should have been overridden by the BadParser class/;
 
 # First, the constructor:
-eval { $p = BadParser->new() };
+if (! eval { $p = BadParser->new(); 1; })
+{
+    $error = $@;
+}
 ok(! defined $p, 'RPC::XML::Parser did not instantiate');
-like($@, $errtext, 'Correctly-set error message in $@');
+like($error, $errtext, 'Correctly-set error message in $@');
 
 # Fine! We'll *force* an object into that class:
 $p = bless {}, 'BadParser';

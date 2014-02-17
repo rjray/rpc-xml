@@ -1,25 +1,33 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the date-parsing facilities provided by the DateTime::Format::ISO8601
 # module, if available
 
-use strict;
-use vars qw($obj @values $formatter);
+## no critic(Bangs::ProhibitVagueNames)
 
+use strict;
+use warnings;
+
+use Module::Load;
 use Test::More;
 
 use RPC::XML;
 
-eval "use DateTime::Format::ISO8601";
+my ($obj, @values, $formatter);
+
+my $datetime_format_iso8601_avail = eval { load DateTime::Format::ISO8601; 1; };
 # Do not run this suite if the package is not available
-plan skip_all => 'DateTime::Format::ISO8601 not available' if $@;
+if (! $datetime_format_iso8601_avail)
+{
+    plan skip_all => 'DateTime::Format::ISO8601 not available';
+}
 
 # Otherwise, we have to calculate our tests from the content after __DATA__:
 while (defined(my $line = <DATA>))
 {
     next if ($line =~ /^#/);
     chomp $line;
-    next if ($line =~ /^$/);
+    next if (! $line);
     push @values, [ split /[|]/, $line ];
 }
 

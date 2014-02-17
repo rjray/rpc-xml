@@ -1,22 +1,25 @@
 #!/usr/bin/perl
 
+## no critic(Bangs::ProhibitVagueNames)
+## no critic(RequireInterpolationOfMetachars)
+## no critic(ProhibitComplexRegexes)
+
 # Test the data-manipulation routines in RPC::XML
 
 use strict;
-use vars qw($val $str $fh $obj $class %val_tbl @values $datetime_avail);
+use warnings;
 
 use Config;
-
-use Test::More tests => 252;
+use Module::Load;
+use Test::More;
 use File::Spec;
 
 use RPC::XML ':all';
 
-BEGIN
-{
-    eval "use DateTime";
-    $datetime_avail = $@ ? 0 : 1;
-}
+my ($val, $str, $obj, $class, %val_tbl, @values, $datetime_avail);
+$datetime_avail = eval { load DateTime; 1; };
+
+plan tests => 252;
 
 # First, make sure we can't instantiate any of "abstract" classes directly,
 # and also make sure that certain base-class methods properly return when
@@ -45,12 +48,12 @@ like($RPC::XML::ERROR, qr/not derived from scalar/, 'Correct error message');
 
 # Next, the most basic data-types
 %val_tbl = (
-            'int'  => int(rand 10000) + 1,
-            i4     => int(rand 10000) + 1,
-            i8     => 2**32,
-            double => 0.5,
-            string => __FILE__
-           );
+    'int'  => int(rand 10_000) + 1,
+    i4     => int(rand 10_000) + 1,
+    i8     => 2**32,
+    double => 0.5,
+    string => __FILE__,
+);
 
 for (sort keys %val_tbl)
 {
@@ -69,27 +72,27 @@ for (sort keys %val_tbl)
 # Go again, with each of the values being a blessed scalar reference
 my @vals = (1, -1, 2**32, 0.5, __FILE__);
 %val_tbl = (
-            'int'  => bless(\(shift(@vals)), "Tmp::Scalar::Int"),
-            i4     => bless(\(shift(@vals)), "Tmp::Scalar::I4"),
-            i8     => bless(\(shift(@vals)), "Tmp::Scalar::I8"),
-            double => bless(\(shift(@vals)), "Tmp::Scalar::Double"),
-            string => bless(\(shift(@vals)), "Tmp::Scalar::String")
-           );
+    int    => bless(\(shift @vals), 'Tmp::Scalar::Int'),
+    i4     => bless(\(shift @vals), 'Tmp::Scalar::I4'),
+    i8     => bless(\(shift @vals), 'Tmp::Scalar::I8'),
+    double => bless(\(shift @vals), 'Tmp::Scalar::Double'),
+    string => bless(\(shift @vals), 'Tmp::Scalar::String'),
+);
 
-for (sort keys %val_tbl)
+for my $type (sort keys %val_tbl)
 {
-    $val = $val_tbl{$_};
-    $class = "RPC::XML::$_";
+    $val = $val_tbl{$type};
+    $class = "RPC::XML::$type";
     $obj = $class->new($val);
-    isa_ok($obj, $class, "Data objects from blessed scalar refs, type $_");
-    is($obj->value, $$val,
-       "Data objects from blessed scalar refs, type $_, value check");
-    is($obj->as_string, "<$_>${$val}</$_>",
-       "Data objects from blessed scalar refs, type $_, XML serialization");
-    is($obj->type, $_,
-       "Data objects from blessed scalar refs, type $_, type identification");
+    isa_ok($obj, $class, "Data objects from blessed scalar refs, type $type");
+    is($obj->value, ${$val},
+       "Data objects from blessed scalar refs, type $type, value check");
+    is($obj->as_string, "<$type>${$val}</$type>",
+       "Data objects from blessed scalar refs, type $type, XML serialization");
+    is($obj->type, $type,
+       "Data objects from blessed scalar refs, type $type, type ident");
     is(length($obj->as_string), $obj->length,
-       "Data objects from blessed scalar refs, type $_, length() method test");
+       "Data objects from blessed scalar refs, type $type, length() method");
 }
 
 # A few extra tests for RPC::XML::double to make sure the stringification
@@ -104,28 +107,28 @@ is($obj->as_string, '<double>0.5</double>',
 # Another little test for RPC::XML::string, to check encoding
 $val = 'Subroutine &bogus not defined at <_> line -NaN';
 $obj = RPC::XML::string->new($val);
-is($obj->value, $val, "RPC::XML::string extra tests, value check");
+is($obj->value, $val, 'RPC::XML::string extra tests, value check');
 is($obj->as_string,
-   "<string>Subroutine &amp;bogus not defined at &lt;_&gt; line -NaN</string>",
-   "RPC::XML::string extra tests, XML serialization");
+   '<string>Subroutine &amp;bogus not defined at &lt;_&gt; line -NaN</string>',
+   'RPC::XML::string extra tests, XML serialization');
 
 # Test for correct handling of encoding a 0 (false but defined)
 $val = 0;
 $obj = RPC::XML::string->new($val);
-is($obj->as_string, "<string>0</string>", "RPC::XML::string, encoding '0'");
+is($obj->as_string, '<string>0</string>', q(RPC::XML::string, encoding '0'));
 
 # Type boolean is a little funky
 
 # Each of these should be OK
-for (qw(0 1 yes no tRuE FaLsE))
+for my $boolval (qw(0 1 yes no tRuE FaLsE))
 {
-    $val = (/0|no|false/i) ? 0 : 1;
-    $obj = RPC::XML::boolean->new($_);
-    isa_ok($obj, 'RPC::XML::boolean', '$obj($_)');
-    is($obj->value, $val, "RPC::XML::boolean($_), value check");
+    $val = ($boolval =~ /0|no|false/i) ? 0 : 1;
+    $obj = RPC::XML::boolean->new($boolval);
+    isa_ok($obj, 'RPC::XML::boolean', "\$obj($boolval)");
+    is($obj->value, $val, "RPC::XML::boolean($boolval), value check");
     is($obj->as_string, "<boolean>$val</boolean>",
-       "RPC::XML::boolean($_), XML serialization");
-    is($obj->type, 'boolean', "RPC::XML::boolean($_), type identification");
+       "RPC::XML::boolean($boolval), XML serialization");
+    is($obj->type, 'boolean', "RPC::XML::boolean($boolval), type ident");
 }
 # This should not
 $obj = RPC::XML::boolean->new('of course!');
@@ -155,9 +158,9 @@ $val .= '.125Z';
 $obj = RPC::XML::datetime_iso8601->new($val);
 isa_ok($obj, 'RPC::XML::datetime_iso8601', '$obj');
 is($obj->type, 'dateTime.iso8601',
-   "RPC::XML::datetime_iso8601, type identification");
+   'RPC::XML::datetime_iso8601, type identification');
 is(length($obj->as_string), $obj->length,
-   "RPC::XML::datetime_iso8601, length() method test");
+   'RPC::XML::datetime_iso8601, length() method test');
 is($obj->value, $val, 'RPC::XML::datetime_iso8601, value() method test');
 # Test bad date-data
 $obj = RPC::XML::datetime_iso8601->new();
@@ -174,13 +177,15 @@ like($RPC::XML::ERROR, qr/::new: Malformed data/,
 $obj = RPC::XML::datetime_iso8601->new('2008-09-29T12:00:00-07:00');
 isa_ok($obj, 'RPC::XML::datetime_iso8601', '$obj');
 is($obj->type, 'dateTime.iso8601',
-   "RPC::XML::datetime_iso8601, type identification");
+   'RPC::XML::datetime_iso8601, type identification');
 is($obj->value, '20080929T12:00:00-07:00',
    'RPC::XML::datetime_iso8601, value() method test');
 # Test interoperability with the DateTime package, if it is available
 SKIP: {
-    skip 'Module DateTime not available', 4
-        if (! $datetime_avail);
+    if (! $datetime_avail)
+    {
+        skip 'Module DateTime not available', 4;
+    }
 
     my $dt = DateTime->now();
     (my $dt_str = "$dt") =~ s/-//g;
@@ -198,14 +203,14 @@ SKIP: {
 # Test the base64 type
 require MIME::Base64;
 $str = 'one reasonable-length string';
-$val = MIME::Base64::encode_base64($str, '');
+$val = MIME::Base64::encode_base64($str, q{});
 $obj = RPC::XML::base64->new($str);
 isa_ok($obj, 'RPC::XML::base64', '$obj');
 is($obj->as_string, "<base64>$val</base64>",
    'RPC::XML::base64, XML serialization');
 is($obj->value, $str, 'RPC::XML::base64, correct value()');
 is(length($obj->as_string), $obj->length,
-   "RPC::XML::base64, length() method test");
+   'RPC::XML::base64, length() method test');
 
 # Test pre-encoded data
 $obj = RPC::XML::base64->new($val, 'pre-encoded');
@@ -220,7 +225,7 @@ is($obj->value, $str, 'RPC::XML::base64, correct value()');
 # Test a null Base64 object
 $obj = RPC::XML::base64->new();
 isa_ok($obj, 'RPC::XML::base64', '$obj');
-is($obj->value, '', 'Zero-length base64 object value OK');
+is($obj->value, q{}, 'Zero-length base64 object value OK');
 is($obj->as_string, '<base64></base64>',
    'Zero-length base64 object stringifies OK');
 
@@ -233,7 +238,7 @@ is($obj->as_string, '<base64></base64>',
     RPC::XML::string->new('2112'), # [4] string
     [],                            # [5] array
     {},                            # [6] struct
-    \ "foo",                       # [7] string
+    \'foo',                        # [7] string
     \2,                            # [8] int
     \1.414,                        # [9] double
     2_147_483_647,                 # [10] int
@@ -243,26 +248,28 @@ is($obj->as_string, '<base64></base64>',
     4_294_967_295,                 # [14] i8
     '2009-09-03T10:25:00',         # [15] dateTime.iso8601
     '20090903T10:25:00Z',          # [16] dateTime.iso8601
-    '2009-09-03T10:25:00.125'      # [17] dateTime.iso8601
+    '2009-09-03T10:25:00.125',     # [17] dateTime.iso8601
 );
 
-is($values[0]->type, 'string', "smart_encode, string<1>");
-is($values[1]->type, 'int', "smart_encode, int<1>");
-is($values[2]->type, 'double', "smart_encode, double<1>");
+is($values[0]->type, 'string', 'smart_encode, string<1>');
+is($values[1]->type, 'int', 'smart_encode, int<1>');
+is($values[2]->type, 'double', 'smart_encode, double<1>');
 # Should have been encoded int regardless of ''
-is($values[3]->type, 'int', "smart_encode, int<2>");
+is($values[3]->type, 'int', 'smart_encode, int<2>');
 # Was given an object explicitly
-is($values[4]->type, 'string', "smart_encode, string<2>");
-is($values[5]->type, 'array', "smart_encode, array");
-is($values[6]->type, 'struct', "smart_encode, struct");
-is($values[7]->type, 'string', "smart_encode, string<3>");
-is($values[8]->type, 'int', "smart_encode, int<3>");
-is($values[9]->type, 'double', "smart_encode, double<2>");
+is($values[4]->type, 'string', 'smart_encode, string<2>');
+is($values[5]->type, 'array', 'smart_encode, array');
+is($values[6]->type, 'struct', 'smart_encode, struct');
+is($values[7]->type, 'string', 'smart_encode, string<3>');
+is($values[8]->type, 'int', 'smart_encode, int<3>');
+is($values[9]->type, 'double', 'smart_encode, double<2>');
 is($values[10]->type, 'int', 'smart_encode, int<4>');
 is($values[11]->type, 'int', 'smart_encode, int<5>');
 SKIP: {
-    skip '64-bit architecture required to test these I8 values', 2
-        if ($Config{longsize} != 8);
+    if ($Config{longsize} != 8)
+    {
+        skip '64-bit architecture required to test these I8 values', 2;
+    }
 
     is($values[12]->type, 'i8', 'smart_encode, i8<1>');
     is($values[13]->type, 'i8', 'smart_encode, i8<2>');
@@ -276,28 +283,28 @@ is($values[17]->type, 'dateTime.iso8601', 'smart_encode, dateTime.iso8601<3>');
 # string:
 $obj = smart_encode(undef);
 is($obj->type, 'string', 'smart_encode undef->string type');
-is($obj->value, '', 'smart_encode undef->string value');
+is($obj->value, q{}, 'smart_encode undef->string value');
 
 # Check that smart_encode gives up on un-convertable references
 {
     my $badvalue;
-    eval { $badvalue = smart_encode(\*STDIN); };
+    my $result = eval { $badvalue = smart_encode(\*STDIN); 1; };
     ok(! ref($badvalue),
-       "smart_encode, bad reference argument did not yield referent");
+       'smart_encode, bad reference argument did not yield referent');
     like($@, qr/Un-convertable reference/,
-         "smart_encode, bad reference argument set \$@ as expected");
+         'smart_encode, bad reference argument set $@ as expected');
 }
 
 # Arrays
 $obj = RPC::XML::array->new(1 .. 10);
 isa_ok($obj, 'RPC::XML::array', '$obj');
-is($obj->type, 'array', "RPC::XML::array, type identification");
-@values = @{ $obj->value };
-is(scalar(@values), 10, "RPC::XML::array, array size test");
-@values = @{ $obj->value(1) };
+is($obj->type, 'array', 'RPC::XML::array, type identification');
+@values = @{$obj->value};
+is(scalar(@values), 10, 'RPC::XML::array, array size test');
+@values = @{$obj->value(1)};
 ok(ref($values[0]) && ($values[0]->type eq 'int'),
    'RPC::XML::array, array content is RPC::XML::* referent');
-like($obj->as_string, qr|<array>.*(<int>\d+</int>.*){10}.*</array>|sm,
+like($obj->as_string, qr{<array>.*(<int>\d+</int>.*){10}.*</array>}smx,
      'RPC::XML::array, XML serialization');
 is(length($obj->as_string), $obj->length,
    'RPC::XML::array, length() method test');
@@ -308,13 +315,13 @@ $obj = RPC::XML::array->new(from => $arrayobj);
 isa_ok($obj, 'RPC::XML::array', '$obj from blessed arrayref');
 is($obj->type, 'array',
    'RPC::XML::array from blessed arrayref, type identification');
-@values = @{ $obj->value };
+@values = @{$obj->value};
 is(scalar(@values), 10,
    'RPC::XML::array from blessed arrayref, array size test');
-@values = @{ $obj->value(1) };
+@values = @{$obj->value(1)};
 ok(ref($values[0]) && ($values[0]->type eq 'int'),
    'RPC::XML::array from blessed arrayref, array content is referent');
-like($obj->as_string, qr|<array>.*(<int>\d+</int>.*){10}.*</array>|sm,
+like($obj->as_string, qr{<array>.*(<int>\d+</int>.*){10}.*</array>}smx,
      'RPC::XML::array from blessed arrayref, XML serialization');
 is(length($obj->as_string), $obj->length,
    'RPC::XML::array from blessed arrayref, length() method test');
@@ -326,7 +333,7 @@ isa_ok($obj, 'RPC::XML::struct', '$obj');
 is($obj->type, 'struct', 'RPC::XML::struct, type identification');
 $val = $obj->value;
 is(ref($val), 'HASH', 'RPC::XML::struct, ref-type of value()');
-is(scalar(keys %$val), 2, 'RPC::XML::struct, correct number of keys');
+is(scalar(keys %{$val}), 2, 'RPC::XML::struct, correct number of keys');
 is($val->{key1}, 1, q(RPC::XML::struct, 'key1' value test));
 $val = $obj->value(1);
 ok(ref($val->{key1}) && ($val->{key1}->type eq 'int'),
@@ -338,19 +345,21 @@ is(($obj->value)->{key1}, 'hello',
    q{RPC::XML::struct(object-values), 'key1' value test});
 is(($obj->value(1))->{key1}->type, 'string',
    'RPC::XML::struct(object-values), value-object type correctness');
-like($obj->as_string, qr|<struct>.*(<member>.*
-                                      <name>.*</name>.*
-                                      <value>.*</value>.*
-                                    </member>.*){2}.*</struct>|smx,
+like($obj->as_string, qr{<struct>
+                         (<member>
+                             <name>.*</name>
+                             <value>.*</value>
+                          </member>){2}
+                         </struct>}smx,
      'RPC::XML::struct, XML serialization');
 is(length($obj->as_string), $obj->length,
-   "RPC::XML::struct, length() method test");
+   'RPC::XML::struct, length() method test');
 # Test handling of keys that contain XML special characters
-$obj = RPC::XML::struct->new('>'  => these   =>
-                             '<'  => are     =>
-                             '&'  => special =>
-                             '<>' => XML     =>
-                             '&&' => 'characters');
+$obj = RPC::XML::struct->new(q{>}  => 'these',
+                             q{<}  => 'are',
+                             q{&}  => 'special',
+                             q{<>} => 'XML',
+                             q{&&} => 'characters');
 isa_ok($obj, 'RPC::XML::struct', '$obj(with XML special char keys)');
 is((my $tmp = $obj->as_string) =~ tr/&/&/, 7,
    'RPC::XML::struct, XML-encoding of serialized form with char entities');
@@ -362,7 +371,7 @@ isa_ok($obj, 'RPC::XML::struct', '$obj(struct<1>)');
 is($obj->type, 'struct', 'struct object type method');
 $val = $obj->value;
 isa_ok($val, 'HASH', 'struct $obj->value');
-is(scalar(keys %$val), 2, 'struct obj number of keys test');
+is(scalar(keys %{$val}), 2, 'struct obj number of keys test');
 is($val->{key1}, 1, 'struct obj "key1" test');
 $val = $obj->value(1);
 isa_ok($val->{key1}, 'RPC::XML::int', '$val->{key1} (shallow eval)');
@@ -371,10 +380,12 @@ $obj = RPC::XML::struct->new($val);
 isa_ok($obj, 'RPC::XML::struct', '$obj(struct<2>)');
 is(($obj->value)->{key1}, 'hello', 'struct<2> "key1" test');
 is(($obj->value(1))->{key1}->type, 'string', 'struct<2> "key1" type test');
-like($obj->as_string, qr|<struct>.*(<member>.*
-                                      <name>.*</name>.*
-                                      <value>.*</value>.*
-                                    </member>.*){2}.*</struct>|smx,
+like($obj->as_string, qr{<struct>
+                         (<member>
+                             <name>.*</name>
+                             <value>.*</value>
+                          </member>){2}
+                         </struct>}smx,
      'struct<2> XML serialization');
 is(length($obj->as_string), $obj->length, 'struct<2> length() check');
 # No need to re-test the XML character handling
@@ -396,16 +407,16 @@ $obj = RPC::XML::fault->new(1, 'test');
 isa_ok($obj, 'RPC::XML::fault', '$obj<2> (fault)');
 is($obj->code, 1, 'fault code() method');
 is($obj->string, 'test', 'fault string() method');
-like($obj->as_string, qr|<fault>.*
-                           <value>.*
-                             <struct>.*
-                               (<member>.*
-                                  <name>.*</name>.*
-                                  <value>.*</value>.*
-                                </member>.*){2}.*
-                             </struct>.*
-                           </value>.*
-                         </fault>|smx,
+like($obj->as_string, qr{<fault>
+                           <value>
+                             <struct>
+                               (<member>
+                                  <name>.*</name>
+                                  <value>.*</value>
+                                </member>.*){2}
+                             </struct>
+                           </value>
+                         </fault>}smx,
      'fault XML serialization');
 is(length($obj->as_string), $obj->length, 'fault length() check');
 
@@ -413,12 +424,12 @@ is(length($obj->as_string), $obj->length, 'fault length() check');
 $obj = RPC::XML::request->new('test.method');
 isa_ok($obj, 'RPC::XML::request', '$obj (request)');
 is($obj->name, 'test.method', 'request name method');
-ok($obj->args && (@{ $obj->args } == 0), 'request args method');
+ok($obj->args && (@{$obj->args} == 0), 'request args method');
 $obj = RPC::XML::request->new();
 ok(! ref($obj), 'bad request contructor failed');
 like($RPC::XML::ERROR, qr/:new: At least a method name/,
      'bad request constructor set error string');
-$obj = RPC::XML::request->new('#*'); # Bad method name, should fail
+$obj = RPC::XML::request->new(q{#*}); # Bad method name, should fail
 ok(! ref($obj), 'Bad method name in constructor failed');
 like($RPC::XML::ERROR, qr/Invalid method name/,
      'Bad method name in constructor set error string');
@@ -428,13 +439,13 @@ ok($obj->args && (@{ $obj->args } == 10), 'request args method size test');
 # tested. These are just to ensure that it *does* in fact call it
 is($obj->args->[0]->type, 'int', 'request args elt[0] type test');
 is($obj->args->[9]->value, 10, 'request args elt[9] value test');
-like($obj->as_string, qr|<\?xml.*
-                         <methodCall>.*
-                           <methodName>.*</methodName>.*
-                           <params>.*
-                             (<param>.*</param>.*){10}.*
-                           </params>.*
-                         </methodCall>|smx,
+like($obj->as_string, qr{<[?]xml.*?>
+                         <methodCall>
+                           <methodName>.*</methodName>
+                           <params>
+                             (<param>.*</param>){10}
+                           </params>
+                         </methodCall>}smx,
      'request XML serialization');
 is(length($obj->as_string), $obj->length, 'request length() test');
 
@@ -444,18 +455,18 @@ isa_ok($obj, 'RPC::XML::response', '$obj (response)');
 is($obj->value->type, 'string', 'response value->type test');
 is($obj->value->value, 'ok', 'response value->value test');
 ok(! $obj->is_fault, 'response object not fault');
-like($obj->as_string, qr|<\?xml.*
-                         <methodResponse>.*
-                           <params>.*
-                             <param>.*</param>.*
-                           </params>.*
-                         </methodResponse>|smx,
+like($obj->as_string, qr{<[?]xml.*?>
+                         <methodResponse>
+                           <params>
+                             <param>.*</param>
+                           </params>
+                         </methodResponse>}smx,
      'response XML serialization');
 is(length($obj->as_string), $obj->length, 'response length() test');
 
 $obj = RPC::XML::response->new();
 ok(! ref($obj), 'bad response constructor failed');
-like($RPC::XML::ERROR, qr/:new: One of a datatype, value or a fault/,
+like($RPC::XML::ERROR, qr/new: One of a datatype, value or a fault/,
      'bad response constructor set error string');
 $obj = RPC::XML::response->new(qw(one two));
 ok(! ref($obj), 'bad response constructor failed');
@@ -476,13 +487,13 @@ ok($obj->is_fault, 'fault response creation is_fault test');
         1e37+1      => 'string',
     );
 
-    while (my($val,$type) = each %map)
+    while (my ($value, $type) = each %map)
     {
         for my $mod (1,-1)
         {
             {
-                my $obj = smart_encode($mod * $val);
-                ok($obj, "smart_encode zealousness test, $mod * $val");
+                $obj = smart_encode($mod * $value);
+                ok($obj, "smart_encode zealousness test, $mod * $value");
                 is($obj->type, $type,
                    'smart_encode zealousness, non-forced type');
             }
@@ -492,8 +503,9 @@ ok($obj->is_fault, 'fault response creation is_fault test');
                 ### double assign to silence -w
                 local $RPC::XML::FORCE_STRING_ENCODING = 1;
                 local $RPC::XML::FORCE_STRING_ENCODING = 1;
-                my $obj = smart_encode($mod * $val);
-                ok($obj, "smart_encode zealousness test, $mod * $val (force)");
+                $obj = smart_encode($mod * $value);
+                ok($obj,
+                   "smart_encode zealousness test, $mod * $value (force)");
                 is($obj->type, 'string',
                    'smart_encode zealousness, forced to string');
             }

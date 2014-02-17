@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # https://rt.cpan.org/Ticket/Display.html?id=58065
 #
@@ -7,21 +7,21 @@
 # liberal acceptance of the tag in what we take in. Production of the tag is
 # still limited to only when the flag is set.
 
+## no critic(RequireInterpolationOfMetachars)
+
 use strict;
-use vars qw($parser $req_message $res_message $parsed);
+use warnings;
 
-use Test::More tests => 8;
+use Module::Load;
+use Test::More;
 
-# Use classes from here directly to create test messages for parsing
 use RPC::XML;
+use RPC::XML::Parser::XMLParser;
 
-# This factory-class-instance should always be present
-require RPC::XML::Parser::XMLParser;
-# This one may not be present
-my $can_libxml = eval {
-    require RPC::XML::Parser::XMLLibXML;
-    1;
-};
+plan tests => 8;
+
+my ($parser, $req_message, $res_message, $parsed);
+my $can_libxml = eval { load RPC::XML::Parser::XMLLibXML; 1; };
 
 # Create mock request and response messages that contain nils in them by first
 # setting the flag. We'll then unset the flag for the tests.
@@ -47,48 +47,62 @@ $parser = RPC::XML::Parser::XMLParser->new();
 # Test-parse the request message
 $parsed = $parser->parse($req_message->as_string);
 
-isa_ok($parsed, 'RPC::XML::request');
+isa_ok($parsed, 'RPC::XML::request', '$parsed content');
 SKIP: {
-    skip 'Parsed value corrupted, cannot test nil value', 1
-        unless (ref($parsed) eq 'RPC::XML::request');
-    isa_ok($parsed->args->[0], 'RPC::XML::nil');
+    if (ref($parsed) ne 'RPC::XML::request')
+    {
+        skip 'Parsed value corrupted, cannot test nil value', 1;
+    }
+
+    isa_ok($parsed->args->[0], 'RPC::XML::nil', '$parsed->args->[0]');
 }
 
 # Test-parse the response message
 $parsed = $parser->parse($res_message->as_string);
 
-isa_ok($parsed, 'RPC::XML::response');
+isa_ok($parsed, 'RPC::XML::response', '$parsed content');
 SKIP: {
-    skip 'Parsed value corrupted, cannot test nil value', 1
-        unless (ref($parsed) eq 'RPC::XML::response');
-    isa_ok($parsed->value, 'RPC::XML::nil');
+    if (ref($parsed) ne 'RPC::XML::response')
+    {
+        skip 'Parsed value corrupted, cannot test nil value', 1;
+    }
+
+    isa_ok($parsed->value, 'RPC::XML::nil', '$parsed->value');
 }
 
 # Next, test RPC::XML::Parser::XMLLibXML (which we might not have)
 SKIP: {
-    skip 'XML::LibXML not installed', 4
-        unless $can_libxml;
+    if (! $can_libxml)
+    {
+        skip 'XML::LibXML not installed', 4;
+    }
 
     $parser = RPC::XML::Parser::XMLLibXML->new();
 
     # Test-parse the request message
     $parsed = $parser->parse($req_message->as_string);
 
-    isa_ok($parsed, 'RPC::XML::request');
+    isa_ok($parsed, 'RPC::XML::request', '$parsed content');
   SKIP: {
-        skip 'Parsed value corrupted, cannot test nil value', 1
-            unless (ref($parsed) eq 'RPC::XML::request');
-        isa_ok($parsed->args->[0], 'RPC::XML::nil');
+        if (ref($parsed) ne 'RPC::XML::request')
+        {
+            skip 'Parsed value corrupted, cannot test nil value', 1;
+        }
+
+        isa_ok($parsed->args->[0], 'RPC::XML::nil', '$parsed->args->[0]');
     }
 
     # Test-parse the response message
     $parsed = $parser->parse($res_message->as_string);
 
-    isa_ok($parsed, 'RPC::XML::response');
+    isa_ok($parsed, 'RPC::XML::response', '$parsed content');
   SKIP: {
-        skip 'Parsed value corrupted, cannot test nil value', 1
-            unless (ref($parsed) eq 'RPC::XML::response');
-        isa_ok($parsed->value, 'RPC::XML::nil');
+        if (ref($parsed) ne 'RPC::XML::response')
+        {
+            skip 'Parsed value corrupted, cannot test nil value', 1;
+        }
+
+        isa_ok($parsed->value, 'RPC::XML::nil', '$parsed->value');
     }
 }
 

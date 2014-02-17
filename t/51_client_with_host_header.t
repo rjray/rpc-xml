@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the ability of requests to specify their own Host: header
 
@@ -14,14 +14,16 @@ sub clone_with_host_header
 {
     my $req      = shift;
     my $reqclone = $req->clone;
-    unless ($reqclone->header('Host'))
+
+    if (! $reqclone->header('Host'))
     {
         $reqclone->header(Host => URI->new($reqclone->uri)->host);
     }
+
     return $reqclone;
 }
 
-subtest "without_host_header" => sub {
+subtest 'without_host_header' => sub {
     plan tests => 2;
 
     my $req = HTTP::Request->new(POST => 'http://example.com');
@@ -31,7 +33,7 @@ subtest "without_host_header" => sub {
     is($reqclone->header('Host'), 'example.com', 'Host: header set properly');
 };
 
-subtest "with_host_header" => sub {
+subtest 'with_host_header' => sub {
     plan tests => 3;
 
     my $req = HTTP::Request->new(POST => 'http://example.com');

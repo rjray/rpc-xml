@@ -1,11 +1,17 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the RPC::XML::Procedure class (and the ::Method and ::Function classes)
 
+## no critic(Bangs::ProhibitNumberedNames)
+## no critic(Bangs::ProhibitVagueNames)
+## no critic(RequireBriefOpen)
+## no critic(RequireCheckedClose)
+## no critic(RequireInterpolationOfMetachars)
+
 use strict;
 use warnings;
-use vars qw($obj $obj2 $flag $dir $vol $tmp $tmpfile $fh);
 
+use Carp qw(croak);
 use File::Spec;
 use Test::More;
 
@@ -14,8 +20,10 @@ use RPC::XML::Procedure;
 
 plan tests => 87;
 
+my ($obj, $obj2, $flag, $dir, $vol, $tmp, $tmpfile, $fh, $retval);
+
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
-$dir = File::Spec->catpath($vol, $dir, '');
+$dir = File::Spec->catpath($vol, $dir, q{});
 $tmpfile = File::Spec->catfile($dir, "tmp_xpl_$$.xpl");
 
 # The organization of the test suites is such that we assume anything that
@@ -31,8 +39,10 @@ $obj = RPC::XML::Procedure->new({ name      => 'test.test',
                                   code      => sub { $flag = 1; } });
 isa_ok($obj, 'RPC::XML::Procedure', '$obj');
 SKIP: {
-    skip 'Cannot test without object', 15
-        unless (ref($obj) eq 'RPC::XML::Procedure');
+    if (ref($obj) ne 'RPC::XML::Procedure')
+    {
+        skip 'Cannot test without object', 15;
+    }
 
     # Arguments here don't matter, just testing that trying to call new() on a
     # referent fails:
@@ -41,19 +51,19 @@ SKIP: {
          'Correct error message from bad new()');
 
     ok(($obj->name() eq 'test.test') &&
-       ($obj->namespace() eq '') &&
+       ($obj->namespace() eq q{}) &&
        (scalar(@{$obj->signature}) == 1) &&
        ($obj->signature->[0] eq 'int'),
        'Basic accessors');
     $flag = 0;
-    eval { $obj->code->(); };
-    ok((! $@) && $flag, 'Calling the code');
+    $retval = eval { $obj->code->(); 1; };
+    ok($retval && $flag, 'Calling the code');
 
     # What about the missing values?
-    is($obj->help(),      '', 'Null value for help()');
-    is($obj->namespace(), '', 'Null value for namespace()');
-    is($obj->version(),   0,  'Zero value for version()');
-    is($obj->hidden(),    0,  'Zero value for hidden()');
+    is($obj->help(),      q{}, 'Null value for help()');
+    is($obj->namespace(), q{}, 'Null value for namespace()');
+    is($obj->version(),     0, 'Zero value for version()');
+    is($obj->hidden(),      0, 'Zero value for hidden()');
 
     # Try changing the attributes that can change:
     $obj->help('help');
@@ -91,21 +101,23 @@ $obj = RPC::XML::Procedure->new(
     hidden    => 1,
     signature => 'int int',
     signature => [ qw(string string) ],
-    code      => sub { 1; }
+    code      => sub { return 'success'; }
 );
 isa_ok($obj, 'RPC::XML::Procedure', '$obj<2>');
 SKIP: {
-    skip 'Cannot test without object', 2
-        unless (ref($obj) eq 'RPC::XML::Procedure');
+    if (ref($obj) ne 'RPC::XML::Procedure')
+    {
+        skip 'Cannot test without object', 2;
+    }
 
     ok(($obj->name() eq 'test.test') &&
-       ($obj->namespace() eq '') &&
+       ($obj->namespace() eq q{}) &&
        (scalar(@{$obj->signature}) == 2) &&
        ($obj->signature->[0] eq 'int int') &&
        ($obj->signature->[1] eq 'string string'),
        'Basic accessors <2>');
-    $flag = eval { $obj->code->(); };
-    ok((! $@) && $flag, 'Calling the code <2>');
+    $retval = eval { $flag = $obj->code->(); 1; };
+    ok($retval && ($flag eq 'success'), 'Calling the code <2>');
 }
 
 # This should succeed, but "hidden" is false because the second overrides the
@@ -123,18 +135,18 @@ is($obj->hidden(), 0, 'hidden() is correctly false');
 
 # This should fail due to missing name
 $obj = RPC::XML::Procedure->new({ code => sub { 1; } });
-like($obj, qr/Missing required data \(name or code\)/,
+like($obj, qr/Missing required data [(]name or code[)]/,
      'Correct constructor failure [1]');
 
 # This should fail due to missing code
 $obj = RPC::XML::Procedure->new({ name => 'test.test1' });
-like($obj, qr/Missing required data \(name or code\)/,
+like($obj, qr/Missing required data [(]name or code[)]/,
      'Correct constructor failure [2]');
 
 # This should fail due to missing information (the signature)
 $obj = RPC::XML::Method->new({ name => 'test.test2',
                                code => sub { $flag = 2; } });
-like($obj, qr/Missing required data \(signatures\)/,
+like($obj, qr/Missing required data [(]signatures[)]/,
      'Correct constructor failure [3]');
 
 # This one fails because the signatures have a collision
@@ -147,7 +159,7 @@ like($obj, qr/two different return values for one set of params/,
 
 # Fails because of a null signature
 $obj = RPC::XML::Method->new({ name      => 'test.test2',
-                               signature => [ '' ],
+                               signature => [ q{} ],
                                code      => sub { $flag = 2; } });
 like($obj, qr/Invalid signature, cannot be null/,
      'Correct constructor failure [5]');
@@ -179,8 +191,10 @@ $obj = RPC::XML::Method->new(File::Spec->catfile($dir, 'meth_good_1.xpl'));
 isa_ok($obj, 'RPC::XML::Method', '$obj');
 
 SKIP: {
-    skip 'Cannot test without a value $obj', 20
-        if (ref($obj) ne 'RPC::XML::Method');
+    if (ref($obj) ne 'RPC::XML::Method')
+    {
+        skip 'Cannot test without a value $obj', 20;
+    }
 
     # Check the basics
     ok(ref($obj) && $obj->name() && scalar(@{$obj->signature}) &&
@@ -203,8 +217,10 @@ SKIP: {
     # Did it?
     isa_ok($obj2, ref($obj), '$obj2');
   SKIP: {
-        skip 'Clone failed, cannot test without second object', 4
-            if (ref($obj2) ne ref $obj);
+        if (ref($obj2) ne ref $obj)
+        {
+            skip 'Clone failed, cannot test without second object', 4;
+        }
 
         # Primary accessors/data
         ok(($obj->name()    eq $obj2->name())    &&
@@ -229,7 +245,7 @@ SKIP: {
     # Now let's play around with signatures a bit
 
     # Basic test of match_signature()
-    is($obj->match_signature(''), 'string', 'Test match_signature()');
+    is($obj->match_signature(q{}), 'string', 'Test match_signature()');
 
     # Add a new signature, simple
     is($obj->add_signature('int int'), $obj,
@@ -280,8 +296,10 @@ isa_ok($obj, 'RPC::XML::Function', '$obj');
 # With this later object, test some of the routines that are overridden in
 # RPC::XML::Function:
 SKIP: {
-    skip 'Cannot test without RPC::XML::Function object', 8
-        if (ref($obj) ne 'RPC::XML::Function');
+    if (ref($obj) ne 'RPC::XML::Function')
+    {
+        skip 'Cannot test without RPC::XML::Function object', 8;
+    }
 
     ok((ref($obj->signature) eq 'ARRAY' && (@{$obj->signature} == 1)),
        'RPC::XML::Function valid return from signature() <1>');
@@ -321,12 +339,14 @@ $obj = RPC::XML::Procedure->new({ name      => 'test.test_nil',
                                   code      => sub { return; } });
 isa_ok($obj, 'RPC::XML::Procedure');
 SKIP: {
-    skip 'Cannot test without object', 2
-        unless (ref($obj) eq 'RPC::XML::Procedure');
+    if (ref($obj) ne 'RPC::XML::Procedure')
+    {
+        skip 'Cannot test without object', 2;
+    }
 
     my $val;
-    eval { $val = $obj->call({}); };
-    ok(! $@, 'Calling test.test_nil');
+    $retval = eval { $val = $obj->call({}); 1; };
+    ok($retval, 'Calling test.test_nil');
     isa_ok($val, 'RPC::XML::nil', 'Return value');
 }
 
@@ -337,12 +357,14 @@ $obj = RPC::XML::Procedure->new({ name      => 'test.test_nil2',
                                   sub { my $int = shift; return; } });
 isa_ok($obj, 'RPC::XML::Procedure');
 SKIP: {
-    skip 'Cannot test without object', 2
-        unless (ref($obj) eq 'RPC::XML::Procedure');
+    if (ref($obj) ne 'RPC::XML::Procedure')
+    {
+        skip 'Cannot test without object', 2;
+    }
 
     my $val;
-    eval { $val = $obj->call({}, RPC_INT 1); };
-    ok(! $@, 'Calling test.test_nil2');
+    $retval = eval { $val = $obj->call({}, RPC_INT 1); 1; };
+    ok($retval, 'Calling test.test_nil2');
     isa_ok($val, 'RPC::XML::nil', 'Return value');
 }
 
@@ -352,12 +374,14 @@ $obj = RPC::XML::Procedure->new({ name      => 'test.test_nil3',
                                   code      => sub { 1; } });
 isa_ok($obj, 'RPC::XML::Procedure');
 SKIP: {
-    skip 'Cannot test without object', 2
-        unless (ref($obj) eq 'RPC::XML::Procedure');
+    if (ref($obj) ne 'RPC::XML::Procedure')
+    {
+        skip 'Cannot test without object', 2;
+    }
 
     my $val;
-    eval { $val = $obj->call({}); };
-    ok(! $@, 'Calling test.test_nil3');
+    $retval = eval { $val = $obj->call({}); 1; };
+    ok($retval, 'Calling test.test_nil3');
     isa_ok($val, 'RPC::XML::nil', 'Return value');
 }
 
@@ -368,8 +392,10 @@ $obj = RPC::XML::Procedure->new({ name      => 'test.test_nil4',
                                   code      => sub { return; } });
 isa_ok($obj, 'RPC::XML::Procedure');
 SKIP: {
-    skip 'Cannot test without object', 2
-        unless (ref($obj) eq 'RPC::XML::Procedure');
+    if (ref($obj) ne 'RPC::XML::Procedure')
+    {
+        skip 'Cannot test without object', 2;
+    }
 
     is($obj->match_signature('int'), 'nil', 'Test match_signature() with nil');
     ok(! $obj->match_signature('string'),
@@ -380,9 +406,9 @@ SKIP: {
 # actually change. So create a file, load it as XPL, rewrite it and reload it.
 if (! (open $fh, '>', $tmpfile))
 {
-    die "Error opening $tmpfile for writing: $!";
+    croak "Error opening $tmpfile for writing: $!";
 }
-print {$fh} <<END;
+print {$fh} <<'END';
 <?xml version="1.0"?>
 <!DOCTYPE proceduredef SYSTEM "rpc-method.dtd">
 <proceduredef>
@@ -397,14 +423,16 @@ close $fh;
 $obj = RPC::XML::Procedure->new($tmpfile);
 isa_ok($obj, 'RPC::XML::Procedure', '$obj');
 SKIP: {
-    skip 'Cannot test without object', 3
-        if (ref($obj) ne 'RPC::XML::Procedure');
+    if (ref($obj) ne 'RPC::XML::Procedure')
+    {
+        skip 'Cannot test without object', 3;
+    }
 
     if (! (open $fh, '>', $tmpfile))
     {
-        die "Error opening $tmpfile for writing: $!";
+        croak "Error opening $tmpfile for writing: $!";
     }
-    print {$fh} <<END;
+    print {$fh} <<'END';
 <?xml version="1.0"?>
 <!DOCTYPE proceduredef SYSTEM "rpc-method.dtd">
 <proceduredef>
@@ -418,8 +446,8 @@ END
     close $fh;
     is($obj->reload(), $obj, 'reload() returns ok');
     my $val;
-    eval { $val = $obj->call(); };
-    is($val->value, 'bar', 'Reloaded method gave correct value');
+    $retval = eval { $val = $obj->call(); 1; };
+    ok($retval && ($val->value eq 'bar'), 'Reloaded method gave correct value');
 
     # Try to reload again, after unlinking the file
     unlink $tmpfile;
@@ -436,13 +464,15 @@ $obj = RPC::XML::Procedure->new(
     signature => 'string dateTime.iso8601',
     code      => sub {
         my $date = shift;
-        return substr($date, 0, 4);
+        return substr $date, 0, 4;
     },
 );
 isa_ok($obj, 'RPC::XML::Procedure', '$obj');
 SKIP: {
-    skip 'Cannot test without object', 2
-        unless (ref($obj) eq 'RPC::XML::Procedure');
+    if (ref($obj) ne 'RPC::XML::Procedure')
+    {
+        skip 'Cannot test without object', 2;
+    }
 
     is($obj->match_signature('dateTime.iso8601'), 'string',
        'Test match_signature() with a dateTime.iso8601 input');
@@ -462,8 +492,10 @@ $obj = RPC::XML::Procedure->new(
 );
 isa_ok($obj, 'RPC::XML::Procedure', '$obj');
 SKIP: {
-    skip 'Cannot test without object', 2
-        unless (ref($obj) eq 'RPC::XML::Procedure');
+    if (ref($obj) ne 'RPC::XML::Procedure')
+    {
+        skip 'Cannot test without object', 2;
+    }
 
     is($obj->match_signature('int'), 'dateTime.iso8601',
        'Test match_signature() with a dateTime.iso8601 output');

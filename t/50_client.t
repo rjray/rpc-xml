@@ -1,21 +1,30 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the RPC::XML::Client class
 
-use strict;
-use vars qw($dir $vol $srv $child $port $cli $res $flag);
-use subs qw(start_server find_port);
+## no critic(Bangs::ProhibitNumberedNames)
+## no critic(RequireBriefOpen);
+## no critic(RequireInterpolationOfMetachars)
 
+use strict;
+use warnings;
+use subs qw(start_server stop_server find_port);
+
+use Carp qw(croak);
+use Module::Load;
 use Test::More;
 
 use LWP;
-require File::Spec;
+use Digest::MD5 'md5_hex';
+use File::Spec;
 
-require RPC::XML::Server;
-require RPC::XML::Client;
+use RPC::XML::Server;
+use RPC::XML::Client;
+
+my ($dir, $vol, $srv, $child, $port, $cli, $res, $flag);
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
-$dir = File::Spec->catpath($vol, $dir, '');
+$dir = File::Spec->catpath($vol, $dir, q{});
 require File::Spec->catfile($dir, 'util.pl');
 
 plan tests => 33;
@@ -32,8 +41,10 @@ $cli = RPC::XML::Client->new();
 ok(! ref $cli, 'RPC::XML::Client::new without endpoint fails');
 like($cli, qr/Missing location argument/, 'Correct error message set');
 
-die "No usable port found between 9000 and 10000, skipping"
-    if (($port = find_port) == -1);
+if (($port = find_port) == -1)
+{
+    croak 'No usable port found between 9000 and 11000, skipping';
+}
 $cli = RPC::XML::Client->new("http://localhost:$port");
 $cli->timeout(5); #to prevent long waiting for non-existing server
 isa_ok($cli, 'RPC::XML::Client', '$cli');
@@ -80,8 +91,11 @@ is($cli->useragent->timeout(), 60, 'Client timeout() method, setting');
 
 # Cool so far. Create and spawn the server.
 $srv = RPC::XML::Server->new(host => 'localhost', port => $port);
-die "Failed to create server: $srv, stopped" unless (ref $srv);
-$child = start_server($srv);
+if (! ref $srv)
+{
+    croak "Failed to create server: $srv, stopped";
+}
+$child = start_server $srv;
 
 # NOW, this should work. Also, set $RPC::XML::ERROR to see if it clears
 $RPC::XML::ERROR = 'foo';
@@ -94,62 +108,79 @@ ok(! $RPC::XML::ERROR,
 $res = $cli->send_request('system.identity');
 isa_ok($res, 'RPC::XML::string', 'system.identity response');
 SKIP: {
-    skip 'Client response not a RPC::XML data object', 1
-        unless ref $res;
+    if (! ref $res)
+    {
+        skip 'Client response not a RPC::XML data object', 1;
+    }
+
     is($res->value, $srv->product_tokens,
        'system.identity response is correct');
 }
 
-unless (ref $res)
+if (! ref $res)
 {
     # Assume that if an error occurred, the server might be in a confused
     # state. Kill and restart it.
-    stop_server($child);
-    $child = start_server($srv);
+    stop_server $child;
+    $child = start_server $srv;
 }
 
 # See what comes back from bad (but successful) calls
 $res = $cli->simple_request('system.bad');
 isa_ok($res, 'HASH', 'simple_request/system.bad response');
 SKIP: {
-    skip 'Client response was not a RPC::XML data object', 2
-        unless ref $res;
-    is(join(';', sort keys %$res), 'faultCode;faultString',
+    if (! ref $res)
+    {
+        skip 'Client response was not a RPC::XML data object', 2;
+    }
+
+    is(join(q{,} => sort keys %{$res}), 'faultCode,faultString',
        'simple_request/system.bad hashref has correct keys');
     like($res->{faultString}, qr/Unknown method/,
          'simple_request/system.bad set correct faultString');
 }
 
-unless (ref $res)
+if (! ref $res)
 {
     # Assume that if an error occurred, the server might be in a confused
     # state. Kill and restart it.
-    stop_server($child);
-    $child = start_server($srv);
+    stop_server $child;
+    $child = start_server $srv;
 }
 
 # As opposed to a fault object:
 $res = $cli->send_request('system.bad');
 isa_ok($res, 'RPC::XML::fault', 'send_request/system.bad response');
 SKIP: {
-    skip 'Client response not a RPC::XML data object', 1
-        unless ref $res;
+    if (! ref $res)
+    {
+        skip 'Client response not a RPC::XML data object', 1;
+    }
+
     like($res->string, qr/Unknown method/,
          'send_request/system.bad set correct string() property');
 }
 
-unless (ref $res)
+if (! ref $res)
 {
     # Assume that if an error occurred, the server might be in a confused
     # state. Kill and restart it.
-    stop_server($child);
-    $child = start_server($srv);
+    stop_server $child;
+    $child = start_server $srv;
 }
 
 # Give the fault handler a whirl -- note the return value is the fault object
-$cli->fault_handler(sub { $flag++ if ((ref($_[0]) eq 'RPC::XML::fault') &&
-                                      ($_[0]->string =~ /Unknown method/));
-                          $_[0] });
+$cli->fault_handler(
+    sub {
+        if ((ref($_[0]) eq 'RPC::XML::fault') &&
+                ($_[0]->string =~ /Unknown method/))
+        {
+            $flag++;
+        }
+
+        $_[0]
+    }
+);
 $flag = 0;
 $res = $cli->send_request('system.bad');
 # Did the callback run correctly?
@@ -157,22 +188,25 @@ ok($flag, 'fault_handler correctly set $flag');
 # Is the value returned correct?
 isa_ok($res, 'RPC::XML::fault', 'fault_handler returned value');
 SKIP: {
-    skip 'Client response not a RPC::XML data object', 1
-        unless ref $res;
+    if (! ref $res)
+    {
+        skip 'Client response not a RPC::XML data object', 1;
+    }
+
     like($res->string, qr/Unknown method/,
          'fault_handler object has correct faultString');
 }
 
-unless (ref $res)
+if (! ref $res)
 {
     # Assume that if an error occurred, the server might be in a confused
     # state. Kill and restart it.
-    stop_server($child);
-    $child = start_server($srv);
+    stop_server $child;
+    $child = start_server $srv;
 }
 
-# Last tests-- is the url() method working?
-like($cli->uri, qr|http://localhost(\.localdomain)?:$port/?|,
+# Last tests-- is the uri() method working?
+like($cli->uri, qr{http://localhost([.]localdomain)?:$port/?}x,
      'RPC::XML::Client::uri method return value is correct');
 
 # does calling it as an accesor change it at all?
@@ -181,32 +215,39 @@ is($cli->uri, 'http://www.oreilly.com/RPC',
    'RPC::XML::Client::uri changes as expected');
 
 # Kill the server long enough to add a new method
-stop_server($child);
-
-use Digest::MD5;
-
-$srv->add_method({ name => 'cmpImg',
-                   signature => [ 'boolean base64 base64' ],
-                   code => sub {
-                       my ($self, $img1, $img2) = @_;
-
-                       return (Digest::MD5::md5_hex($img1) eq
-                               Digest::MD5::md5_hex($img2));
-                   } });
-$child = start_server($srv);
-
-use Symbol;
-my ($fh1, $fh2) = (gensym, gensym);
+stop_server $child;
 
 SKIP: {
-    skip 'Message-to-file spooling broken with LWP < 5.801', 4
-        unless ($LWP::VERSION > 5.800);
+    if ($LWP::VERSION <= 5.800)
+    {
+        skip 'Message-to-file spooling broken with LWP < 5.801', 4;
+    }
 
-    open($fh1, '<' . File::Spec->catfile($dir, 'svsm_text.gif'));
-    open($fh2, '<' . File::Spec->catfile($dir, 'svsm_text.gif'));
+    $srv->add_method(
+        {
+            name => 'cmpImg',
+            signature => [ 'boolean base64 base64' ],
+            code => sub {
+                my ($self, $img1, $img2) = @_;
+
+                return (md5_hex($img1) eq md5_hex($img2));
+            }
+        }
+    );
+    $child = start_server $srv;
+
   SKIP: {
-        skip "Error opening svsm_text.gif: $!", 4
-            unless ($fh1 and $fh2);
+        my ($fh1, $fh2);
+
+        if (! (open $fh1, '<', File::Spec->catfile($dir, 'svsm_text.gif')))
+        {
+            skip "Error opening svsm_text.gif: $!", 4;
+        }
+        if (! (open $fh2, '<', File::Spec->catfile($dir, 'svsm_text.gif')))
+        {
+            skip "Error opening svsm_text.gif: $!", 4;
+        }
+
         # Setting the size threshhold to the size of the GIF will guarantee a
         # file spool, since we're sending the GIF twice.
         $cli->message_file_thresh(-s $fh1);
@@ -218,8 +259,11 @@ SKIP: {
                                   RPC::XML::base64->new($fh2));
         isa_ok($res, 'RPC::XML::boolean', 'cmpImg return value');
       SKIP: {
-            skip 'Client response not a RPC::XML data object', 1
-                unless ref($res);
+            if (! ref $res)
+            {
+                skip 'Client response not a RPC::XML data object', 1;
+            }
+
             ok($res->value, 'cmpImg, file spooling, correct return');
         }
 
@@ -229,16 +273,20 @@ SKIP: {
         $res = $cli->send_request(cmpImg =>
                                   RPC::XML::base64->new($fh1),
                                   RPC::XML::base64->new($fh2));
-        isa_ok($res, 'RPC::XML::boolean', 'cmpImg return value');
+        isa_ok($res, 'RPC::XML::boolean', 'cmpImg return value (compression)');
       SKIP: {
-            skip 'Client response not a RPC::XML data object', 1
-                unless ref($res);
-            ok($res->value, 'cmpImg, file spooling, correct return');
+            if (! ref $res)
+            {
+                skip 'Client response not a RPC::XML data object', 1;
+            }
+
+            ok($res->value,
+               'cmpImg, file spooling+compression, correct return');
         }
     }
-}
 
-# Kill the server before exiting
-stop_server($child);
+    # Kill the server before exiting
+    stop_server $child, 'final';
+}
 
 exit;

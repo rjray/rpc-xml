@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # https://rt.cpan.org/Ticket/Display.html?id=58323
 #
@@ -6,17 +6,17 @@
 # passed null strings or 0 as an argument to parse().
 
 use strict;
-use vars qw($parser $eval_result $parse_result);
+use warnings;
 
-use Test::More tests => 4;
+use Module::Load;
+use Test::More;
 
-# This factory-class-instance should always be present
-require RPC::XML::Parser::XMLParser;
-# This one may not be present
-my $can_libxml = eval {
-    require RPC::XML::Parser::XMLLibXML;
-    1;
-};
+use RPC::XML::Parser::XMLParser;
+
+plan tests => 4;
+
+my ($parser, $parse_result);
+my $can_libxml = eval { load RPC::XML::Parser::XMLLibXML; 1; };
 
 # To test this, instantiate each parser then call the ->parse() method with
 # both a null string and with 0 as an argument. Each call should throw an
@@ -35,8 +35,10 @@ ok(! ref($parse_result), 'RPC::XML::Parser::XMLParser zero value');
 
 # Next, test RPC::XML::Parser::XMLLibXML (which we might not have)
 SKIP: {
-    skip 'XML::LibXML not installed', 2
-        unless $can_libxml;
+    if (! $can_libxml)
+    {
+        skip 'XML::LibXML not installed', 2;
+    }
 
     $parser = RPC::XML::Parser::XMLLibXML->new();
 

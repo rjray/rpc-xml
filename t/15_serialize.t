@@ -1,21 +1,31 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the serialization of XML structures to filehandles
 
+## no critic(Bangs::ProhibitNumberedNames)
+## no critic(Bangs::ProhibitVagueNames)
+## no critic(RequireBriefOpen)
+## no critic(RequireCheckedClose)
+
 use strict;
-use vars qw($dir $vol $fh $file $tmpfile $md5_able $faux_req $faux_res $ofh
-            $data);
+use warnings;
+
+use Carp qw(croak);
+use Test::More;
+use File::Spec;
+use IO::Handle;
 
 use RPC::XML ':all';
 
-use Test::More tests => 20;
-use File::Spec;
+plan tests => 20;
+
+my ($dir, $vol, $fh, $file, $tmpfile, $faux_req, $faux_res, $ofh, $data);
 
 # We'll be using the <nil /> extension here:
 $RPC::XML::ALLOW_NIL = 1;
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
-$dir = File::Spec->catpath($vol, $dir, '');
+$dir = File::Spec->catpath($vol, $dir, q{});
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
 $tmpfile = File::Spec->catfile($dir, "__tmp__${$}__");
 
@@ -30,7 +40,7 @@ END
 
 if (! (open $fh, '<', $file))
 {
-    die "Could not open $file for reading: $!";
+    croak "Could not open $file for reading: $!";
 }
 
 $faux_req = RPC::XML::request->new(
@@ -38,7 +48,7 @@ $faux_req = RPC::XML::request->new(
     RPC_STRING 'string',
     RPC_INT 10,
     RPC_I4 20,
-    RPC_I8 4294967296,
+    RPC_I8 4_294_967_296,
     RPC_DOUBLE 0.5,
     RPC_BOOLEAN 1,
     RPC_DATETIME_ISO8601 time2iso8601(),
@@ -53,9 +63,9 @@ is(length($faux_req->as_string), $faux_req->length, 'Testing length() method');
 
 if (! (open $ofh, '+>', $tmpfile))
 {
-    die "Could not open $tmpfile for read/write: $!";
+    croak "Could not open $tmpfile for read/write: $!";
 }
-select $ofh; $| = 1; select STDOUT;
+$ofh->autoflush(1);
 
 $faux_req->serialize($ofh);
 ok(1, 'serialize method did not croak'); # Just happy we made it this far.
@@ -63,7 +73,7 @@ ok(1, 'serialize method did not croak'); # Just happy we made it this far.
 is(-s $ofh, length($faux_req->as_string), 'File size is correct');
 
 seek $ofh, 0, 0;
-$data = '';
+$data = q{};
 read $ofh, $data, -s $ofh;
 
 is($data, $faux_req->as_string, 'File content is correct');
@@ -77,9 +87,9 @@ unlink $tmpfile;
 # slightly different code-path for faults and all other responses.
 if (! (open $ofh, '+>', $tmpfile))
 {
-    die "Could not open $tmpfile for read/write: $!";
+    croak "Could not open $tmpfile for read/write: $!";
 }
-select $ofh; $| = 1; select STDOUT;
+$ofh->autoflush(1);
 
 $faux_res = RPC::XML::response->new(RPC::XML::fault->new(1, 'test'));
 
@@ -93,7 +103,7 @@ ok(1, 'serialize method did not croak');
 is(-s $ofh, length($faux_res->as_string), 'Fault-response file size OK');
 
 seek $ofh, 0, 0;
-$data = '';
+$data = q{};
 read $ofh, $data, -s $ofh;
 
 # There have been some changes to how Perl handles iteration of hash keys.
@@ -119,9 +129,9 @@ unlink $tmpfile;
 # Round two, with normal response (not fault)
 if (! (open $ofh, '+>', $tmpfile))
 {
-    die "Could not open $tmpfile for read/write: $!";
+    croak "Could not open $tmpfile for read/write: $!";
 }
-select $ofh; $| = 1; select STDOUT;
+$ofh->autoflush(1);
 
 $faux_res = RPC::XML::response->new('test');
 
@@ -135,7 +145,7 @@ ok(1, 'serialize method did not croak');
 is(-s $ofh, length($faux_res->as_string), 'Normal response file size OK');
 
 seek $ofh, 0, 0;
-$data = '';
+$data = q{};
 read $ofh, $data, -s $ofh;
 
 is($data, $faux_res->as_string, 'Normal response content OK');
@@ -148,9 +158,9 @@ unlink $tmpfile;
 # Route 1: In-memory content
 if (! (open $ofh, '+>', $tmpfile))
 {
-    die "Could not open $tmpfile for read/write: $!";
+    croak "Could not open $tmpfile for read/write: $!";
 }
-select $ofh; $| = 1; select STDOUT;
+$ofh->autoflush(1);
 
 $faux_res = RPC::XML::response->new(RPC::XML::base64->new('a simple string'));
 
@@ -164,7 +174,7 @@ ok(1, 'serialize method did not croak');
 is(-s $ofh, length($faux_res->as_string), 'Normal response file size OK');
 
 seek $ofh, 0, 0;
-$data = '';
+$data = q{};
 read $ofh, $data, -s $ofh;
 
 is($data, $faux_res->as_string, 'Normal response content OK');
@@ -175,14 +185,14 @@ unlink $tmpfile;
 # Route 2: Spool from a file that is already encoded
 if (! (open $ofh, '+>', $tmpfile))
 {
-    die "Could not open $tmpfile for read/write: $!";
+    croak "Could not open $tmpfile for read/write: $!";
 }
-select $ofh; $| = 1; select STDOUT;
+$ofh->autoflush(1);
 
 $file = File::Spec->catfile($dir, 'svsm_text.b64');
 if (! (open $fh, '<', $file))
 {
-    die "Could not open $file for reading: $!";
+    croak "Could not open $file for reading: $!";
 }
 $faux_res = RPC::XML::response->new(RPC::XML::base64->new($fh, 'encoded'));
 
@@ -201,7 +211,7 @@ is(-s $ofh, length($faux_res->as_string) + $offset,
    'Normal response file size OK');
 
 seek $ofh, 0, 0;
-$data = '';
+$data = q{};
 read $ofh, $data, -s $ofh;
 
 is($data, $faux_res->as_string, 'Normal response content OK');

@@ -2,47 +2,52 @@
 
 # Test the RPC::XML::Server class with XML::LibXML as the parser
 
+## no critic(Bangs::ProhibitVagueNames)
+## no critic(RequireInterpolationOfMetachars)
+
 use strict;
+use warnings;
 use subs qw(start_server stop_server);
-use vars qw($srv $res $bucket $child $parser $xml $req $port $UA @API_METHODS
-            $list $meth @keys %seen $dir $vol);
-
-BEGIN
-{
-    use Test::More;
-
-    eval "use XML::LibXML";
-    if ($@)
-    {
-        plan skip_all => "XML::LibXML not installed";
-    }
-    else
-    {
-        plan tests => 62;
-    }
-}
 
 use Carp qw(croak);
-use Socket;
 use File::Spec;
+use Module::Load;
+use List::Util 'none';
+use Scalar::Util 'blessed';
+use Test::More;
 
 use LWP::UserAgent;
 use HTTP::Request;
-use Scalar::Util 'blessed';
 
 use RPC::XML 'RPC_BASE64';
 use RPC::XML::Server;
 use RPC::XML::ParserFactory;
+
+if (eval { load XML::LibXML; 1; })
+{
+    plan tests => 62;
+}
+else
+{
+    plan skip_all => 'XML::LibXML not installed';
+}
+
+my ($srv, $res, $bucket, $child, $parser, $xml, $req, $port, $UA, @API_METHODS,
+    $list, $meth, %seen, $dir, $vol);
 
 @API_METHODS = qw(system.identity system.introspection system.listMethods
                   system.methodHelp system.methodSignature system.multicall
                   system.status);
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
-$dir = File::Spec->catpath($vol, $dir, '');
+$dir = File::Spec->catpath($vol, $dir, q{});
 require File::Spec->catfile($dir, 'util.pl');
 
-sub failmsg { sprintf("%s at line %d", @_) }
+sub failmsg
+{
+    my ($msg, $line) = @_;
+    return "$msg at line $line";
+}
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -55,15 +60,17 @@ $srv = RPC::XML::Server->new(parser => [ class => 'XML::LibXML' ],
                              no_http => 1, no_default => 1);
 
 isa_ok($srv, 'RPC::XML::Server', '$srv<1>');
-croak "Server allocation failed, cannot continue. Message was: $srv"
-    unless (ref $srv);
+if (! ref $srv)
+{
+    croak "Server allocation failed, cannot continue. Message was: $srv";
+}
 isa_ok($srv->parser, 'RPC::XML::Parser::XMLLibXML', '$srv<1> parser');
 # Suppress "used only once" warning
 $_ = $RPC::XML::Server::VERSION;
 is($srv->version, $RPC::XML::Server::VERSION,
    'RPC::XML::Server::version method');
 ok(! $srv->started, 'RPC::XML::Server::started method');
-like($srv->product_tokens, qr|/|, 'RPC::XML::Server::product_tokens method');
+like($srv->product_tokens, qr{/}, 'RPC::XML::Server::product_tokens method');
 ok(! $srv->url, 'RPC::XML::Server::url method (empty)');
 ok(! $srv->requests, 'RPC::XML::Server::requests method (0)');
 ok($srv->response->isa('HTTP::Response'),
@@ -76,23 +83,30 @@ $srv = RPC::XML::Server->new(no_default => 1,
                              parser => [ class => 'XML::LibXML' ],
                              host => 'localhost');
 isa_ok($srv, 'RPC::XML::Server', '$srv<2>');
-croak "Server allocation failed, cannot continue. Message was: $srv"
-    unless (ref $srv);
+if (! ref $srv)
+{
+    croak "Server allocation failed, cannot continue. Message was: $srv";
+}
 $port = $srv->port;
 # Test the URL the server uses. Allow for "localhost", "localhost.localdomain"
 # or the local-net IP address of this host (not always 127.0.0.1).
 # 22/09/2008 - Just allow for anything the user has attached to this address.
 #              Aliases keep causing this test to falsely fail.
-my @localhostinfo = gethostbyname('localhost');
-my $localIP = join('.', unpack('C4', $localhostinfo[4]));
-my @allhosts = ($localIP, $localhostinfo[0], split(' ', $localhostinfo[1]));
-for (@allhosts) { s/\./\\./g }
+my @localhostinfo = gethostbyname 'localhost';
+my $local_ip = join q{.} => unpack 'C4', $localhostinfo[4];
+my @allhosts = ($local_ip, $localhostinfo[0], split q{ }, $localhostinfo[1]);
+for (@allhosts) { s/[.]/\\./g }
 # Per RT 27778: For some reason gethostbyname('localhost') does not return
 # "localhost" on win32
-push @allhosts, 'localhost' if ($^O eq 'MSWin32' || $^O eq 'cygwin');
-push @allhosts, 'localhost\.localdomain'
-    unless (grep(/localdomain/, @allhosts));
-my $allhosts = join('|', @allhosts);
+if ($^O eq 'MSWin32' || $^O eq 'cygwin')
+{
+    push @allhosts, 'localhost';
+}
+if (none { /localdomain/ } @allhosts)
+{
+    push @allhosts, 'localhost\.localdomain';
+}
+my $allhosts = join q{|} => @allhosts;
 like($srv->url, qr{http://($allhosts):$port},
    'RPC::XML::Server::url method (set)'); # This should be non-null this time
 # Test some of the simpler cases of add_method and get_method
@@ -113,22 +127,28 @@ $child = start_server $srv;
 $req->header(Content_Type => 'text/xml');
 $req->content(RPC::XML::request->new('perl.test.suite.test1')->as_string);
 # Use alarm() to manage a resaonable time-out on the request
+local $SIG{ALRM} = sub { $bucket++ };
 $bucket = 0;
-$SIG{ALRM} = sub { $bucket++ };
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
+alarm 0;
 ok(! $bucket, 'First live-request returned without timeout');
 SKIP: {
-    skip "Server failed to respond within 120 seconds!", 4 if $bucket;
+    if ($bucket)
+    {
+        skip 'Server failed to respond within 120 seconds!', 4;
+    }
 
     ok(! $res->is_error, 'First live req: Check that $res is not an error');
     $xml = $res->content;
     $res = $parser->parse($xml);
     isa_ok($res, 'RPC::XML::response', 'First live req: parsed $res');
   SKIP: {
-        skip "Response content did not parse, cannot test", 2
-            unless (ref $res and $res->isa('RPC::XML::response'));
+        if (! (ref $res and $res->isa('RPC::XML::response')))
+        {
+            skip 'Response content did not parse, cannot test', 2;
+        }
+
         ok(! $res->is_fault, 'First live req: parsed $res is not a fault');
         is($res->value->value, 1, 'First live req: $res value test');
     }
@@ -145,32 +165,37 @@ $res = $srv->add_method({ name      => 'perl.test.suite.peeraddr',
                           signature => [ 'array' ],
                           code      =>
                           sub {
-                              my $srv = shift;
+                              my $server = shift;
 
-                              my $ipaddr = inet_aton($srv->{peerhost});
-                              my $peeraddr = RPC_BASE64 $srv->{peeraddr};
-                              my $packet = pack_sockaddr_in($srv->{peerport},
+                              my $ipaddr = inet_aton($server->{peerhost});
+                              my $peeraddr = RPC_BASE64 $server->{peeraddr};
+                              my $packet = pack_sockaddr_in($server->{peerport},
                                                             $ipaddr);
                               $packet = RPC_BASE64 $packet;
                               [ $peeraddr, $packet,
-                                $srv->{peerhost}, $srv->{peerport} ];
+                                $server->{peerhost}, $server->{peerport} ];
                           } });
 $child = start_server $srv;
 $bucket = 0;
-$SIG{ALRM} = sub { $bucket++ };
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
+alarm 0;
 ok(! $bucket, 'Second live-request returned without timeout');
 SKIP: {
-    skip "Server failed to respond within 120 seconds!", 4 if $bucket;
+    if ($bucket)
+    {
+        skip 'Server failed to respond within 120 seconds!', 4;
+    }
 
     ok(! $res->is_error, 'Second live req: Check that $res is not an error');
     $res = $parser->parse($res->content);
     isa_ok($res, 'RPC::XML::response', 'Second live req: parsed $res');
   SKIP: {
-        skip "Response content did not parse, cannot test", 2
-            unless (ref $res and $res->isa('RPC::XML::response'));
+        if (! (ref $res and $res->isa('RPC::XML::response')))
+        {
+            skip 'Response content did not parse, cannot test', 2;
+        }
+
         ok($res->is_fault, 'Second live req: parsed $res is a fault');
         like($res->value->value->{faultString}, qr/Unknown method/,
              'Second live request: correct faultString');
@@ -182,20 +207,25 @@ stop_server $child;
 $child = start_server $srv;
 $bucket = 0;
 $req->content(RPC::XML::request->new('perl.test.suite.peeraddr')->as_string);
-$SIG{ALRM} = sub { $bucket++ };
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
+alarm 0;
 ok(! $bucket, 'Third live-request returned without timeout');
 SKIP: {
-    skip "Server failed to respond within 120 seconds!", 4 if $bucket;
+    if ($bucket)
+    {
+        skip 'Server failed to respond within 120 seconds!', 4;
+    }
 
     ok(! $res->is_error, 'Third live req: Check that $res is not an error');
     $res = $parser->parse($res->content);
     isa_ok($res, 'RPC::XML::response', 'Third live req: parsed $res');
   SKIP: {
-        skip "Response content did not parse, cannot test", 3
-            unless (ref $res and $res->isa('RPC::XML::response'));
+        if (! (ref $res and $res->isa('RPC::XML::response')))
+        {
+            skip 'Response content did not parse, cannot test', 3;
+        }
+
         $res = $res->value->value;
         is($res->[2], inet_ntoa(inet_aton('localhost')),
            'Third live req: Correct IP addr from peerhost');
@@ -212,7 +242,8 @@ $child = start_server $srv;
 
 # Test the error-message-mixup problem reported in RT# 29351
 # (http://rt.cpan.org/Ticket/Display.html?id=29351)
-my $tmp = q{<?xml version="1.0" encoding="us-ascii"?>
+my $tmp = <<'EOX';
+<?xml version="1.0" encoding="us-ascii"?>
 <methodCall>
   <methodName>test.method</methodName>
   <params>
@@ -221,23 +252,29 @@ my $tmp = q{<?xml version="1.0" encoding="us-ascii"?>
       <value><string>bar</string></value>
     </param>
   </params>
-</methodCall>};
+</methodCall>
+EOX
 $req->content($tmp);
 $bucket = 0;
-$SIG{ALRM} = sub { $bucket++ };
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
+alarm 0;
 ok(! $bucket, 'RT29351 live-request returned without timeout');
 SKIP: {
-    skip "Server failed to respond within 120 seconds!", 4 if $bucket;
+    if ($bucket)
+    {
+        skip 'Server failed to respond within 120 seconds!', 4;
+    }
 
     ok(! $res->is_error, 'RT29351 live req: $res is not an error');
     $res = $parser->parse($res->content);
     isa_ok($res, 'RPC::XML::response', 'RT29351 live req: parsed $res');
   SKIP: {
-        skip "Response content did not parse, cannot test", 2
-            unless (ref $res and $res->isa('RPC::XML::response'));
+        if (! (ref $res and $res->isa('RPC::XML::response')))
+        {
+            skip 'Response content did not parse, cannot test', 2;
+        }
+
         ok($res->is_fault, 'RT29351 live req: parsed $res is a fault');
         like($res->value->value->{faultString}, qr/Too many child-nodes/,
              'RT29351 live request: correct faultString');
@@ -256,8 +293,10 @@ $srv = RPC::XML::Server->new(parser => [ class => 'XML::LibXML' ],
 
 # Did it create OK, with the requirement of loading the XPL code?
 isa_ok($srv, 'RPC::XML::Server', '$srv<3> (with default methods)');
-croak "Server allocation failed, cannot continue. Message was: $srv"
-    unless (ref $srv);
+if (! ref $srv)
+{
+    croak "Server allocation failed, cannot continue. Message was: $srv";
+}
 $port = $srv->port;
 # Did it get all of them?
 is($srv->list_methods(), scalar(@API_METHODS),
@@ -271,21 +310,26 @@ $req->content(RPC::XML::request->new('system.listMethods')->as_string);
 # Use alarm() to manage a reasonable time-out on the request
 $bucket = 0;
 undef $res;
-$SIG{ALRM} = sub { $bucket++ };
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
+alarm 0;
 SKIP: {
-    skip "Server failed to respond within 120 seconds!", 2 if $bucket;
+    if ($bucket)
+    {
+        skip 'Server failed to respond within 120 seconds!', 2;
+    }
 
-    $res = ($res->is_error) ? '' : $parser->parse($res->content);
+    $res = ($res->is_error) ? q{} : $parser->parse($res->content);
     isa_ok($res, 'RPC::XML::response', 'system.listMethods response');
   SKIP: {
-        skip "Response content did not parse, cannot test", 1
-            unless (ref $res and $res->isa('RPC::XML::response'));
+        if (! (ref $res and $res->isa('RPC::XML::response')))
+        {
+            skip 'Response content did not parse, cannot test', 1;
+        }
+
         $list = (ref $res) ? $res->value->value : [];
         ok((ref($list) eq 'ARRAY') &&
-               (join('', sort @$list) eq join('', sort @API_METHODS)),
+               (join(q{} => sort @{$list}) eq join q{} => sort @API_METHODS),
            'system.listMethods return list correct');
     }
 }
@@ -297,17 +341,21 @@ $child = start_server $srv;
 
 # Set the ALRM handler to something more serious, since we have passed that
 # hurdle already.
-$SIG{ALRM} = sub { die "Server failed to respond within 120 seconds\n"; };
+local $SIG{ALRM} = sub { die "Server failed to respond within 120 seconds\n"; };
 
 # Test the substring-parameter calling of system.listMethods
 $req->content(RPC::XML::request->new('system.listMethods',
                                      'method')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 1 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 1;
+    }
+
     $list = $res->value->value;
     if ($res->is_fault)
     {
@@ -315,7 +363,7 @@ SKIP: {
     }
     else
     {
-        is(join(',', sort @$list),
+        is(join(q{,} => sort @{$list}),
            'system.methodHelp,system.methodSignature',
            'system.listMethods("method") return list correct');
     }
@@ -323,7 +371,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -334,12 +382,16 @@ unless ($res) # $res was made null above if it was an error
 # Run again, with a pattern that will produce no matches
 $req->content(RPC::XML::request->new('system.listMethods',
                                      'nomatch')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 1 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 1;
+    }
+
     $list = $res->value->value;
     if ($res->is_fault)
     {
@@ -347,14 +399,14 @@ SKIP: {
     }
     else
     {
-        is(scalar(@$list), 0,
+        is(scalar(@{$list}), 0,
            'system.listMethods("nomatch") return list correct');
     }
 }
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -364,18 +416,22 @@ unless ($res) # $res was made null above if it was an error
 
 # system.identity
 $req->content(RPC::XML::request->new('system.identity')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 1 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 1;
+    }
+
     is($res->value->value, $srv->product_tokens, 'system.identity test');
 }
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -385,24 +441,28 @@ unless ($res) # $res was made null above if it was an error
 
 # system.status
 $req->content(RPC::XML::request->new('system.status')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 2 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 2;
+    }
+
     $res = $res->value->value;
-    @keys = qw(host port name version path date date_int started started_int
-               total_requests methods_known);
-    is(scalar(grep(defined $res->{$_}, @keys)), @keys,
-       'system.status hash has correct keys');
+    my @keys = qw(host port name version path date date_int started started_int
+                  total_requests methods_known);
+    my @seen_keys = grep { defined $res->{$_} } @keys;
+    ok(@keys == @seen_keys, 'system.status hash has correct keys');
     is($res->{total_requests}, 4,
        'system.status reports correct total_requests');
 }
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -414,12 +474,16 @@ unless ($res) # $res was made null above if it was an error
 # the 'total_requests' key from incrementing.
 $req->content(RPC::XML::request->new('system.status',
                                      RPC::XML::boolean->new(1))->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 1 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 1;
+    }
+
     $res = $res->value->value;
     is($res->{total_requests}, 4,
        'system.status reports correct total_requests ("true" call)');
@@ -427,7 +491,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -438,12 +502,16 @@ unless ($res) # $res was made null above if it was an error
 # system.methodHelp
 $req->content(RPC::XML::request->new('system.methodHelp',
                                      'system.identity')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 1 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 1;
+    }
+
     $meth = $srv->get_method('system.identity');
     if (! blessed $meth)
     {
@@ -458,7 +526,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -470,19 +538,23 @@ unless ($res) # $res was made null above if it was an error
 $req->content(RPC::XML::request->new('system.methodHelp',
                                      [ 'system.identity',
                                        'system.status' ])->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 1 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 1;
+    }
+
     if ($res->is_fault)
     {
         fail(failmsg($res->value->string, __LINE__));
     }
     else
     {
-        is(join('', @{ ref($res) ? $res->value->value : [] }),
+        is(join(q{} => @{ ref($res) ? $res->value->value : [] }),
            $srv->get_method('system.identity')->{help} .
            $srv->get_method('system.status')->{help},
            'system.methodHelp("system.identity", "system.status") test');
@@ -491,7 +563,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -502,12 +574,16 @@ unless ($res) # $res was made null above if it was an error
 # system.methodHelp with an invalid argument
 $req->content(RPC::XML::request->new('system.methodHelp',
                                      'system.bad')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 2 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 2;
+    }
+
     ok($res->value->is_fault(),
        'system.methodHelp returned fault for unknown method');
     like($res->value->string, qr/Method.*unknown/,
@@ -516,7 +592,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -527,12 +603,16 @@ unless ($res) # $res was made null above if it was an error
 # system.methodSignature
 $req->content(RPC::XML::request->new('system.methodSignature',
                                      'system.methodHelp')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 1 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 1;
+    }
+
     $meth = $srv->get_method('system.methodHelp');
     if (! blessed $meth)
     {
@@ -540,17 +620,17 @@ SKIP: {
     }
     else
     {
-        is(join('',
-                sort map { join(' ', @$_) }
+        is(join(q{},
+                sort map { join q{ } => @{$_}  }
                 @{ ref($res) ? $res->value->value : [] }),
-           join('', sort @{ $meth->{signature} }),
+           join(q{} => sort @{$meth->{signature}}),
            'system.methodSignature("system.methodHelp") test');
     }
 }
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -561,12 +641,16 @@ unless ($res) # $res was made null above if it was an error
 # system.methodSignature, with an invalid request
 $req->content(RPC::XML::request->new('system.methodSignature',
                                      'system.bad')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 2 unless $res;
+    if (! ref $res)
+    {
+        skip 'Server response was error, cannot test', 2;
+    }
+
     ok($res->value->is_fault(),
        'system.methodSignature returned fault for unknown method');
     like($res->value->string, qr/Method.*unknown/,
@@ -575,7 +659,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -585,12 +669,16 @@ unless ($res) # $res was made null above if it was an error
 
 # system.introspection
 $req->content(RPC::XML::request->new('system.introspection')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 1 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 1;
+    }
+
     if ($res->is_fault)
     {
         fail(failmsg($res->value->string, __LINE__));
@@ -600,23 +688,27 @@ SKIP: {
         $list = $res->value->value;
         $bucket = 0;
         %seen = ();
-        for $res (@$list)
+        for my $result (@{$list})
         {
-            if ($seen{$res->{name}}++)
+            if ($seen{$result->{name}}++)
             {
                 # If we somehow get the same name twice, that is a point off
                 $bucket++;
                 next;
             }
 
-            $meth = $srv->get_method($res->{name});
+            $meth = $srv->get_method($result->{name});
             if ($meth)
             {
-                $bucket++ unless
-                    (($meth->{help} eq $res->{help}) &&
-                     ($meth->{version} eq $res->{version}) &&
-                     (join('', sort @{ $res->{signature } }) eq
-                      join('', sort @{ $meth->{signature} })));
+                my $result_sig = join q{} => sort @{$result->{signature}};
+                my $method_sig = join q{} => sort @{$meth->{signature}};
+                # A point off unless all three of these match
+                if (($meth->{help} ne $result->{help}) ||
+                        ($meth->{version} ne $result->{version}) ||
+                        ($result_sig ne $method_sig))
+                {
+                    $bucket++;
+                }
             }
             else
             {
@@ -630,7 +722,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -644,12 +736,16 @@ $req->content(RPC::XML::request->new('system.multicall',
                                        { methodName => 'system.listMethods',
                                          params => [ 'intro' ] }
                                      ])->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 2 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 2;
+    }
+
     if ($res->is_fault)
     {
         fail(failmsg($res->value->string, __LINE__));
@@ -660,7 +756,7 @@ SKIP: {
         $res = $res->value->value;
         is($res->[0], $srv->product_tokens,
            'system.multicall response elt [0] is correct');
-        is((ref($res->[1]) eq 'ARRAY' ? $res->[1]->[0] : ''),
+        is((ref($res->[1]) eq 'ARRAY' ? $res->[1]->[0] : q{}),
            'system.introspection',
            'system.multicall response elt [1][0] is correct');
     }
@@ -668,7 +764,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -682,12 +778,16 @@ $req->content(RPC::XML::request->new('system.multicall',
                                        { methodName => 'system.multicall',
                                          params => [ 'intro' ] }
                                      ])->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 2 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 2;
+    }
+
     $res = $res->value;
     ok($res->is_fault,
        'system.multicall returned fault on attempt at recursion');
@@ -697,7 +797,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -711,12 +811,16 @@ $req->content(RPC::XML::request->new('system.multicall',
                                        { methodName => 'system.status',
                                          params => 'intro' }
                                      ])->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 2 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 2;
+    }
+
     $res = $res->value;
     ok($res->is_fault,
        'system.multicall returned fault when passed a bad param array');
@@ -726,7 +830,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -739,12 +843,16 @@ $req->content(RPC::XML::request->new('system.multicall',
                                      [ { methodName => 'system.identity' },
                                        'This is not acceptable data'
                                      ])->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 2 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 2;
+    }
+
     $res = $res->value;
     ok($res->is_fault, 'system.multicall returned fault on bad input');
     like($res->string, qr/one.*array element.*not a struct/i,
@@ -753,7 +861,7 @@ SKIP: {
 
 # If the response was any kind of error, kill and re-start the server, as
 # HTTP::Message::content might have killed it already via croak().
-unless ($res) # $res was made null above if it was an error
+if (! $res) # $res was made null above if it was an error
 {
     stop_server $child;
 
@@ -763,16 +871,21 @@ unless ($res) # $res was made null above if it was an error
 
 # system.status, once more, to check the total_requests value
 $req->content(RPC::XML::request->new('system.status')->as_string);
-alarm(120);
+alarm 120;
 $res = $UA->request($req);
-alarm(0);
-$res = ($res->is_error) ? '' : $parser->parse($res->content);
+alarm 0;
+$res = ($res->is_error) ? q{} : $parser->parse($res->content);
 SKIP: {
-    skip "Server response was error, cannot test", 1 unless $res;
+    if (! $res)
+    {
+        skip 'Server response was error, cannot test', 1;
+    }
+
     $res = $res->value->value;
     is($res->{total_requests}, 20, 'system.status, final request tally');
 }
 
 # Don't leave any children laying around
-stop_server $child;
+stop_server $child, 'final';
+
 exit;

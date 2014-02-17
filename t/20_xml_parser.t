@@ -1,19 +1,28 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the RPC::XML::Parser::XMLParser class
 
-use strict;
-use vars qw($p $req $res $ret $dir $vol $file $fh $str $badstr);
+## no critic(Bangs::ProhibitVagueNames)
+## no critic(RequireInterpolationOfMetachars)
+## no critic(RequireBriefOpen)
+## no critic(RequireCheckedClose)
 
-use Test::More tests => 137;
-require File::Spec;
-require IO::File;
+use strict;
+use warnings;
+
+use Carp qw(carp croak);
+use Test::More;
+use File::Spec;
 
 use RPC::XML ':all';
 use RPC::XML::Parser::XMLParser;
 
+my ($p, $req, $res, $ret, $dir, $vol, $file, $fh, $str, $badstr);
+
+plan tests => 137;
+
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
-$dir = File::Spec->catpath($vol, $dir, '');
+$dir = File::Spec->catpath($vol, $dir, q{});
 $file = File::Spec->catfile($dir, 'svsm_text.gif');
 
 # The organization of the test suites is such that we assume anything that
@@ -41,7 +50,7 @@ $ret = $p->parse($req->as_string);
 isa_ok($ret, 'RPC::XML::request', '$ret');
 is($ret->name, 'test.method', 'Correct request method name');
 # Try a request with no <params> block at all:
-$str = <<EO_STR;
+$str = <<'EO_STR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodCall>
   <methodName>test.method</methodName>
@@ -82,12 +91,13 @@ $req = RPC::XML::request->new(
 $ret = $p->parse($req->as_string);
 isa_ok($ret, 'RPC::XML::request', 'Parse of RPC::XML::request block');
 SKIP: {
-    skip "RPC::XML::request object not properly parsed, cannot test it.", 20
-        unless (ref($ret) eq 'RPC::XML::request');
+    if (ref($ret) ne 'RPC::XML::request') {
+        skip 'RPC::XML::request object not properly parsed, cannot test.', 20;
+    }
 
     is($ret->name, 'parserTest', 'Properly parsed /methodCall/methodName');
     my $args = $ret->args;
-    is(scalar @$args, 9, 'Parser created correct-length args list');
+    is(scalar @{$args}, 9, 'Parser created correct-length args list');
     # I could (and should) probably turn this into a loop with a table of
     # data, but I'm lazy right this moment.
     isa_ok($args->[0], 'RPC::XML::i4', 'Parse of <i4> argument');
@@ -116,10 +126,11 @@ SKIP: {
 # Prior to this, we've confirmed that spooling base64 data to files works.
 # Here, we test whether the parser (when configured to do so) can create
 # filehandles as well.
-undef $p;
 $p = RPC::XML::Parser::XMLParser->new(base64_to_fh => 1);
-$fh = IO::File->new("< $file");
-die "Error opening $file: $!" unless ref $fh;
+if (! open $fh, '<', $file)
+{
+    croak "Error opening $file: $!";
+}
 my $base64 = RPC::XML::base64->new($fh);
 $req = RPC::XML::request->new('method', $base64);
 
@@ -142,7 +153,7 @@ $res = RPC::XML::response->new($tmp);
 $ret = $p->parse($res->as_string);
 is($ret->value->value, $tmp, 'RPC::XML::Parser handles core entities');
 
-my $bad_entities = <<EOX;
+my $bad_entities = <<'EOX';
 <?xml version="1.0" encoding="us-ascii"?>
 <!DOCTYPE foo [
     <!ENTITY foo SYSTEM "file:///etc/passwd">
@@ -159,8 +170,9 @@ EOX
 $p = RPC::XML::Parser::XMLParser->new();
 $ret = $p->parse($bad_entities);
 SKIP: {
-    skip 'Weird entities parsing error in XML::Parser encountered', 1
-        if (! ref $ret);
+    if (! ref $ret) {
+        skip 'Weird entities parsing error in XML::Parser encountered', 1;
+    }
 
     my $args = $ret->args;
     is($args->[0]->value, 'Entity test: ', 'Bad entities ignored');
@@ -173,17 +185,18 @@ $ret = $p->parse(\$str);
 isa_ok($ret, 'RPC::XML::request', '$ret from scalar reference');
 ok(ref($ret) && ($ret->name eq 'test.method'), 'Correct request method name');
 my $tmpfile = File::Spec->catfile($dir, "tmp_$$.xml");
-open $fh, '+>', $tmpfile;
 SKIP: {
-    skip "Open of $tmpfile failed, cannot test on it ($!)", 2
-        if (! $fh);
+    if (! open $fh, '+>', $tmpfile)
+    {
+        skip "Open of $tmpfile failed, cannot test on it ($!)", 2;
+    }
 
     print {$fh} $str;
     seek $fh, 0, 0;
 
     $ret = $p->parse($fh);
     isa_ok($ret, 'RPC::XML::request', '$ret from glob reference');
-    ok((ref($ret) and ($ret->name eq 'test.method')),
+    ok((ref $ret and ($ret->name eq 'test.method')),
        'Correct request method name');
 
     close $fh;
@@ -194,10 +207,11 @@ $str =~ s{</methodCall>}{};
 $ret = $p->parse(\$str);
 ok(! ref $ret, '$ret error from scalar reference');
 like($ret, qr/no element found/, 'Correct error message');
-open $fh, '+>', $tmpfile;
 SKIP: {
-    skip "Open of $tmpfile failed, cannot test on it ($!)", 2
-        if (! $fh);
+    if (! open $fh, '+>', $tmpfile)
+    {
+        skip "Open of $tmpfile failed, cannot test on it ($!)", 2;
+    }
 
     print {$fh} $str;
     seek $fh, 0, 0;
@@ -218,13 +232,15 @@ like($ret, qr/Unusable reference type/, 'Correct error message');
 my $bad_counter = 1;
 sub test_bad_xml
 {
-    my ($badstr, $message) = @_;
+    my ($badstring, $message) = @_;
 
-    $ret = $p->parse($badstr);
+    $ret = $p->parse($badstring);
     ok(! ref $ret, "Bad XML <$bad_counter>");
     like($ret, qr/$message/, 'Correct error message');
 
     $bad_counter++;
+
+    return;
 }
 
 $str = RPC::XML::request->new('name', 'foo')->as_string;
@@ -262,7 +278,7 @@ test_bad_xml($badstr, 'Unknown tag encountered: valuee');
 
 # These are a little more hairy, trying to pass an invalid fault structure.
 # Gonna hard-code the strings rather than trying to transform $str.
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <fault>
@@ -283,7 +299,7 @@ $badstr = <<EO_BADSTR;
 </methodResponse>
 EO_BADSTR
 test_bad_xml($badstr, 'Bad content inside struct block');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <fault>
@@ -307,14 +323,14 @@ $badstr = <<EO_BADSTR;
 </methodResponse>
 EO_BADSTR
 test_bad_xml($badstr, 'Extra struct fields not allowed');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <fault></fault>
 </methodResponse>
 EO_BADSTR
 test_bad_xml($badstr, 'Stack corruption detected');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <fault>
@@ -351,7 +367,7 @@ $badstr =~ s{</value></data>}{</valuee></data>};
 test_bad_xml($badstr, 'Unknown tag encountered: valuee');
 ($badstr = $str) =~ s{<int>1</int>}{<int>foo</int>};
 test_bad_xml($badstr, 'Bad integer data read');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <params>
@@ -369,7 +385,7 @@ $badstr = <<EO_BADSTR;
 </methodResponse>
 EO_BADSTR
 test_bad_xml($badstr, 'Bad content inside data block');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <params>
@@ -396,7 +412,7 @@ test_bad_xml($badstr, 'Unknown tag encountered: foo');
 test_bad_xml($badstr, 'Unknown tag encountered: namee');
 ($badstr = $str) =~ s{<int>1</int>}{<int>foo</int>};
 test_bad_xml($badstr, 'Bad integer data');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <params>
@@ -415,7 +431,7 @@ $badstr = <<EO_BADSTR;
 </methodResponse>
 EO_BADSTR
 test_bad_xml($badstr, 'Element mismatch, expected to see name');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <params>
@@ -433,7 +449,7 @@ $badstr = <<EO_BADSTR;
 </methodResponse>
 EO_BADSTR
 test_bad_xml($badstr, 'Element mismatch, expected to see value');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <params>
@@ -452,7 +468,7 @@ $badstr = <<EO_BADSTR;
 </methodResponse>
 EO_BADSTR
 test_bad_xml($badstr, 'Element mismatch, expected to see member');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <params>
@@ -473,7 +489,7 @@ EO_BADSTR
 test_bad_xml($badstr, 'Bad content inside struct block');
 
 # Some corner-cases in responses
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <params>
@@ -487,7 +503,7 @@ $badstr = <<EO_BADSTR;
 </methodResponse>
 EO_BADSTR
 test_bad_xml($badstr, 'invalid: too many params');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
   <params>
@@ -495,7 +511,7 @@ $badstr = <<EO_BADSTR;
 </methodResponse>
 EO_BADSTR
 test_bad_xml($badstr, 'invalid: no params');
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodResponse>
 </methodResponse>
@@ -503,7 +519,7 @@ EO_BADSTR
 test_bad_xml($badstr, 'No parameter was declared');
 
 # Corner case(s) in requests
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <methodCall>
   <name>foo</name>
@@ -518,7 +534,7 @@ test_bad_xml($badstr, 'methodName tag must immediately follow a methodCall');
 test_bad_xml($badstr, 'Unknown tag encountered: structt');
 
 # Test parse-end errors
-$badstr = <<EO_BADSTR;
+$badstr = <<'EO_BADSTR';
 <?xml version="1.0" encoding="us-ascii"?>
 <params>
   <param>
@@ -533,10 +549,15 @@ test_bad_xml($badstr, 'End-of-parse error');
 # an un-writable directory (and Windows doesn't have the same chmod concept we
 # have in other places).
 SKIP: {
-    skip 'Tests involving directory permissions skipped on Windows', 1
-        if ($^O eq 'MSWin32' || $^O eq 'cygwin');
-    skip 'Tests involving directory permissions skipped under root', 1
-        if ($< == 0);
+    if ($^O eq 'MSWin32' || $^O eq 'cygwin')
+    {
+        skip 'Tests involving directory permissions skipped on Windows', 1;
+    }
+    # Also cannot be reliably tested if running as root:
+    if ($< == 0)
+    {
+        skip 'Tests involving directory permissions skipped under root', 1;
+    }
 
     my $baddir = File::Spec->catdir(File::Spec->tmpdir(), "baddir_$$");
     if (! mkdir $baddir)
@@ -548,15 +569,16 @@ SKIP: {
         skip "Skipping, failed to chmod dir $baddir: $!", 1;
     }
 
-    undef $p;
     $p = RPC::XML::Parser::XMLParser->new(
         base64_to_fh    => 1,
         base64_temp_dir => $baddir
     );
-    open $fh, '<', $file;
-    die "Error opening $file: $!" unless $fh;
-    my $base64 = RPC::XML::base64->new($fh);
-    $req = RPC::XML::request->new('method', $base64);
+    if (! open $fh, '<', $file)
+    {
+        croak "Error opening $file: $!";
+    }
+    my $base64fail = RPC::XML::base64->new($fh);
+    $req = RPC::XML::request->new('method', $base64fail);
     $ret = $p->parse($req->as_string);
 
     like($ret, qr/Error opening temp file for base64/,
@@ -564,7 +586,7 @@ SKIP: {
 
     if (! rmdir $baddir)
     {
-        warn "Failed to remove temp-dir $baddir: $!";
+        carp "Failed to remove temp-dir $baddir: $!";
     }
 }
 

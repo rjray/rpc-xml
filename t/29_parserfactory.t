@@ -1,18 +1,30 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test the RPC::XML::ParserFactory class
 
-use strict;
-use vars qw($p $req $res $ret $ns $dir $vol $config %parsers);
+## no critic(Bangs::ProhibitVagueNames)
+## no critic(RequireInterpolationOfMetachars)
+## no critic(ProhibitStringyEval)
+## no critic(RequireCheckingReturnValueOfEval)
 
-use Test::More tests => 38;
-require File::Spec;
+use strict;
+use warnings;
+
+use Module::Load;
+use Test::More;
+use File::Spec;
 
 use RPC::XML ':all';
 use RPC::XML::ParserFactory;
 
+plan tests => 38;
+
+my ($req, $res, $ret, $ns, $dir, $vol, %aliases, %parsers);
+# This one will be referenced from outside of main::, so it has to be visible:
+our $p; ## no critic(ProhibitPackageVars)
+
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
-$dir = File::Spec->catpath($vol, $dir, '');
+$dir = File::Spec->catpath($vol, $dir, q{});
 unshift @INC, $dir;
 
 %parsers = (
@@ -20,8 +32,10 @@ unshift @INC, $dir;
 );
 
 # See if we should run tests dependent on XML::LibXML
-eval "use XML::LibXML;";
-$parsers{'XML::LibXML'} = 1 unless $@;
+if (eval { load XML::LibXML; 1; })
+{
+    $parsers{'XML::LibXML'} = 1;
+}
 
 # The organization of the test suites is such that we assume anything that
 # runs before the current suite is 100%. Thus, no consistency checks on
@@ -31,13 +45,13 @@ $parsers{'XML::LibXML'} = 1 unless $@;
 # First let's squeeze in a negative test, to see what happens when an attempt
 # to load a valid parser fails
 unshift @INC, sub {
-    die 'Force-failing RPC::XML::Parser::XMLParser'
+    die "Force-failing RPC::XML::Parser::XMLParser\n"
         if ($_[1] eq 'RPC/XML/Parser/XMLParser.pm');
-    return undef;
+    return;
 };
 $p = RPC::XML::ParserFactory->new(class => 'XML::Parser');
 ok(! $p, 'Factory correctly failed when it could not load parser class');
-like($RPC::XML::ERROR, qr/Error loading RPC::XML::Parser::XMLParser/,
+like($RPC::XML::ERROR, qr/loading RPC::XML::Parser::XMLParser/,
      'Correct error message');
 # Now clear out that pesky closure so the rest of the tests succeed
 shift @INC;
@@ -67,8 +81,8 @@ like($ret, qr/Unknown tag/, 'Parse failure returned error');
 
 # For all the evals, to avoid namespace pollution, we'll keep incrementing
 # this...
-my $ns      = 'namespace0000';
-my %aliases = (
+$ns      = 'namespace0000';
+%aliases = (
     'XML::Parser' => [ qw(XML::Parser xml::parser xmlparser) ],
     'XML::LibXML' => [ qw(XML::LibXML xml::libxml xmllibxml) ],
 );
@@ -77,15 +91,16 @@ my %aliases = (
 for my $alias (@{$aliases{'XML::Parser'}})
 {
     $ns++;
+    undef $p;
 
-    eval <<"EndOfEval";
+    eval <<"END_OF_EVAL";
 {
     package $ns;
     use RPC::XML::ParserFactory (class => '$alias');
 
     \$main::p = RPC::XML::ParserFactory->new();
 }
-EndOfEval
+END_OF_EVAL
 
     isa_ok($p, 'RPC::XML::Parser',            "Alias $alias: \$p");
     isa_ok($p, 'RPC::XML::Parser::XMLParser', "Alias $alias: \$p");
@@ -99,20 +114,24 @@ for my $parser (qw(XML::LibXML))
     $factory_class = "RPC::XML::Parser::$factory_class";
   SKIP:
     {
-        skip "$parser not detected, tests skipped", 6
-            unless $parsers{$parser};
+        if (! $parsers{$parser})
+        {
+            skip "$parser not detected, tests skipped", 6;
+        }
 
         for my $alias (@{$aliases{$parser}})
         {
             $ns++;
-            eval <<"EndOfEval";
+            undef $p;
+
+            eval <<"END_OF_EVAL";
 {
     package $ns;
     use RPC::XML::ParserFactory qw($alias);
 
     \$main::p = RPC::XML::ParserFactory->new();
 }
-EndOfEval
+END_OF_EVAL
 
             isa_ok($p, 'RPC::XML::Parser', "Alias $alias: \$p");
             isa_ok($p, $factory_class,     "Alias $alias: \$p");
@@ -127,8 +146,10 @@ for my $parser (qw(XML::Parser XML::LibXML))
     $factory_class = "RPC::XML::Parser::$factory_class";
   SKIP:
     {
-        skip "$parser not detected, tests skipped", 6
-            unless $parsers{$parser};
+        if (! $parsers{$parser})
+        {
+            skip "$parser not detected, tests skipped", 6;
+        }
 
         for my $alias (@{$aliases{$parser}})
         {
