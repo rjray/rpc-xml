@@ -300,16 +300,23 @@ sub tag_start
 sub error
 {
     my ($robj, $self, $mesg, $elem) = @_;
-    $elem ||= q{};
+    my $msg;
 
-    my $fmt = $elem ?
-        '%s at document line %d, column %d (byte %d, closing tag %s)' :
-        '%s at document line %d, column %d (byte %d)';
+    if ($elem)
+    {
+        $msg = sprintf
+            '%s at document line %d, column %d (byte %d, closing tag %s)',
+            $mesg, $self->current_line, $self->current_column,
+            $self->current_byte, $elem;
+    }
+    else
+    {
+        $msg = sprintf '%s at document line %d, column %d (byte %d)',
+            $mesg, $self->current_line, $self->current_column,
+            $self->current_byte;
+    }
 
-    push @{$robj->[M_STACK]},
-        sprintf($fmt, $mesg, $self->current_line, $self->current_column,
-                $self->current_byte, $elem),
-        PARSE_ERROR;
+    push @{$robj->[M_STACK]}, $msg, PARSE_ERROR;
     $self->finish;
 
     return;
