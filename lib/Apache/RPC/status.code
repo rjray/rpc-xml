@@ -28,10 +28,10 @@ sub status
     require URI;
 
     $status->{name} = ref($srv);
-    $status->{version} = new RPC::XML::string $srv->version;
+    $status->{version} = RPC::XML::string->new( $srv->version );
     $status->{host} = $srv->host || $srv->{host} || '';
     $status->{port} = $srv->port || $srv->{port} || '';
-    $status->{path} = new RPC::XML::string $srv->path;
+    $status->{path} = RPC::XML::string->new( $srv->path );
     $status->{child_pid} = $$;
     $status->{date} = RPC::XML::datetime_iso8601
         ->new(RPC::XML::time2iso8601($time));
