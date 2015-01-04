@@ -17,8 +17,8 @@ utility tool). Client usage will usually be along the lines of:
 
     use RPC::XML::Client;
     ...
-    my $client = new RPC::XML::Client
-        'http://www.oreillynet.com/meerkat/xml-rpc/server.php';
+    my $client = RPC::XML::Client->new(
+        'http://www.oreillynet.com/meerkat/xml-rpc/server.php' );
     my $req = RPC::XML::request->new('meerkat.getChannelsBySubstring', 'perl');
     my $res = $client->send_request($req);
     # This returns an object of the RPC::XML::response class. This double-call
@@ -30,8 +30,8 @@ Running a simple server is not much more involved:
 
     use RPC::XML::Server;
     ...
-    my $srv = new RPC::XML::Server (host => 'localhost',
-                                    port => 9000);
+    my $srv = RPC::XML::Server->new( host => 'localhost',
+                                     port => 9000 );
     # You would then use $srv->add_method to add some remotely-callable code
     ...
     $srv->accept_loop; # Stays in an accept/connect loop
