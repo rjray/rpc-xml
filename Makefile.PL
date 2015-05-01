@@ -65,7 +65,7 @@ find(sub {
 
 WriteMakefile(
     NAME      => 'RPC::XML',
-    VERSION   => '0.78',
+    VERSION   => '0.79',
     AUTHOR    => 'Randy J. Ray',
     ABSTRACT  => 'Data, client and server classes for XML-RPC',
     EXE_FILES => \@scripts,
@@ -73,7 +73,7 @@ WriteMakefile(
     PREREQ_PM => {
         'File::Spec'   => 0.8,
         'constant'     => 1.03,
-        'Scalar::Util' => 1.19,
+        'Scalar::Util' => 1.33,
         'Test::More'   => 0.94,
         'LWP'          => 5.834,
         'XML::Parser'  => 2.31,

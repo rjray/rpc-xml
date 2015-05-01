@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.78
+Version: 0.79
 
 WHAT IS IT
 
@@ -66,56 +66,49 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* lib/RPC/XML.pm
-A patch to loop detection in smart_encode from Dag-Erling
-Smørgrav. Some other minor bits.
+* t/40_server.t
+* t/40_server_xmllibxml.t
+* t/41_server_hang.t
+* t/60_net_server.t
+* t/70_compression_detect.t
+* t/90_rt54183_sigpipe.t
+* t/util.pl
+Test clean-up/fixes to address CPAN test failures. Should
+address problems with having IO::Socket::IP acting in place of
+IO::Socket::INET and also address some issues with a dynloader
+bug being triggered by t/70_compression_detect.t.
 
-* lib/RPC/XML/Procedure.pm
-RT #83108: Fixed a spelling error. Some other fixes, too.
-
-* lib/RPC/XML.pm
-RT #86187: Force key-ordering in struct as_string and
-serialize. Was getting some intermittent bug reports of
-failures in t/15_serialize.t that amounted to the keys in a
-fault struct not being in consistent order.
-
-* lib/RPC/XML.pm
+* t/00_load.t
+* t/10_data.t
+* t/11_base64_fh.t
+* t/12_nil.t
+* t/13_no_deep_recursion.t
+* t/14_datetime_iso8601.t
 * t/15_serialize.t
-Undo the previous change and fix the test. The previous change
-didn't feel right, so this rolls it back and fixes the problem
-at the level of the test, instead.
+* t/20_xml_parser.t
+* t/21_xml_libxml.t
+* t/25_parser_negative.t
+* t/29_parserfactory.t
+* t/30_procedure.t
+* t/35_namespaces.t
+* t/40_server.t
+* t/40_server_xmllibxml.t
+* t/41_server_hang.t
+* t/50_client.t
+* t/51_client_with_host_header.t
+* t/60_net_server.t
+* t/90_rt50013_parser_bugs.t
+* t/90_rt54183_sigpipe.t
+* t/90_rt54494_blessed_refs.t
+* t/90_rt58065_allow_nil.t
+* t/90_rt58323_push_parser.t
+* t/util.pl
+Perl::Critic clean-up of test suites.
 
-* Makefile.PL
-* lib/RPC/XML.pm
-* lib/RPC/XML/Client.pm
-* lib/RPC/XML/Server.pm
-Replace direct evals for loading optional modules with
-Module::Load. Required adding this to Makefile.PL because
-Module::Load is not core in 5.8.8. Also did some slight doc
-tweaking.
+* lib/RPC/XML/Parser/XMLParser.pm
+Fix to prevent a new sprintf-related warning in 5.21.
 
-* lib/RPC/XML.pm
-* lib/RPC/XML/Client.pm
-Merge pull request #5 from alexrj/utf8-encode. Use
-utf8::encode() instead of utf8::downgrade().
-
-* lib/RPC/XML.pm
-* lib/RPC/XML/Client.pm
-* lib/RPC/XML/Server.pm
-Finish the uft8 encode vs. downgrade change from the previous
-commit. Changed in places that were overlooked, and adjusted
-the version number in all three modules.
-
-* lib/RPC/XML.pm
-* lib/RPC/XML/Parser/XMLLibXML.pm
-Merge pull request #6 from dctabuyz/master. Added 'no_blanks'
-libxml option to skip blank XML::LibXML::Text nodes.
-
-* lib/RPC/XML/Server.pm
-Merge pull request #7 from kvar/master. Initialize $do_compress
-in RPC::XML::Server between requests.
-
-* lib/RPC/XML.pm
-* lib/RPC/XML/Parser/XMLLibXML.pm
-* lib/RPC/XML/Server.pm
-Bump version numbers on modules changed in github pulls.
+* README
+* lib/Apache/RPC/status.code
+Merge pull request #8 from jkg/docfixes (James Green). Replace
+indirect object notation with direct.

@@ -16,6 +16,73 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2015-05-01T09:00:00-07:00" version="0.79" sc:tag="0.79">
+    <change git:commit="70f6e31b98b3e80bb2ab5fe99f1e42dc454271e9">
+      <fileset>
+        <file path="t/40_server.t" />
+        <file path="t/40_server_xmllibxml.t" />
+        <file path="t/41_server_hang.t" />
+        <file path="t/60_net_server.t" />
+        <file path="t/70_compression_detect.t" />
+        <file path="t/90_rt54183_sigpipe.t" />
+        <file path="t/util.pl" />
+      </fileset>
+      <description>
+        Test clean-up/fixes to address CPAN test failures. Should address
+        problems with having IO::Socket::IP acting in place of IO::Socket::INET
+        and also address some issues with a dynloader bug being triggered by
+        <xhtml:tt>t/70_compression_detect.t</xhtml:tt>.
+      </description>
+    </change>
+    <change git:commit="93f34fa9e8c65cefadb90a7bf31e70e08ed850b1">
+      <fileset>
+        <file path="t/00_load.t" />
+        <file path="t/10_data.t" />
+        <file path="t/11_base64_fh.t" />
+        <file path="t/12_nil.t" />
+        <file path="t/13_no_deep_recursion.t" />
+        <file path="t/14_datetime_iso8601.t" />
+        <file path="t/15_serialize.t" />
+        <file path="t/20_xml_parser.t" />
+        <file path="t/21_xml_libxml.t" />
+        <file path="t/25_parser_negative.t" />
+        <file path="t/29_parserfactory.t" />
+        <file path="t/30_procedure.t" />
+        <file path="t/35_namespaces.t" />
+        <file path="t/40_server.t" />
+        <file path="t/40_server_xmllibxml.t" />
+        <file path="t/41_server_hang.t" />
+        <file path="t/50_client.t" />
+        <file path="t/51_client_with_host_header.t" />
+        <file path="t/60_net_server.t" />
+        <file path="t/90_rt50013_parser_bugs.t" />
+        <file path="t/90_rt54183_sigpipe.t" />
+        <file path="t/90_rt54494_blessed_refs.t" />
+        <file path="t/90_rt58065_allow_nil.t" />
+        <file path="t/90_rt58323_push_parser.t" />
+        <file path="t/util.pl" />
+      </fileset>
+      <description>
+        Perl::Critic clean-up of test suites.
+      </description>
+    </change>
+    <change git:commit="a2399e760b584f0f57e4953ed8e225371d8b448a">
+      <file path="lib/RPC/XML/Parser/XMLParser.pm" />
+      <description>
+        Fix to prevent a new sprintf-related warning in 5.21.
+      </description>
+    </change>
+    <change git:commit="58c384f53333577ee5d2ab7b56c761fc12793dfb">
+      <fileset>
+        <file path="README" />
+        <file path="lib/Apache/RPC/status.code" />
+      </fileset>
+      <description>
+        Merge pull request #8 from jkg/docfixes (James Green). Replace
+        indirect object notation with direct.
+      </description>
+    </change>
+  </release>
   <release date="2014-02-06T20:00:00-08:00" version="0.78" sc:tag="0.78">
     <change git:commit="4c9208b3309cd332cd9b19f7553ab29ce4b90491">
       <file path="lib/RPC/XML.pm" />
