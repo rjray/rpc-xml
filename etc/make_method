@@ -363,7 +363,6 @@ sub write_file
         }
     }
 
-    my $date = scalar localtime;
     my %typemap = (
         'm' => 'method',
         p   => 'procedure',
@@ -399,7 +398,7 @@ sub write_file
 <?xml version="1.0" encoding="iso-8859-1"?>
 <!DOCTYPE $tag SYSTEM "rpc-method.dtd">
 <!--
-    Generated automatically by $cmd $VERSION on $date
+    Generated automatically by $cmd $VERSION
 
     Any changes made here will be lost.
 -->
