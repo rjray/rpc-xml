@@ -121,7 +121,7 @@ ok(! ref($res), 'get_method for non-existent method');
 # Here goes...
 $parser = RPC::XML::ParserFactory->new;
 $UA = LWP::UserAgent->new;
-$req = HTTP::Request->new(POST => "http://localhost:$port/");
+$req = HTTP::Request->new(POST => $srv->url);
 $child = start_server $srv;
 
 $req->header(Content_Type => 'text/xml');
@@ -297,11 +297,10 @@ if (! ref $srv)
 {
     croak "Server allocation failed, cannot continue. Message was: $srv";
 }
-$port = $srv->port;
 # Did it get all of them?
 is($srv->list_methods(), scalar(@API_METHODS),
    'Correct number of methods (defaults)');
-$req = HTTP::Request->new(POST => "http://localhost:$port/");
+$req = HTTP::Request->new(POST => $srv->url);
 
 $child = start_server $srv;
 

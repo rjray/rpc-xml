@@ -21,7 +21,7 @@ use File::Spec;
 use RPC::XML::Server;
 use RPC::XML::Client;
 
-my ($dir, $vol, $srv, $child, $port, $cli, $res, $flag);
+my ($dir, $vol, $srv, $child, $port, $cli, $res, $flag, $srv_url);
 
 ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir = File::Spec->catpath($vol, $dir, q{});
@@ -46,7 +46,7 @@ if (($port = find_port) == -1)
     croak 'No usable port found between 9000 and 11000, skipping';
 }
 $cli = RPC::XML::Client->new("http://localhost:$port");
-$cli->timeout(5); #to prevent long waiting for non-existing server
+$cli->timeout(5); # to prevent long waiting for non-existing server
 isa_ok($cli, 'RPC::XML::Client', '$cli');
 
 # With no server yet at that port, test the failure modes
@@ -95,6 +95,14 @@ if (! ref $srv)
 {
     croak "Failed to create server: $srv, stopped";
 }
+# Due to issues with Strawberry Perl on Windows, have to explicitly set the
+# endpoint to what the server object thinks it is. Also, because of threading
+# issues with Strawberry, we need to save the URL value for later use while
+# the server is running.
+$srv_url = $srv->url;
+$cli->uri($srv_url);
+
+# Start the server...
 $child = start_server $srv;
 
 # NOW, this should work. Also, set $RPC::XML::ERROR to see if it clears
@@ -206,8 +214,8 @@ if (! ref $res)
 }
 
 # Last tests-- is the uri() method working?
-like($cli->uri, qr{http://localhost([.]localdomain)?:$port/?}x,
-     'RPC::XML::Client::uri method return value is correct');
+is($cli->uri, $srv_url,
+   'RPC::XML::Client::uri method return value is correct');
 
 # does calling it as an accesor change it at all?
 $cli->uri('http://www.oreilly.com/RPC');
@@ -216,6 +224,10 @@ is($cli->uri, 'http://www.oreilly.com/RPC',
 
 # Kill the server long enough to add a new method
 stop_server $child;
+
+# Restore the server URL in the client. Due to some threading issues seen in
+# Strawberry Perl, must do this while $srv is not running.
+$cli->uri($srv->url);
 
 SKIP: {
     if ($LWP::VERSION <= 5.800)
@@ -253,7 +265,6 @@ SKIP: {
         $cli->message_file_thresh(-s $fh1);
         $cli->message_temp_dir($dir);
 
-        $cli->uri("http://localhost:$port/");
         $res = $cli->send_request(cmpImg =>
                                   RPC::XML::base64->new($fh1),
                                   RPC::XML::base64->new($fh2));

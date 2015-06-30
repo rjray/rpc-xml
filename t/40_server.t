@@ -173,7 +173,7 @@ $port = $srv->port;
 my @localhostinfo = gethostbyname 'localhost';
 my $local_ip = join q{.} => unpack 'C4', $localhostinfo[4];
 my @allhosts = ($local_ip, $localhostinfo[0], split q{ } => $localhostinfo[1]);
-for (@allhosts) { s/[.]/\\./g }
+for (@allhosts) { s/[.]/[.]/g }
 # Per RT 27778: For some reason gethostbyname('localhost') does not return
 # "localhost" on win32
 if ($^O eq 'MSWin32' || $^O eq 'cygwin')
@@ -182,7 +182,7 @@ if ($^O eq 'MSWin32' || $^O eq 'cygwin')
 }
 if (none { /localdomain/ } @allhosts)
 {
-    push @allhosts, 'localhost\.localdomain';
+    push @allhosts, 'localhost[.]localdomain';
 }
 my $allhosts = join q{|} => @allhosts;
 like($srv->url, qr{http://($allhosts):$port},
@@ -224,7 +224,7 @@ like($res, qr/Unknown type: bad/, 'add_method, bad type param');
 # Here goes...
 $parser = RPC::XML::ParserFactory->new;
 $UA = LWP::UserAgent->new;
-$req = HTTP::Request->new(POST => "http://localhost:$port/");
+$req = HTTP::Request->new(POST => $srv->url);
 $child = start_server $srv;
 
 $req->header(Content_Type => 'text/xml');
@@ -448,12 +448,11 @@ if (! ref $srv)
 {
     croak "Server allocation failed, cannot continue. Message was: $srv";
 }
-$port = $srv->port;
 
 # Did it get all of them?
 is($srv->list_methods(), scalar(@API_METHODS),
    'Correct number of methods (defaults)');
-$req = HTTP::Request->new(POST => "http://localhost:$port/");
+$req = HTTP::Request->new(POST => $srv->url);
 
 $child = start_server $srv;
 
