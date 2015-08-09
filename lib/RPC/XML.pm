@@ -268,7 +268,7 @@ sub time2iso8601
             # You have to check ints first, because they match the
             # next pattern (for doubles) too
             elsif (! $FORCE_STRING_ENCODING &&
-                   /^[-+]?\d+$/ &&
+                   /^[-+]?\d+$/a &&
                    $_ >= $MIN_BIG_INT &&
                    $_ <= $MAX_BIG_INT)
             {
@@ -283,7 +283,7 @@ sub time2iso8601
             }
             # Pattern taken from perldata(1)
             elsif (! $FORCE_STRING_ENCODING &&
-                   /^[+-]?(?=\d|[.]\d)\d*(?:[.]\d*)?(?:[Ee](?:[+-]?\d+))?$/x &&
+                   /^[+-]?(?=\d|[.]\d)\d*(?:[.]\d*)?(?:[Ee](?:[+-]?\d+))?$/ax &&
                    $_ > $MIN_DOUBLE &&
                    $_ < $MAX_DOUBLE)
             {
