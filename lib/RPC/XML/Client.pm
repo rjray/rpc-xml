@@ -406,12 +406,16 @@ sub send_request ## no critic (ProhibitExcessComplexity)
     $response = $self->useragent->request($reqclone, $cb);
     if ($message = $response->headers->header('X-Died'))
     {
+        $parser->release();
+
         # One of the die's was triggered
         return ('CODE' eq ref $self->error_handler) ?
             $self->error_handler->($message) : $message;
     }
     if (! $response->is_success)
     {
+        $parser->release();
+
         $message =  "$me: HTTP server error: " . $response->message;
         return ('CODE' eq ref $self->error_handler) ?
             $self->error_handler->($message) : $message;
