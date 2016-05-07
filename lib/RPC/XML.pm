@@ -41,6 +41,8 @@ use Scalar::Util qw(blessed reftype);
 ## no critic (ProhibitMultiplePackages)
 # The data-type package names trigger this one:
 ## no critic (Capitalization)
+# The XML escape map now has CR in it but I don't want to use charnames:
+## no critic (ProhibitEscapedCharacters)
 
 BEGIN
 {
@@ -67,7 +69,7 @@ BEGIN
                               RPC_NIL) ],
                 all   => [ @EXPORT_OK ]);
 
-$VERSION = '1.60';
+$VERSION = '1.61';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 # Global error string
@@ -76,12 +78,12 @@ $ERROR = q{};
 # These are used for stringifying XML-sensitive characters that may appear
 # in struct keys:
 %XMLMAP = (
-    q{>} => '&gt;',
-    q{<} => '&lt;',
-    q{&} => '&amp;',
-    q{"} => '&quot;',
-    q{'} => '&apos;',
-    "\x0d" => '&#xd;'
+    q{>}   => '&gt;',
+    q{<}   => '&lt;',
+    q{&}   => '&amp;',
+    q{"}   => '&quot;',
+    q{'}   => '&apos;',
+    "\x0d" => '&#xd;',
 );
 $XMLRE = join q{} => keys %XMLMAP; $XMLRE = qr/([$XMLRE])/;
 
@@ -159,6 +161,13 @@ sub time2iso8601
 # This is a (futile?) attempt to provide a "smart" encoding method that will
 # take a Perl scalar and promote it to the appropriate RPC::XML::_type_.
 {
+    # The regex for ints and floats uses [0-9] instead of \d on purpose, to
+    # only match ASCII digits.
+    ## no critic (ProhibitEnumeratedClasses)
+    # The regex for floats is long, but I don't feel like factoring it out
+    # right now.
+    ## no critic (ProhibitComplexRegexes)
+
     my $MAX_INT      = 2_147_483_647;
     my $MIN_INT      = -2_147_483_648;
     my $MAX_BIG_INT   = 9_223_372_036_854_775_807;
@@ -186,50 +195,50 @@ sub time2iso8601
             $seenrefs = bless {}, 'RPC::XML::refmap';
         }
 
-        foreach (@values)
+        for my $value (@values)
         {
-            if (! defined $_)
+            if (! defined $value)
             {
                 $type = $ALLOW_NIL ?
                     RPC::XML::nil->new() : RPC::XML::string->new(q{});
             }
-            elsif (ref $_)
+            elsif (ref $value)
             {
                 # Skip any that we've already seen
-                next if $seenrefs->{$_}++;
+                next if $seenrefs->{$value}++;
 
-                if (blessed($_) &&
-                    ($_->isa('RPC::XML::datatype') || $_->isa('DateTime')))
+                if (blessed($value) &&
+                    ($value->isa('RPC::XML::datatype') || $value->isa('DateTime')))
                 {
                     # Only if the reference is a datatype or a DateTime
                     # instance, do we short-cut here...
 
-                    if ($_->isa('RPC::XML::datatype'))
+                    if ($value->isa('RPC::XML::datatype'))
                     {
                         # Pass through any that have already been encoded
-                        $type = $_;
+                        $type = $value;
                     }
                     else
                     {
                         # Must be a DateTime object, convert to ISO8601
                         $type = RPC::XML::datetime_iso8601
-                            ->new($_->clone->set_time_zone('UTC'));
+                            ->new($value->clone->set_time_zone('UTC'));
                     }
                 }
-                elsif (reftype($_) eq 'HASH')
+                elsif (reftype($value) eq 'HASH')
                 {
                     # Per RT 41063, to catch circular refs I can't delegate
                     # to the struct constructor, I have to create my own
                     # copy of the hash with locally-recursively-encoded
                     # values
                     my %newhash;
-                    for my $key (keys %{$_})
+                    for my $key (keys %{$value})
                     {
                         # Forcing this into a list-context *should* make the
                         # test be true even if the return value is a hard
                         # undef. Only if the return value is an empty list
                         # should this evaluate as false...
-                        if (my @value = smart_encode($seenrefs, $_->{$key}))
+                        if (my @value = smart_encode($seenrefs, $value->{$key}))
                         {
                             $newhash{$key} = $value[0];
                         }
@@ -237,65 +246,73 @@ sub time2iso8601
 
                     $type = RPC::XML::struct->new(\%newhash);
                 }
-                elsif (reftype($_) eq 'ARRAY')
+                elsif (reftype($value) eq 'ARRAY')
                 {
                     # This is a somewhat-ugly approach, but I don't want to
-                    # dereference @$_, but I also want people to be able to
+                    # dereference @$value, but I also want people to be able to
                     # pass array-refs in to this constructor and have them
                     # be treated as single elements, as one would expect
                     # (see RT 35106)
-                    # Per RT 41063, looks like I get to deref $_ after all...
+                    # Per RT 41063, looks like I get to deref $value after all...
                     $type = RPC::XML::array->new(
-                        from => [ smart_encode($seenrefs, @{$_}) ]
+                        from => [ smart_encode($seenrefs, @{$value}) ]
                     );
                 }
-                elsif (reftype($_) eq 'SCALAR')
+                elsif (reftype($value) eq 'SCALAR')
                 {
                     # This is a rare excursion into recursion, since the scalar
                     # nature (de-refed from the object, so no longer magic)
                     # will prevent further recursing.
-                    $type = smart_encode($seenrefs, ${$_});
+                    $type = smart_encode($seenrefs, ${$value});
                 }
                 else
                 {
                     # If the user passed in a reference that didn't pass one
                     # of the above tests, we can't do anything with it:
-                    $type = reftype $_;
+                    $type = reftype $value;
                     die "Un-convertable reference: $type, cannot use\n";
                 }
-                $seenrefs->{$_}--;
+                $seenrefs->{$value}--;
             }
             # You have to check ints first, because they match the
             # next pattern (for doubles) too
             elsif (! $FORCE_STRING_ENCODING &&
-                   /^[-+]?\d+$/ &&
-                   $_ >= $MIN_BIG_INT &&
-                   $_ <= $MAX_BIG_INT)
+                       $value =~ /^[-+]?[0-9]+$/ &&
+                       $value >= $MIN_BIG_INT &&
+                       $value <= $MAX_BIG_INT)
             {
-                if (($_ > $MAX_INT) || ($_ < $MIN_INT))
+                if (($value > $MAX_INT) || ($value < $MIN_INT))
                 {
-                    $type = RPC::XML::i8->new($_);
+                    $type = RPC::XML::i8->new($value);
                 }
                 else
                 {
-                    $type = RPC::XML::int->new($_);
+                    $type = RPC::XML::int->new($value);
                 }
             }
             # Pattern taken from perldata(1)
             elsif (! $FORCE_STRING_ENCODING &&
-                   /^[+-]?(?=\d|[.]\d)\d*(?:[.]\d*)?(?:[Ee](?:[+-]?\d+))?$/x &&
-                   $_ > $MIN_DOUBLE &&
-                   $_ < $MAX_DOUBLE)
+                       $value =~ m{
+                                      ^
+                                      [+-]?
+                                      (?=[0-9]|[.][0-9])
+                                      [0-9]*
+                                      (?:[.][0-9]*)?
+                                      (?:[Ee](?:[+-]?[0-9]+))?
+                                      $
+                              }x &&
+                       $value > $MIN_DOUBLE &&
+                       $value < $MAX_DOUBLE)
             {
-                $type = RPC::XML::double->new($_);
+                $type = RPC::XML::double->new($value);
             }
-            elsif (/$DATETIME_REGEXP/)
+            elsif ($value =~ /$DATETIME_REGEXP/)
             {
-                $type = RPC::XML::datetime_iso8601->new($_);
+                $type = RPC::XML::datetime_iso8601->new($value);
             }
             else
             {
-                $type = RPC::XML::string->new($_);
+                $type = RPC::XML::string->new($value);
             }
 
             push @newvalues, $type;
