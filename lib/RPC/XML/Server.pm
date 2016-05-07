@@ -171,7 +171,7 @@ sub new ## no critic (ProhibitExcessComplexity)
         $port  = delete $args{port}  || q{};
         $queue = delete $args{queue} || 5;
         $http  = HTTP::Daemon->new(
-            Reuse => 1,
+            ReuseAddr => 1,
             ($host  ? (LocalHost => $host)  : ()),
             ($port  ? (LocalPort => $port)  : ()),
             ($queue ? (Listen    => $queue) : ())
@@ -690,7 +690,7 @@ sub server_loop ## no critic (RequireArgUnpacking,ProhibitExcessComplexity)
             };
             if ((! $eval_return) && $@)
             {
-                warn "Cannot close conection: $@\n";
+                warn "Cannot close connection: $@\n";
             }
 
             undef $conn;    # Free up any lingering resources
