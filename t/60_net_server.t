@@ -21,7 +21,7 @@ use RPC::XML::Server;
 use RPC::XML::Client;
 
 my ($dir, $srv, $pid_file, $log_file, $port, $client, $res, @keys, $meth, $list,
-    $bucket, %seen);
+    $bucket, %seen, $srv_hostname);
 
 if ($^O eq 'MSWin32')
 {
@@ -37,6 +37,21 @@ else
 {
     # otherwise...
     plan tests => 30;
+}
+
+# Presently, there is a problem with Net::Server+IO::Socket::IP, when the IPv6
+# entry for 'localhost' comes before the IPv4 entry in /etc/hosts. For now, to
+# get through the tests, look for that combination and substitute 127.0.0.1 for
+# 'localhost' (and hope they don't have a weird network configuration).
+# See RT#105679.
+if (eval { load IO::Socket::IP; 1; })
+{
+    carp 'Working around an issue with Net::Server+IO::Socket::IP'
+    $srv_hostname = '127.0.0.1';
+}
+else
+{
+    $srv_hostname = 'localhost';
 }
 
 (undef, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
@@ -69,7 +84,7 @@ start_server($srv,
              log_level   => 4,
              pid_file    => $pid_file,
              port        => $port,
-             host        => 'localhost',
+             host        => $srv_hostname,
              background  => 1);
 sleep 1; # Allow time for server to spin up
 # Unless we see "ok 2", we have a problem
@@ -330,9 +345,5 @@ else
 {
     carp "WARNING: Opening $pid_file failed: $! (zombie processes may remain)";
 }
-
-# If we are exiting cleanly, remove the log file. If we croak'd, we should
-# never reach this line:
-unlink $log_file;
 
 exit;
