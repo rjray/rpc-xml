@@ -9,6 +9,35 @@
 		allowing choice of character-set encodings for
 		XML messages.
 
+0.80	Sunday May  8, 2016, 12:45:00 PM -0700
+
+	* etc/make_method
+	Make the build reproducible by dropping timestamps in
+	make_method output. (Niko Tyni)
+
+	* t/40_server.t
+	* t/40_server_xmllibxml.t
+	* t/50_client.t
+	Fixes for test problems with Strawberry Perl.
+
+	* lib/RPC/XML/Client.pm
+	Fix leak caused by failing to free Expat parser. We don't want
+	to return from the method until the parser's been freed. We
+	therefore need to call $parser->release() before the return
+	statements caused by request failures. (Tom Grimwood-Taylor)
+
+	* lib/RPC/XML/Server.pm
+	One socket-opt change, one typo corrected.
+
+	* lib/RPC/XML.pm
+	Applied patch for numeric regexes and critic cleanup. Addresses
+	GitHub pull request #10 and RT #111636.
+
+	* t/60_net_server.t
+	RT #99578: Work-around fix for Net::Server+IO::Socket::IP. If a
+	system's IPv6 declaration of localhost was before the IPv4
+	declaration in the hosts file, this test would fail.
+
 0.79	Friday May  1, 2015, 09:00:00 AM -0700
 
 	* t/40_server.t
@@ -1846,9 +1875,9 @@
 	* *
 	All files are tracked from this point forward.
 
-# Generated on Friday May  1, 2015, 11:49:53 AM -0400
-# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/2.0117,
-# XML::LibXSLT/1.92, libxml/2.9.0, libxslt/1.1.28 (with exslt)
+# Generated on Sunday May  8, 2016, 12:58:19 PM -0700
+# Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/2.0110,
+# XML::LibXSLT/1.94, libxml/2.9.0, libxslt/1.1.28 (with exslt)
 # XSLT sources:
 #     $Id: changelog2text.xslt 8 2009-01-19 06:46:50Z rjray $
 #     $Id: common-text.xslt 8 2009-01-19 06:46:50Z rjray $

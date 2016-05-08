@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.79
+Version: 0.80
 
 WHAT IS IT
 
@@ -66,49 +66,29 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* t/40_server.t
-* t/40_server_xmllibxml.t
-* t/41_server_hang.t
-* t/60_net_server.t
-* t/70_compression_detect.t
-* t/90_rt54183_sigpipe.t
-* t/util.pl
-Test clean-up/fixes to address CPAN test failures. Should
-address problems with having IO::Socket::IP acting in place of
-IO::Socket::INET and also address some issues with a dynloader
-bug being triggered by t/70_compression_detect.t.
+* etc/make_method
+Make the build reproducible by dropping timestamps in
+make_method output. (Niko Tyni)
 
-* t/00_load.t
-* t/10_data.t
-* t/11_base64_fh.t
-* t/12_nil.t
-* t/13_no_deep_recursion.t
-* t/14_datetime_iso8601.t
-* t/15_serialize.t
-* t/20_xml_parser.t
-* t/21_xml_libxml.t
-* t/25_parser_negative.t
-* t/29_parserfactory.t
-* t/30_procedure.t
-* t/35_namespaces.t
 * t/40_server.t
 * t/40_server_xmllibxml.t
-* t/41_server_hang.t
 * t/50_client.t
-* t/51_client_with_host_header.t
+Fixes for test problems with Strawberry Perl.
+
+* lib/RPC/XML/Client.pm
+Fix leak caused by failing to free Expat parser. We don't want
+to return from the method until the parser's been freed. We
+therefore need to call $parser->release() before the return
+statements caused by request failures. (Tom Grimwood-Taylor)
+
+* lib/RPC/XML/Server.pm
+One socket-opt change, one typo corrected.
+
+* lib/RPC/XML.pm
+Applied patch for numeric regexes and critic cleanup. Addresses
+GitHub pull request #10 and RT #111636.
+
 * t/60_net_server.t
-* t/90_rt50013_parser_bugs.t
-* t/90_rt54183_sigpipe.t
-* t/90_rt54494_blessed_refs.t
-* t/90_rt58065_allow_nil.t
-* t/90_rt58323_push_parser.t
-* t/util.pl
-Perl::Critic clean-up of test suites.
-
-* lib/RPC/XML/Parser/XMLParser.pm
-Fix to prevent a new sprintf-related warning in 5.21.
-
-* README
-* lib/Apache/RPC/status.code
-Merge pull request #8 from jkg/docfixes (James Green). Replace
-indirect object notation with direct.
+RT #99578: Work-around fix for Net::Server+IO::Socket::IP. If a
+system's IPv6 declaration of localhost was before the IPv4
+declaration in the hosts file, this test would fail.

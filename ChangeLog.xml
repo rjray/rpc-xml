@@ -16,6 +16,59 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2016-05-08T12:45:00-07:00" version="0.80" sc:tag="0.80">
+    <change git:commit="32560525e443799daa8d2a2429ea9d1d782a1bfd">
+      <file path="etc/make_method" />
+      <description>
+        Make the build reproducible by dropping timestamps in make_method
+        output. (Niko Tyni)
+      </description>
+    </change>
+    <change git:commit="3270580b3538e108a2df16273e7513d197eee2d3">
+      <fileset>
+        <file path="t/40_server.t" />
+        <file path="t/40_server_xmllibxml.t" />
+        <file path="t/50_client.t" />
+      </fileset>
+      <description>
+        Fixes for test problems with Strawberry Perl.
+      </description>
+    </change>
+    <change git:commit="d5671287e928fc2911bccb88da9ffb73531e5e4c">
+      <file path="lib/RPC/XML/Client.pm" />
+      <description>
+        Fix leak caused by failing to free Expat parser. We don't want to
+        return from the method until the parser's been freed. We therefore
+        need to call $parser->release() before the return statements caused
+        by request failures. (Tom Grimwood-Taylor)
+      </description>
+    </change>
+    <change git:commit="8158b17b8979c0126a5824909e8f57e1d4c13dd8">
+      <file path="lib/RPC/XML/Server.pm" />
+      <description>
+        One socket-opt change, one typo corrected.
+      </description>
+    </change>
+    <change git:commit="703a41a19874b54c8edf7d287752b5bf5d0c0008">
+      <file path="lib/RPC/XML.pm" />
+      <description>
+        Applied patch for numeric regexes and critic cleanup. Addresses
+        <xhtml:a href="https://github.com/rjray/rpc-xml/pull/10">GitHub
+        pull request #10</xhtml:a> and
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=111636">RT
+        #111636</xhtml:a>.
+      </description>
+    </change>
+    <change git:commit="b183920628411a7a19a1251ebae6907ccda72739">
+      <file path="t/60_net_server.t" />
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=99578">RT #99578</xhtml:a>:
+        Work-around fix for Net::Server+IO::Socket::IP. If a system's IPv6
+        declaration of localhost was before the IPv4 declaration in the hosts
+        file, this test would fail.
+      </description>
+    </change>
+  </release>
   <release date="2015-05-01T09:00:00-07:00" version="0.79" sc:tag="0.79">
     <change git:commit="70f6e31b98b3e80bb2ab5fe99f1e42dc454271e9">
       <fileset>
