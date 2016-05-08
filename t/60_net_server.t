@@ -46,7 +46,7 @@ else
 # See RT#105679.
 if (eval { load IO::Socket::IP; 1; })
 {
-    carp 'Working around an issue with Net::Server+IO::Socket::IP'
+    carp 'Working around an issue with Net::Server+IO::Socket::IP';
     $srv_hostname = '127.0.0.1';
 }
 else
