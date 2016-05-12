@@ -58,7 +58,7 @@ BEGIN
         (eval { load Compress::Zlib; 1; }) ? 'deflate' : q{};
 }
 
-$VERSION = '1.42';
+$VERSION = '1.43';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
