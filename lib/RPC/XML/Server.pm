@@ -118,7 +118,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.73';
+$VERSION = '1.74';
 $VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
 
 ###############################################################################
@@ -249,7 +249,7 @@ sub new ## no critic (ProhibitExcessComplexity)
 
     # Parameters to control the point at which messages are shunted to temp
     # files due to size, and where to home the temp files. Start with a size
-    # threshhold of 1Meg and no specific dir (which will fall-through to the
+    # threshold of 1Meg and no specific dir (which will fall-through to the
     # tmpdir() method of File::Spec).
     $self->{__message_file_thresh} = delete $args{message_file_thresh} ||
         1_048_576;
@@ -1011,7 +1011,7 @@ sub process_request ## no critic (ProhibitExcessComplexity)
                 $resp->header(Content_Encoding => $self->compress);
             }
             # Next step, determine the response disposition. If it is above the
-            # threshhold for a requested file cut-off, send it to a temp file
+            # threshold for a requested file cut-off, send it to a temp file
             if ($self->message_file_thresh &&
                 $self->message_file_thresh < $respxml->length)
             {
@@ -1846,7 +1846,7 @@ would be larger than this when stringified is instead written to an anonynous
 temporary file, and spooled from there instead. This is useful for cases in
 which the request includes B<RPC::XML::base64> objects that are themselves
 spooled from file-handles. This test is independent of compression, so even
-if compression of a request would drop it below this threshhold, it will be
+if compression of a request would drop it below this threshold, it will be
 spooled anyway. The file itself is created via File::Temp with C<UNLINK> set,
 so once it is freed the disk space is immediately freed.
 
@@ -2165,7 +2165,7 @@ The calling server object shares the methods/procedures/functions listed in
 B<NAMES> with the source-server passed as the first object. The source must
 derive from this package in order for this operation to be permitted. At least
 one method must be specified, and all are specified by name (not by object
-refernce). Both objects will reference the same exact B<RPC::XML::Procedure>
+reference). Both objects will reference the same exact B<RPC::XML::Procedure>
 (or derivative thereof) object in this case, meaning that call-statistics and
 the like will reflect the combined data. If one or more of the passed names are
 not present on the source server, an error message is returned and none are
@@ -2419,8 +2419,8 @@ implements these, their help files and other information.
 The B<RPC::XML::Server> class now supports compressed messages, both incoming
 and outgoing. If a client indicates that it can understand compressed content,
 the server will use the B<Compress::Zlib> (available from CPAN) module, if
-available, to compress any outgoing messages above a certain threshhold in
-size (the default threshhold is set to 4096 bytes). The following methods are
+available, to compress any outgoing messages above a certain threshold in
+size (the default threshold is set to 4096 bytes). The following methods are
 all related to the compression support within the server class:
 
 =over 4
@@ -2433,7 +2433,7 @@ time, and cannot be changed.
 
 =item compress_thresh([MIN_LIMIT])
 
-Return or set the compression threshhold value. Messages smaller than this
+Return or set the compression threshold value. Messages smaller than this
 size in bytes will not be compressed, even when compression is available, to
 save on CPU resources. If a value is passed, it becomes the new limit and the
 old value is returned.
@@ -2445,7 +2445,7 @@ old value is returned.
 If the server anticipates handling large out-bound messages (for example, if
 the hosted code returns large Base64 values pre-encoded from file handles),
 the C<message_file_thresh> and C<message_temp_dir> settings may be used in a
-manner similar to B<RPC::XML::Client>. Specifically, the threshhold is used to
+manner similar to B<RPC::XML::Client>. Specifically, the threshold is used to
 determine when a message should be spooled to a filehandle rather than made
 into an in-memory string (the B<RPC::XML::base64> type can use a filehandle,
 thus eliminating the need for the data to ever be completely in memory). An
@@ -2454,7 +2454,7 @@ anonymous temporary file is used for these operations.
 Note that the message size is checked before compression is applied, since the
 size of the compressed output cannot be known until the full message is
 examined. It is possible that a message will be spooled even if its compressed
-size is below the threshhold, if the uncompressed size exceeds the threshhold.
+size is below the threshold, if the uncompressed size exceeds the threshold.
 
 =over 4
 

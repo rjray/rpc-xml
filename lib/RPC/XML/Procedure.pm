@@ -60,7 +60,7 @@ use RPC::XML 'smart_encode';
 # This module also provides RPC::XML::Method and RPC::XML::Function
 ## no critic (ProhibitMultiplePackages)
 
-$VERSION = '1.30';
+$VERSION = '1.31';
 $VERSION = eval $VERSION;    ## no critic (ProhibitStringyEval)
 
 # This should match the set of type-classes defined in RPC::XML.pm. Note that
@@ -868,7 +868,7 @@ arguments to the constructor are variable in nature, depending on the type:
 
 If there is exactly on argument that is not a reference, it is assumed to be a
 filename from which the method is to be loaded. This is presumed to be in the
-B<XPL> format descibed below (see L</"XPL File Structure">). If the file
+B<XPL> format described below (see L</"XPL File Structure">). If the file
 cannot be opened, or if once opened cannot be parsed, an error is raised.
 
 =item HASHREF
