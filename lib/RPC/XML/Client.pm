@@ -124,7 +124,7 @@ sub new
 
     # Parameters to control the point at which messages are shunted to temp
     # files due to size, and where to home the temp files. Start with a size
-    # threshhold of 1Meg and no specific dir (which will fall-through to the
+    # threshold of 1Meg and no specific dir (which will fall-through to the
     # tmpdir() method of File::Spec).
     $self->{__message_file_thresh} = $attrs{message_file_thresh} || 1_048_576;
     $self->{__message_temp_dir}    = $attrs{message_temp_dir}    || q{};
@@ -259,7 +259,7 @@ sub send_request ## no critic (ProhibitExcessComplexity)
     }
 
     # Next step, determine our content's disposition. If it is above the
-    # threshhold for a requested file cut-off, send it to a temp file and use
+    # threshold for a requested file cut-off, send it to a temp file and use
     # a closure on the request object to manage content.
     if ($self->message_file_thresh and
         $self->message_file_thresh <= $req->length)
@@ -528,7 +528,7 @@ BEGIN
     }
 }
 
-# Fetch/set the compression threshhold
+# Fetch/set the compression threshold
 sub compress_thresh
 {
     my $self = shift;
@@ -723,7 +723,7 @@ would be larger than this when stringified is instead written to an anonynous
 temporary file, and spooled from there instead. This is useful for cases in
 which the request includes B<RPC::XML::base64> objects that are themselves
 spooled from file-handles. This test is independent of compression, so even
-if compression of a request would drop it below this threshhold, it will be
+if compression of a request would drop it below this threshold, it will be
 spooled anyway. The file itself is created via File::Temp with UNLINK=>1,
 so once it is freed the disk space is immediately freed.
 
@@ -839,11 +839,11 @@ are not compressed by default.
 
 If a client is communicating with a server that is known to support compressed
 messages, this method can be used to tell the client object to compress any
-outgoing messages that are longer than the threshhold setting in bytes.
+outgoing messages that are longer than the threshold setting in bytes.
 
 =item compress_thresh([MIN_LIMIT])
 
-With no arguments, returns the current compression threshhold; messages
+With no arguments, returns the current compression threshold; messages
 smaller than this number of bytes will not be compressed, regardless of the
 above method setting. If a number is passed, this is set to the new
 lower-limit. The default value is 4096 (4k).
