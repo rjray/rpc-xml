@@ -3,8 +3,6 @@
 # Test the date-parsing facilities provided by the DateTime::Format::ISO8601
 # module, if available
 
-## no critic(Bangs::ProhibitVagueNames)
-
 use strict;
 use warnings;
 

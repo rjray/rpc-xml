@@ -2,7 +2,6 @@
 
 # Test the usage of RPC::XML::base64 with filehandles
 
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireBriefOpen)
 ## no critic(RequireCheckedClose)
 ## no critic(RequireInterpolationOfMetachars)

@@ -1,6 +1,5 @@
 #!/usr/bin/perl
 
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireInterpolationOfMetachars)
 ## no critic(ProhibitComplexRegexes)
 

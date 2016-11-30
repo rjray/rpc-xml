@@ -2,8 +2,6 @@
 
 # Test the RPC::XML::Method class
 
-## no critic(Bangs::ProhibitNumberedNames)
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireInterpolationOfMetachars)
 
 use strict;

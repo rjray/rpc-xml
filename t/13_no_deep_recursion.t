@@ -2,8 +2,6 @@
 
 # Test the changes in RPC::XML to prevent infinite recursion on cyclic refs
 
-## no critic(Bangs::ProhibitVagueNames)
-
 use strict;
 use warnings;
 

@@ -2,7 +2,6 @@
 
 # Test the data-manipulation routines in RPC::XML
 
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireInterpolationOfMetachars)
 
 use strict;

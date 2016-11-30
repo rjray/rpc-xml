@@ -5,7 +5,6 @@
 # Test that smart_encode() in RPC::XML can correctly deal with blessed refs
 # by treating them as non-blessed.
 
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireInterpolationOfMetachars)
 
 use strict;

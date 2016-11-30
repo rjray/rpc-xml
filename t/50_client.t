@@ -2,7 +2,6 @@
 
 # Test the RPC::XML::Client class
 
-## no critic(Bangs::ProhibitNumberedNames)
 ## no critic(RequireBriefOpen);
 ## no critic(RequireInterpolationOfMetachars)
 

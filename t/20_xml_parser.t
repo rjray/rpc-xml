@@ -2,7 +2,6 @@
 
 # Test the RPC::XML::Parser::XMLParser class
 
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireInterpolationOfMetachars)
 ## no critic(RequireBriefOpen)
 ## no critic(RequireCheckedClose)

@@ -2,7 +2,6 @@
 
 # Test the RPC::XML::Server class
 
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireInterpolationOfMetachars)
 
 use strict;

@@ -2,7 +2,6 @@
 
 # Test the RPC::XML::Server class with XML::LibXML as the parser
 
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireInterpolationOfMetachars)
 
 use strict;

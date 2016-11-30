@@ -2,7 +2,6 @@
 
 # Test the RPC::XML::ParserFactory class
 
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireInterpolationOfMetachars)
 ## no critic(ProhibitStringyEval)
 ## no critic(RequireCheckingReturnValueOfEval)

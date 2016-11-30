@@ -2,8 +2,6 @@
 
 # Test the serialization of XML structures to filehandles
 
-## no critic(Bangs::ProhibitNumberedNames)
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireBriefOpen)
 ## no critic(RequireCheckedClose)
 

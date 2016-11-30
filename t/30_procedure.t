@@ -2,8 +2,6 @@
 
 # Test the RPC::XML::Procedure class (and the ::Method and ::Function classes)
 
-## no critic(Bangs::ProhibitNumberedNames)
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireBriefOpen)
 ## no critic(RequireCheckedClose)
 ## no critic(RequireInterpolationOfMetachars)

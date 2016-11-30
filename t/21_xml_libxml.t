@@ -2,8 +2,6 @@
 
 # Test the RPC::XML::Parser::XMLLibXML class
 
-## no critic(Bangs::ProhibitNumberedNames)
-## no critic(Bangs::ProhibitVagueNames)
 ## no critic(RequireInterpolationOfMetachars)
 ## no critic(RequireBriefOpen)
 ## no critic(RequireCheckedClose)
