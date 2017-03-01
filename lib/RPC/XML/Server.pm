@@ -821,9 +821,9 @@ sub process_request ## no critic (ProhibitExcessComplexity)
     my $conn = shift;
 
     my (
-        $req,     $reqxml,     $resp,     $respxml,  $do_compress,
-        $parser,  $com_engine, $length,   $read,     $buf,
-        $resp_fh, $tmpdir,     $peeraddr, $peerhost, $peerport
+        $req,     $reqxml,     $resp,       $respxml,  $do_compress,
+        $parser,  $com_engine, $length,     $read,     $buf,
+        $resp_fh, $tmpdir,     $peerfamily, $peeraddr, $peerhost, $peerport,
     );
 
     my $me = ref($self) . '::process_request';
@@ -856,6 +856,7 @@ sub process_request ## no critic (ProhibitExcessComplexity)
 
     # These will be attached to any and all request objects that are
     # (successfully) read from $conn.
+    $peerfamily = $conn->sockdomain;
     $peeraddr = $conn->peeraddr;
     $peerport = $conn->peerport;
     $peerhost = $conn->peerhost;
@@ -986,6 +987,7 @@ sub process_request ## no critic (ProhibitExcessComplexity)
             {
                 # Set localized keys on $self, based on the connection info
                 ## no critic (ProhibitLocalVars)
+                local $self->{peerfamily} = $peerfamily;
                 local $self->{peeraddr} = $peeraddr;
                 local $self->{peerhost} = $peerhost;
                 local $self->{peerport} = $peerport;
@@ -2293,14 +2295,22 @@ reference containing one or more datatypes, each a simple string. The first
 of the datatypes specifies the expected return type. The remainder (if any)
 refer to the arguments themselves.
 
+=item peerfamily
+
+This is the address family, C<AF_INET> or C<AF_INET6>, of a network address of
+the client that has connected and made the current request. It is required
+for unpacking C<peeraddr> properly.
+
 =item peeraddr
 
-This is the address part of a packed B<SOCKADDR_IN> structure, as returned by
-L<Socket/pack_sockaddr_in>, which contains the address of the client that has
+This is the address part of a packed B<SOCKADDR_IN> or B<SOCKADDR_IN6>
+structure, as returned by L<Socket/pack_sockaddr_in> or
+L<Socket/pack_sockaddr_in6>, which contains the address of the client that has
 connected and made the current request. This is provided "raw" in case you
 need it. While you could re-create it from C<peerhost>, it is readily
 available in both this server environment and the B<Apache::RPC::Server>
-environment and thus included for convenience.
+environment and thus included for convenience. Apply L<Socket/inet_ntop> to
+C<peerfamily> and this value to obtain textual representation of the address.
 
 =item peerhost
 

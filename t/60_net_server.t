@@ -90,7 +90,7 @@ sleep 1; # Allow time for server to spin up
 # Unless we see "ok 2", we have a problem
 ok(-e $pid_file, 'server started, PID file exists');
 # After this point, we have the obligation of killing the server manually
-$client = RPC::XML::Client->new("http://localhost:$port");
+$client = RPC::XML::Client->new("http://$srv_hostname:$port");
 is($client->simple_request('system.identity'), $srv->product_tokens,
    'system.identity matches $srv->product_tokens');
 

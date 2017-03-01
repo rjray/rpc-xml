@@ -12,7 +12,7 @@ use subs qw(start_server);
 
 use Carp qw(carp croak);
 use File::Spec;
-use IO::Socket;
+use IO::Socket::IP;
 use Test::More;
 
 use HTTP::Request;
@@ -81,7 +81,7 @@ SKIP: {
     # Create an IO::Socket object for the client-side. In order to fool the
     # server with a bad Content-Length and terminate early, we have to ditch
     # LWP and go old-skool.
-    $socket = IO::Socket::INET->new(Proto => 'tcp', PeerAddr => 'localhost',
+    $socket = IO::Socket::IP->new(Proto => 'tcp', PeerAddr => 'localhost',
                                     PeerPort => $port)
         or croak "Error creating IO::Socket obj: $!";
     print {$socket} $req;

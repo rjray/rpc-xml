@@ -2,6 +2,8 @@
 # test suites
 
 use IO::Socket;
+use Socket ();
+use Carp ();
 
 sub start_server
 {
@@ -56,6 +58,39 @@ sub find_port
     }
 
     return -1;
+}
+
+sub pack_sockaddr_any
+{
+    my ($family, $address, $port) = @_;
+
+    my $packed_address = Socket::inet_pton($family, $address);
+    my $packet;
+    if ($family == Socket::AF_INET) {
+        $packet = Socket::pack_sockaddr_in($port, $packed_address);
+    } elsif ($family == Socket::AF_INET6) {
+        $packet = Socket::pack_sockaddr_in6($port, $packed_address);
+    } else {
+        Carp::croak "Unsupported address family: $family";
+    }
+    return $packet;
+}
+
+sub resolve {
+    my ($family, $hostname) = @_;
+
+    my ($error, @res) = Socket::getaddrinfo($hostname, '',
+        { socktype => Socket::SOCK_STREAM });
+    if ($error) {
+        Carp::croak "Could not resolve $hostname: $error";
+    }
+    my @addresses;
+    while (my $ai = shift @res) {
+        my ($error, $address) = Socket::getnameinfo($ai->{addr},
+            Socket::NI_NUMERICHOST, Socket::NIx_NOSERV);
+        push @addresses, $address;
+    }
+    return @addresses;
 }
 
 1;

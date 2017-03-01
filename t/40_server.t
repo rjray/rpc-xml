@@ -13,6 +13,7 @@ use IO::Socket;
 use File::Spec;
 use List::Util 'none';
 use Scalar::Util 'blessed';
+use Socket ();
 
 use Test::More;
 use LWP::UserAgent;
@@ -240,12 +241,16 @@ $res = $srv->add_method({ name      => 'perl.test.suite.peeraddr',
                           sub {
                               my $server = shift;
 
-                              my $ipaddr = inet_aton($server->{peerhost});
+                              my $peerfamily = RPC_BASE64 $server->{peerfamily};
                               my $peeraddr = RPC_BASE64 $server->{peeraddr};
-                              my $packet = pack_sockaddr_in($server->{peerport},
-                                                            $ipaddr);
+                              my $packet = pack_sockaddr_any(
+                                  $server->{peerfamily},
+                                  $server->{peerhost},
+                                  $server->{peerport}
+                              );
                               $packet = RPC_BASE64 $packet;
-                              [ $peeraddr, $packet,
+
+                              [ $peerfamily, $peeraddr, $packet,
                                 $server->{peerhost}, $server->{peerport} ];
                           } });
 $child = start_server $srv;
@@ -300,12 +305,12 @@ SKIP: {
         }
 
         $res = $res->value->value;
-        is($res->[2], inet_ntoa(inet_aton('localhost')),
+        ok(grep({ $_ eq $res->[3]} resolve($res->[0], 'localhost')),
            'Third live req: Correct IP addr from peerhost');
-        is($res->[0], inet_aton($res->[2]),
+        is($res->[1], Socket::inet_pton($res->[0], $res->[3]),
            'Third request: peeraddr packet matches converted peerhost');
-        is($res->[1], pack_sockaddr_in($res->[3], inet_aton($res->[2])),
-           'Third request: pack_sockaddr_in validates all');
+        is($res->[2], pack_sockaddr_any($res->[0], $res->[3], $res->[4]),
+           'Third request: pack_sockaddr_any validates all');
     }
 }
 stop_server $child;
