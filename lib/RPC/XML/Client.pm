@@ -227,6 +227,8 @@ sub send_request ## no critic (ProhibitExcessComplexity)
     my ($me, $message, $response, $reqclone, $content, $can_compress, $value,
         $do_compress, $req_fh, $tmpdir, $com_engine);
 
+    delete $self->{_xmlrcp_request_as_string};
+
     $me = ref($self) . '::send_request';
 
     if (! $req)
@@ -242,6 +244,9 @@ sub send_request ## no critic (ProhibitExcessComplexity)
                 $RPC::XML::ERROR;
         }
     }
+
+    # Add XML-RPC string request as object property
+    utf8::encode( $self->{_xmlrcp_request_as_string} = $req->as_string );
 
     # Start by setting up the request-clone for using in this instance
     $reqclone = $self->request->clone;
