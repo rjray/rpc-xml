@@ -17,7 +17,6 @@
 #                   simple_request
 #                   uri
 #                   useragent
-#                   request
 #
 #   Libraries:      LWP::UserAgent
 #                   HTTP::Request
@@ -42,7 +41,6 @@ use subs qw(new simple_request send_request uri useragent request
 use Scalar::Util 'blessed';
 use File::Temp;
 use IO::Handle;
-use Module::Load;
 
 use LWP::UserAgent;
 use HTTP::Request;
@@ -55,11 +53,10 @@ BEGIN
 {
     # Check for compression support
     $COMPRESSION_AVAILABLE =
-        (eval { load Compress::Zlib; 1; }) ? 'deflate' : q{};
+        (eval { require Compress::Zlib; 1; }) ? 'deflate' : q{};
 }
 
-$VERSION = '1.43';
-$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
+$VERSION = '1.44';
 
 ###############################################################################
 #
@@ -103,7 +100,7 @@ sub new
     $REQ = HTTP::Request->new(POST => $location);
     $self->{__request} = $REQ;
     $REQ->header(Content_Type => 'text/xml');
-    $REQ->protocol('HTTP/1.0');
+    $REQ->protocol('HTTP/1.1');
 
     # Note compression support
     $self->{__compress} = $COMPRESSION_AVAILABLE;
@@ -148,6 +145,11 @@ sub new
         $self->{__error_cb} = $attrs{error_handler};
         delete $attrs{error_handler};
     }
+
+    # A modification of the pull req from Enrico Sorcinelli. If this attr is
+    # non-null then a stringified copy of a request will be saved on the Client
+    # object during the duration of a request.
+    $self->{__request_as_string} = delete $attrs{request_as_string};
 
     # Get the RPC::XML::Parser instance from the ParserFactory
     $self->{__parser} =
@@ -227,7 +229,7 @@ sub send_request ## no critic (ProhibitExcessComplexity)
     my ($me, $message, $response, $reqclone, $content, $can_compress, $value,
         $do_compress, $req_fh, $tmpdir, $com_engine);
 
-    delete $self->{_xmlrcp_request_as_string};
+    $self->{__request_as_string} && delete $self->{_xmlrpc_request_as_string};
 
     $me = ref($self) . '::send_request';
 
@@ -245,8 +247,11 @@ sub send_request ## no critic (ProhibitExcessComplexity)
         }
     }
 
-    # Add XML-RPC string request as object property
-    utf8::encode( $self->{_xmlrcp_request_as_string} = $req->as_string );
+    # Add XML-RPC string request as object property if __request_as_string
+    # is set.
+    if ($self->{__request_as_string}) {
+        utf8::encode($self->{_xmlrpc_request_as_string} = $req->as_string);
+    }
 
     # Start by setting up the request-clone for using in this instance
     $reqclone = $self->request->clone;
@@ -737,6 +742,14 @@ so once it is freed the disk space is immediately freed.
 If a message is to be spooled to a temporary file, this key can define a
 specific directory in which to open those files. If this is not given, then
 the C<tmpdir> method from the B<File::Spec> package is used, instead.
+
+=item request_as_string
+
+For aiding in debugging, you can pass this key with a non-false value to enable
+a step in each request cycle that saves a stringified version of the request
+XML as a private key on the client object. The request will be saved to the
+key C<_xmlrpc_request_as_string>, and will endure until the next request is
+made by the client object.
 
 =back
 
