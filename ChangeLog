@@ -9,7 +9,24 @@
 		allowing choice of character-set encodings for
 		XML messages.
 
-0.81	Tuesday January  5, 2021, 06:33:00 PM -0700
+0.82	Wednesday January  6, 2021, 09:59:00 AM -0800
+
+	* Makefile.PL
+	* lib/RPC/XML/Server.pm
+	Bump version numbers.
+
+	* Makefile.PL
+	* lib/RPC/XML/Server.pm
+	* t/40_server.t
+	* t/40_server_xmllibxml.t
+	* t/41_server_hang.t
+	* t/60_net_server.t
+	* t/util.pl
+	RT #120472: Applied patch from Petr Písař for fixes to IPv6
+	support. Full detail in the message for this commit in the git
+	repository.
+
+0.81	Tuesday January  5, 2021, 06:33:00 PM -0800
 
 	* MANIFEST
 	* perlcritic.rc (added)
@@ -1894,7 +1911,7 @@
 	* *
 	All files are tracked from this point forward.
 
-# Generated on Tuesday January  5, 2021, 06:33:18 PM -0800
+# Generated on Wednesday January  6, 2021, 10:00:18 AM -0800
 # Using changelog2x/0.11, App::Changelog2x/0.11, XML::LibXML/2.0206,
 # XML::LibXSLT/1.99, libxml/2.9.10, libxslt/1.1.34 (with exslt)
 # XSLT sources:

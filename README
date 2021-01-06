@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.81
+Version: 0.82
 
 WHAT IS IT
 
@@ -69,19 +69,18 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* MANIFEST
-* perlcritic.rc (added)
-Add a perlcritic.rc file for testers who run author tests.
+* Makefile.PL
+* lib/RPC/XML/Server.pm
+Bump version numbers.
 
+* Makefile.PL
+* lib/RPC/XML/Server.pm
 * t/40_server.t
 * t/40_server_xmllibxml.t
-Remove redundant testing and general clean-up. Removed tests of
-url() that were just re-testing HTTP::Daemon::url().
+* t/41_server_hang.t
+* t/60_net_server.t
+* t/util.pl
+RT #120472: Applied patch from Petr Písař for fixes to IPv6
+support. Full detail in the message for this commit in the git
+repository.
 
-* lib/RPC/XML/Client.pm
-Parameterize the request-as-string debug feature.
-
-* lib/RPC/XML/Client.pm
-Merge pull request #13 from
-enrico-sorcinelli/add-request-string. Added xmlrpc request
-string as object property. (Enrico Sorcinelli)

@@ -16,7 +16,34 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
-  <release date="2021-01-05T18:33:00-07:00" version="0.81" sc:tag="0.81">
+  <release date="2021-01-06T09:59:00-08:00" version="0.82" sc:tag="0.82">
+    <change git:commit="22b657667a47ceb4ee68c59d04321c4f4e54b22a">
+      <fileset>
+        <file path="Makefile.PL" />
+        <file path="lib/RPC/XML/Server.pm" />
+      </fileset>
+      <description>
+        Bump version numbers.
+      </description>
+    </change>
+    <change git:commit="b4b6f085eeabc58ddb8f578465ba24a27e5be11d">
+      <fileset>
+        <file path="Makefile.PL" />
+        <file path="lib/RPC/XML/Server.pm" />
+        <file path="t/40_server.t" />
+        <file path="t/40_server_xmllibxml.t" />
+        <file path="t/41_server_hang.t" />
+        <file path="t/60_net_server.t" />
+        <file path="t/util.pl" />
+      </fileset>
+      <description>
+        <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=120472">RT #120472</xhtml:a>:
+        Applied patch from Petr Písař for fixes to IPv6 support. Full detail
+        in the message for this commit in the git repository.
+      </description>
+    </change>
+  </release>
+  <release date="2021-01-05T18:33:00-08:00" version="0.81" sc:tag="0.81">
     <change git:commit="b34a215258a85305f4834f8d1861e7b84841d044">
       <fileset>
         <file path="MANIFEST" />
