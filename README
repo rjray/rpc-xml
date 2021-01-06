@@ -1,6 +1,6 @@
 RPC::XML - An implementation of XML-RPC
 
-Version: 0.80
+Version: 0.81
 
 WHAT IS IT
 
@@ -54,7 +54,10 @@ You may need super-user access to install.
 
 PROBLEMS/BUG REPORTS
 
-Please send any reports of problems or bugs to rjray@blackperl.com
+Please send any reports of problems or bugs to rjray@blackperl.com or use
+the GitHub Issues page for this project:
+
+    https://github.com/rjray/rpc-xml/issues
 
 
 SEE ALSO
@@ -66,29 +69,19 @@ The LGPL 2.1:     http://www.opensource.org/licenses/lgpl-2.1.php
 
 CHANGES
 
-* etc/make_method
-Make the build reproducible by dropping timestamps in
-make_method output. (Niko Tyni)
+* MANIFEST
+* perlcritic.rc (added)
+Add a perlcritic.rc file for testers who run author tests.
 
 * t/40_server.t
 * t/40_server_xmllibxml.t
-* t/50_client.t
-Fixes for test problems with Strawberry Perl.
+Remove redundant testing and general clean-up. Removed tests of
+url() that were just re-testing HTTP::Daemon::url().
 
 * lib/RPC/XML/Client.pm
-Fix leak caused by failing to free Expat parser. We don't want
-to return from the method until the parser's been freed. We
-therefore need to call $parser->release() before the return
-statements caused by request failures. (Tom Grimwood-Taylor)
+Parameterize the request-as-string debug feature.
 
-* lib/RPC/XML/Server.pm
-One socket-opt change, one typo corrected.
-
-* lib/RPC/XML.pm
-Applied patch for numeric regexes and critic cleanup. Addresses
-GitHub pull request #10 and RT #111636.
-
-* t/60_net_server.t
-RT #99578: Work-around fix for Net::Server+IO::Socket::IP. If a
-system's IPv6 declaration of localhost was before the IPv4
-declaration in the hosts file, this test would fail.
+* lib/RPC/XML/Client.pm
+Merge pull request #13 from
+enrico-sorcinelli/add-request-string. Added xmlrpc request
+string as object property. (Enrico Sorcinelli)

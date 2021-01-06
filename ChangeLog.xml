@@ -16,6 +16,40 @@
     extensions to the base protocol in terms of supporting HTTP/1.1 and
     allowing choice of character-set encodings for XML messages.
   </description>
+  <release date="2021-01-05T18:33:00-07:00" version="0.81" sc:tag="0.81">
+    <change git:commit="b34a215258a85305f4834f8d1861e7b84841d044">
+      <fileset>
+        <file path="MANIFEST" />
+        <file path="perlcritic.rc" action="ADD" />
+      </fileset>
+      <description>
+        Add a perlcritic.rc file for testers who run author tests.
+      </description>
+    </change>
+    <change git:commit="e0412dab68f103cadf6db3c42596658b3ceaa6e5">
+      <fileset>
+        <file path="t/40_server.t" />
+        <file path="t/40_server_xmllibxml.t" />
+      </fileset>
+      <description>
+        Remove redundant testing and general clean-up.
+        Removed tests of url() that were just re-testing HTTP::Daemon::url().
+      </description>
+    </change>
+    <change git:commit="7609db93606c4e592032e49d49c5eb7083ef7908">
+      <file path="lib/RPC/XML/Client.pm" />
+      <description>
+        Parameterize the request-as-string debug feature.
+      </description>
+    </change>
+    <change git:commit="68b3ab72470662eb8b76392978135b58bf9e73e3">
+      <file path="lib/RPC/XML/Client.pm" />
+      <description>
+        Merge pull request #13 from enrico-sorcinelli/add-request-string.
+        Added xmlrpc request string as object property. (Enrico Sorcinelli)
+      </description>
+    </change>
+  </release>
   <release date="2016-05-08T12:45:00-07:00" version="0.80" sc:tag="0.80">
     <change git:commit="32560525e443799daa8d2a2429ea9d1d782a1bfd">
       <file path="etc/make_method" />
@@ -37,8 +71,8 @@
     <change git:commit="d5671287e928fc2911bccb88da9ffb73531e5e4c">
       <file path="lib/RPC/XML/Client.pm" />
       <description>
-        Fix leak caused by failing to free Expat parser. We don't want to
-        return from the method until the parser's been freed. We therefore
+        Fix leak caused by failing to free Expat parser. We don&apos;t want to
+        return from the method until the parser&apos;s been freed. We therefore
         need to call $parser->release() before the return statements caused
         by request failures. (Tom Grimwood-Taylor)
       </description>
@@ -63,7 +97,7 @@
       <file path="t/60_net_server.t" />
       <description>
         <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=99578">RT #99578</xhtml:a>:
-        Work-around fix for Net::Server+IO::Socket::IP. If a system's IPv6
+        Work-around fix for Net::Server+IO::Socket::IP. If a system&apos;s IPv6
         declaration of localhost was before the IPv4 declaration in the hosts
         file, this test would fail.
       </description>
@@ -167,7 +201,7 @@
         <file path="t/15_serialize.t" />
       </fileset>
       <description>
-        Undo the previous change and fix the test. The previous change didn't
+        Undo the previous change and fix the test. The previous change didn&apos;t
         feel right, so this rolls it back and fixes the problem at the level of
         the test, instead.
       </description>
@@ -466,13 +500,14 @@
       <description>
         Merge pull request #3 from yannk/master
         (<xhtml:a href="https://github.com/yannk">https://github.com/yannk</xhtml:a>).
-        Expat parser subclass is protected against ext ent attack, libxml isn't.
+        Expat parser subclass is protected against ext ent attack, libxml
+        isn&apos;t.
       </description>
     </change>
     <change git:commit="2e5292c32d326d90699da355c9c3543606c120af">
       <file path="t/41_server_hang.t" />
       <description>
-        Undo a change to this suite from yannk's pull.
+        Undo a change to this suite from yannk&apos;s pull.
       </description>
     </change>
     <change git:commit="70e5e86e5d53c7aa2e3d6ecbdc450da599dc8dff">
@@ -526,7 +561,7 @@
     <change git:commit="1a92f352abc670dc1e54b3fbdbffebd0aefdc60c">
       <file path="lib/RPC/XML.pm" />
       <description>
-        Turns out this wasn't exporting RPC_I8.
+        Turns out this wasn&apos;t exporting RPC_I8.
       </description>
     </change>
     <change git:commit="235afd8c7c7140b5a3eb837b1ec38c3cbb26c35e">
@@ -565,7 +600,8 @@
       </fileset>
       <description>
         Fixed error-cases in usage of File::Temp->new().
-        File::Temp::new croaks on errors, doesn't return undef like I thought.
+        File::Temp::new croaks on errors, doesn&apos;t return undef like I
+        thought.
       </description>
     </change>
     <change git:commit="11db8815f41084b3a3ab099a4741959cdf0bd9fd">
@@ -854,7 +890,7 @@
       <file path="t/10_data.t" />
       <description>
         Realized I had no boundary-tests for ints in smart_encode(). This
-        revealed some problems with i8 values on my 32-bit system. Don't
+        revealed some problems with i8 values on my 32-bit system. Don&apos;t
         want to introduce dependency on BigInt right now, so marked those
         tests "TODO".
       </description>
@@ -880,7 +916,7 @@
       <description>
         <xhtml:a href="https://rt.cpan.org/Ticket/Display.html?id=54183">RT #54183</xhtml:a>:
         Provide handling of SIGPIPE when sending the response to the client,
-        in case they've terminated the connection.
+        in case they&apos;ve terminated the connection.
       </description>
     </change>
     <change git:commit="d5a354d801ca5b7e6243cb4c6289468dcd7be244">
@@ -991,8 +1027,8 @@
         <file path="xt/05_critic.t" />
       </fileset>
       <description>
-        Re-engineered the author-only/release tests, since they're no longer in
-        the t/ directory and thus should not interfere.
+        Re-engineered the author-only/release tests, since they&apos;re no
+        longer in the t/ directory and thus should not interfere.
       </description>
     </change>
   </release>
@@ -1366,8 +1402,8 @@
         Fix problems with child-process management on Windows that was causing
         <xhtml:tt>t/40_server.t</xhtml:tt> to hang during test runs. Also put
         skip-clause into <xhtml:tt>t/41_server_hang.t</xhtml:tt>, as according
-        to the person reporting, it doesn't work at all on MSWin (the network
-        code is very UNIX-y).
+        to the person reporting, it doesn&apos;t work at all on MSWin (the
+        network code is very UNIX-y).
       </description>
     </change>
     <change git:commit="0c7085648528f67a83d9902f02ddd2a83a412146">
@@ -1477,8 +1513,8 @@
     <change>
       <file path="lib/RPC/XML.pm" revision="359" />
       <description>
-        Forgot to increment $VERSION before the previous commit. Won't show up
-        in CPAN as an available update otherwise.
+        Forgot to increment $VERSION before the previous commit. Won&apos;t
+        show up in CPAN as an available update otherwise.
       </description>
     </change>
   </release>
@@ -1563,7 +1599,7 @@
       <description>
         Some of the work in armoring the test suites against server-death
         changed the counts on tests and on call-counts in the system.status
-        method. Some explicit re-starts didn't help.
+        method. Some explicit re-starts didn&apos;t help.
       </description>
     </change>
   </release>
@@ -1689,10 +1725,10 @@
       </fileset>
       <description>
         In response to concerns raised by a report of parsing problems, added
-        XML entity encoding for ' and " (&amp;apos; and &amp;quot;) to the
-        base RPC::XML module, and added a test to the parser suite to make
-        sure it is correctly turning all core XML entities back into characters
-        during the parsing process.
+        XML entity encoding for &apos; and &quot; (&amp;apos; and &amp;quot;)
+        to the base RPC::XML module, and added a test to the parser suite to
+        make sure it is correctly turning all core XML entities back into
+        characters during the parsing process.
       </description>
     </change>
     <change>
@@ -2038,7 +2074,7 @@
         <file path="t/10_data.t" revision="1.6" />
       </fileset>
       <description>
-        Small change to the XML character-escaping in RPC::XML::string's
+        Small change to the XML character-escaping in RPC::XML::string&apos;s
         as_string method, so that a lookup-table is used. The same table
         is now used to escape keys in structs, as well. Added tests to cover
         this. This was suggested by Johnathan Kupferer.
@@ -2116,7 +2152,7 @@
       </fileset>
       <description>
         Changes to the opening of files for base64 data. The existing method
-        didn't work under 5.00503.
+        didn&apos;t work under 5.00503.
       </description>
     </change>
     <change>
@@ -2203,8 +2239,8 @@
       <description>
         Force a default value for the compress_re attribute in RPC::XML::Server
         when none is otherwise present. All my tests have had Compress::Zlib
-        available, but when it isn't the compress_re attribute was triggering
-        warnings when used in a regex.
+        available, but when it isn&apos;t the compress_re attribute was
+        triggering warnings when used in a regex.
       </description>
     </change>
   </release>
@@ -2228,7 +2264,7 @@
         given a filehandle object instead of straight data. The object is
         kept as an open filehandle, and the buffer position is always noted
         and reset when operated on, so that other parts of the process using
-        the handle don't get surprised. Added tests in t/11_base64_fh.t to
+        the handle don&apos;t get surprised. Added tests in t/11_base64_fh.t to
         exercise this.
       </description>
     </change>
@@ -2378,7 +2414,7 @@
         Implemented two fixes sent in by Marc Liyanage: a fix for setting the
         Content-Length headers on messages that takes the length in bytes
         rather than characters; the second is a fix around the compression
-        support that makes certain an undef isn't evaluated against the
+        support that makes certain an undef isn&apos;t evaluated against the
         regex.
       </description>
     </change>
@@ -2417,7 +2453,7 @@
         Fixed a bad bug with the newly-added compression support in
         Apache::RPC::Server::handler. Because $self was defined earlier,
         strict failed to point out that my object in that scope was called
-        $srv, rather than $self. And $self->compress didn't work, amazingly
+        $srv, rather than $self. And $self->compress didn&apos;t work, amazingly
         enough. Found and reported by Scott Fagg.
       </description>
     </change>
@@ -2448,8 +2484,8 @@
         Changed the test in Apache::RPC::Server of the Content-type header so
         that it accepts a header that contains "text/xml", as opposed to only
         accepting a header that exactly equalled that string. Allows for
-        things like SOAP::Lite's XMLRPC::Lite which include a charset in the
-        header.
+        things like SOAP::Lite&apos;s XMLRPC::Lite which include a charset in
+        the header.
       </description>
     </change>
     <change>
@@ -2463,15 +2499,15 @@
       <file path="lib/RPC/XML/Parser.pm" />
       <description>
         Found a bug in RPC::XML::Parser where base64 data being parsed in a
-        request/response message wasn't being properly passed to the c'tor
-        for RPC::XML::base64. Reported by Chris Brierley.
+        request/response message wasn&apos;t being properly passed to the
+        c&apos;tor for RPC::XML::base64. Reported by Chris Brierley.
       </description>
     </change>
     <change>
       <file path="lib/Apache/RPC/Server.pm" />
       <description>
         Added a line in Apache::RPC::Server to set the Content-Type header
-        on HEAD responses. Apache won't take this from the usual header()
+        on HEAD responses. Apache won&apos;t take this from the usual header()
         method, it has to be explicitly set with content_type().
       </description>
     </change>
@@ -2479,8 +2515,8 @@
       <file path="t/40_server.t" />
       <description>
         Two of the tests in t/40_server.t could cause fatal errors since a
-        return value wasn't tested for ref-ness before having a method called
-        on it. Fixed.
+        return value wasn&apos;t tested for ref-ness before having a method
+        called on it. Fixed.
       </description>
     </change>
     <change>
@@ -2492,7 +2528,7 @@
       <description>
         Compress::Zlib-based compression is now supported in RPC::XML::Server,
         RPC::XML::Client and Apache::RPC::Server. It should be compatible with
-        the XMLRPC::Lite package's compression.
+        the XMLRPC::Lite package&apos;s compression.
       </description>
     </change>
   </release>
@@ -2501,8 +2537,8 @@
       <file path="lib/RPC/XML/Parser.pm" />
       <description>
         Wrapped the call to XML::Parser::parse (lib/RPC/XML/Parser.pm) in an
-        eval {} so that parse failures don't kill a server or client. Reported
-        by Kevin Greene.
+        eval {} so that parse failures don&apos;t kill a server or client.
+        Reported by Kevin Greene.
       </description>
     </change>
     <change>
@@ -2510,7 +2546,7 @@
       <description>
         An intended clone-operation in RPC::XML::response::new (lib/RPC/XML.pm)
         was never actually written, which allowed for a corner case that could
-        result in new() return undef when it shouldn't. Related to the bug
+        result in new() return undef when it shouldn&apos;t. Related to the bug
         reported by Sergey Scherbinin.
       </description>
     </change>
@@ -2547,7 +2583,7 @@
       </fileset>
       <description>
         Created RPC::XML::Function class, which is a type of server-side
-        encapsulator that doesn't bother with signature tests of any kind.
+        encapsulator that doesn&apos;t bother with signature tests of any kind.
         The DTD and make_method tool support the new type.
       </description>
     </change>
@@ -2573,7 +2609,7 @@
         Abstracted some of the invocation code out of the server class and
         into the RPC::XML::Procedure class, where it really belonged. This
         aided in further eliminating redundancy in the server class in the
-        same general area. I may yet want to tune this area, but I'm a good
+        same general area. I may yet want to tune this area, but I&apos;m a good
         deal happier with the reduction in complexity and repetition.
       </description>
     </change>
@@ -2663,11 +2699,11 @@
         <file path="lib/RPC/XML/Server.pm" />
       </fileset>
       <description>
-        When code blocks for XPL files are eval'd, they are given a "package"
-        statement to force subsequent calls to be in the RPC::XML::Procedure
-        namespace, rather than defaulting to main (a potentially dangerous
-        assumption). The docs on routine-calling in RPC::XML::Server have been
-        updated to discuss this.
+        When code blocks for XPL files are eval&apos;d, they are given a
+        "package" statement to force subsequent calls to be in the
+        RPC::XML::Procedure namespace, rather than defaulting to main (a
+        potentially dangerous assumption). The docs on routine-calling in
+        RPC::XML::Server have been updated to discuss this.
       </description>
     </change>
     <change>
@@ -2734,7 +2770,7 @@
       <description>
         Apache::RPC::Server::list_servers no longer sorts the list before
         returning it. No reason to assume it matters, or to levy that tax
-        against those who don't care.
+        against those who don&apos;t care.
       </description>
     </change>
     <change>
@@ -2747,8 +2783,8 @@
     <change>
       <file path="lib/RPC/XML/Server.pm" />
       <description>
-        The new() method in RPC::XML::Server wasn't quite handling the "host"
-        and "port" arguments that Apache::RPC::Server sent it correctly.
+        The new() method in RPC::XML::Server wasn&apos;t quite handling the
+        "host" and "port" arguments that Apache::RPC::Server sent it correctly.
       </description>
     </change>
     <change>
@@ -2764,7 +2800,8 @@
       <description>
         Replaced a GNU Make-centric dependancy rule for the XPL files with
         a more portable .SUFFIXES-based one. This is unfortunate, as the %
-        syntax of GNU make is much cleaner. But GNU Make isn't universal. Yet.
+        syntax of GNU make is much cleaner. But GNU Make isn&apos;t universal.
+        Yet.
       </description>
     </change>
     <change>
@@ -2780,7 +2817,7 @@
       <description>
         Documentation for Apache::RPC::Server was updated based on trials and
         travails in trying to actually set up a configuration inside &lt;Perl>
-        blocks. This isn't very clear in the mod_perl documentation, but at
+        blocks. This isn&apos;t very clear in the mod_perl documentation, but at
         least the docs for this module reflect exactly what I have configured
         on my development box, so I know it works.
       </description>
@@ -2809,9 +2846,9 @@
     <change>
       <file path="lib/RPC/XML/Server.pm" />
       <description>
-        Added list_methods() to RPC::XML::Server, to list the object's known
-        (published) methods by name. Mainly for use in the regression suites,
-        but worth documenting in the API in case someone else finds it
+        Added list_methods() to RPC::XML::Server, to list the object&apos;s
+        known (published) methods by name. Mainly for use in the regression
+        suites, but worth documenting in the API in case someone else finds it
         useful.
       </description>
     </change>
