@@ -48,6 +48,7 @@ methods/multicall.help
 methods/status.base
 methods/status.code
 methods/status.help
+perlcritic.rc                  # Perl::Critic configuration for tests
 t/00_load.t                    # Test suites
 t/10_data.t
 t/11_base64_fh.t
