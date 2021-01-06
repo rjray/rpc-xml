@@ -118,8 +118,7 @@ BEGIN
     );
 }
 
-$VERSION = '1.74';
-$VERSION = eval $VERSION; ## no critic (ProhibitStringyEval)
+$VERSION = '1.75';
 
 ###############################################################################
 #

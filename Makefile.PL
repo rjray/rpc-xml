@@ -16,7 +16,7 @@ use ExtUtils::MakeMaker;
 use File::Spec;
 use File::Find;
 
-our $VERSION = '0.81';
+our $VERSION = '0.82';
 
 my ($vol, $dir, undef) = File::Spec->splitpath(File::Spec->rel2abs($0));
 $dir                   = File::Spec->catpath($vol, $dir, q{});
